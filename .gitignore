@@ -1,0 +1,13 @@
+.dev/
+.the-dev-server-state.json
+*.docx
+uploads/products/product-*.jpg
+uploads/products/product-*.jpeg
+uploads/products/product-*.png
+uploads/products/product-*.webp
+uploads/products/product-*.gif
+uploads/users/avatar-*.jpg
+uploads/users/avatar-*.jpeg
+uploads/users/avatar-*.png
+uploads/users/avatar-*.webp
+uploads/users/avatar-*.gif
