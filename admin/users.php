@@ -8,6 +8,9 @@ require_once __DIR__ . '/../data/returns-data.php';
 require_once __DIR__ . '/../data/activity-data.php';
 require_once __DIR__ . '/../includes/flash.php';
 
+$admin_session_user = current_user();
+$admin_avatar_url = !empty($admin_session_user['avatar_path']) ? admin_media_path((string) $admin_session_user['avatar_path']) : '';
+
 function dashboard_percent_change($current, $previous)
 {
     if ($previous <= 0) {
@@ -718,11 +721,14 @@ $admin_activities_json = json_encode($admin_activities, JSON_UNESCAPED_SLASHES |
         <div class="flex items-center gap-4">
           <div class="flex items-center gap-3 border-l border-neutral-800 pl-4">
             <div class="text-right hidden sm:block">
-              <div class="text-sm font-medium text-white">Admin User</div>
+              <div class="text-sm font-medium text-white"><?= e((string) ($admin_session_user['fullname'] ?? 'Admin User')) ?></div>
               <div class="text-xs text-neutral-500">Super Admin</div>
             </div>
-            <div class="w-10 h-10 bg-neutral-800 rounded-full flex items-center justify-center border border-neutral-700">
-              <svg class="w-5 h-5 text-neutral-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <div class="w-10 h-10 bg-neutral-800 rounded-full flex items-center justify-center border border-neutral-700 overflow-hidden">
+              <?php if ($admin_avatar_url !== ''): ?>
+                <img src="<?= e($admin_avatar_url) ?>" alt="Admin avatar" class="w-full h-full object-cover" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
+              <?php endif; ?>
+              <svg class="w-5 h-5 text-neutral-400" style="<?= $admin_avatar_url !== '' ? 'display:none;' : '' ?>" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
               </svg>
             </div>
@@ -1910,8 +1916,8 @@ $admin_activities_json = json_encode($admin_activities, JSON_UNESCAPED_SLASHES |
                 <div class="card-hover group">
                   <div class="flex items-start justify-between gap-3 mb-3">
                     <div class="flex items-center gap-3 min-w-0 flex-1">
-                      <div class="w-12 h-12 bg-neutral-800 rounded-full flex items-center justify-center border border-neutral-700 flex-shrink-0">
-                        <span class="text-sm font-medium text-neutral-300">${escapeHtml(user.name.charAt(0))}</span>
+                      <div class="w-12 h-12 bg-neutral-800 rounded-full flex items-center justify-center border border-neutral-700 flex-shrink-0 overflow-hidden">
+                        ${user.avatarPath ? `<img src="${escapeHtml(user.avatarPath)}" alt="${escapeHtml(user.name)}" class="w-full h-full object-cover">` : `<span class="text-sm font-medium text-neutral-300">${escapeHtml(user.name.charAt(0))}</span>`}
                       </div>
                       <div class="min-w-0">
                         <h4 class="text-sm font-semibold text-white truncate">${escapeHtml(user.name)}</h4>
@@ -1941,8 +1947,8 @@ $admin_activities_json = json_encode($admin_activities, JSON_UNESCAPED_SLASHES |
             <tr class="hidden sm:table-row table-row-hover transition-colors">
               <td class="px-6 py-4">
                 <div class="flex items-center gap-3">
-                  <div class="w-10 h-10 bg-neutral-800 rounded-full flex items-center justify-center border border-neutral-700">
-                    <span class="text-sm font-medium text-neutral-300">${escapeHtml(user.name.charAt(0))}</span>
+                  <div class="w-10 h-10 bg-neutral-800 rounded-full flex items-center justify-center border border-neutral-700 overflow-hidden">
+                    ${user.avatarPath ? `<img src="${escapeHtml(user.avatarPath)}" alt="${escapeHtml(user.name)}" class="w-full h-full object-cover">` : `<span class="text-sm font-medium text-neutral-300">${escapeHtml(user.name.charAt(0))}</span>`}
                   </div>
                   <div>
                     <p class="text-sm font-medium text-white">${escapeHtml(user.name)}</p>

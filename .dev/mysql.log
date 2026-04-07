@@ -1,0 +1,62 @@
+2026-04-07 20:40:10 0 [Note] Starting MariaDB 11.8.6-MariaDB-0+deb13u1 from Debian source revision 9bfea48ce1214cc4470f6f6f8a4e30352cef84e7 server_uid unknown as process 15033
+2026-04-07 20:40:10 0 [Note] InnoDB: Compressed tables use zlib 1.3.1
+2026-04-07 20:40:10 0 [Note] InnoDB: Number of transaction pools: 1
+2026-04-07 20:40:10 0 [Note] InnoDB: Using ARMv8 crc32 + pmull instructions
+2026-04-07 20:40:10 0 [Warning] mysqld: io_uring_queue_init() failed with ENOSYS: check seccomp filters, and the kernel version (newer than 5.1 required)
+create_uring failed: falling back to libaio
+2026-04-07 20:40:10 0 [Note] InnoDB: Using Linux native AIO
+2026-04-07 20:40:10 0 [Note] InnoDB: innodb_buffer_pool_size_max=128m, innodb_buffer_pool_size=128m
+2026-04-07 20:40:10 0 [Note] InnoDB: Completed initialization of buffer pool
+2026-04-07 20:40:10 0 [Note] InnoDB: End of log at LSN=45600
+2026-04-07 20:40:10 0 [Note] InnoDB: Opened 3 undo tablespaces
+2026-04-07 20:40:10 0 [Note] InnoDB: 128 rollback segments in 3 undo tablespaces are active.
+2026-04-07 20:40:10 0 [Note] InnoDB: Setting file './ibtmp1' size to 12.000MiB. Physically writing the file full; Please wait ...
+2026-04-07 20:40:10 0 [Note] InnoDB: File './ibtmp1' size is now 12.000MiB.
+2026-04-07 20:40:10 0 [Note] InnoDB: log sequence number 45600 (memory-mapped); transaction id 14
+2026-04-07 20:40:10 0 [Note] Plugin 'FEEDBACK' is disabled.
+2026-04-07 20:40:10 0 [Note] InnoDB: Loading buffer pool(s) from /home/Tubagus/ukk/rentals-php/.dev/mysql-data/ib_buffer_pool
+2026-04-07 20:40:10 0 [Note] Plugin 'wsrep-provider' is disabled.
+2026-04-07 20:40:10 0 [Note] InnoDB: Buffer pool(s) load completed at 260407 20:40:10
+2026-04-07 20:40:11 0 [Note] Server socket created on IP: '127.0.0.1', port: '3306'.
+2026-04-07 20:40:11 0 [Note] mysqld: Event Scheduler: Loaded 0 events
+2026-04-07 20:40:11 0 [Note] /usr/sbin/mysqld: ready for connections.
+Version: '11.8.6-MariaDB-0+deb13u1 from Debian'  socket: '/home/Tubagus/ukk/rentals-php/.dev/mysql.sock'  port: 3306  -- Please help get to 10k stars at https://github.com/MariaDB/Server
+2026-04-07 23:58:42 0 [Note] /usr/sbin/mysqld (initiated by: unknown): Normal shutdown
+2026-04-07 23:58:42 0 [Note] InnoDB: FTS optimize thread exiting.
+2026-04-07 23:58:42 0 [Note] InnoDB: Starting shutdown...
+2026-04-07 23:58:42 0 [Note] InnoDB: Dumping buffer pool(s) to /home/Tubagus/ukk/rentals-php/.dev/mysql-data/ib_buffer_pool
+2026-04-07 23:58:42 0 [Note] InnoDB: Buffer pool(s) dump completed at 260407 23:58:42
+2026-04-07 23:58:42 0 [Note] InnoDB: Removed temporary tablespace data file: "./ibtmp1"
+2026-04-07 23:58:42 0 [Note] InnoDB: Shutdown completed; log sequence number 104166; transaction id 82
+2026-04-07 23:58:43 0 [Note] /usr/sbin/mysqld: Shutdown complete
+2026-04-08  0:32:22 0 [Note] Starting MariaDB 11.8.6-MariaDB-0+deb13u1 from Debian source revision 9bfea48ce1214cc4470f6f6f8a4e30352cef84e7 server_uid unknown as process 27288
+2026-04-08  0:32:22 0 [Note] InnoDB: Compressed tables use zlib 1.3.1
+2026-04-08  0:32:22 0 [Note] InnoDB: Number of transaction pools: 1
+2026-04-08  0:32:22 0 [Note] InnoDB: Using ARMv8 crc32 + pmull instructions
+2026-04-08  0:32:22 0 [Warning] mysqld: io_uring_queue_init() failed with ENOSYS: check seccomp filters, and the kernel version (newer than 5.1 required)
+create_uring failed: falling back to libaio
+2026-04-08  0:32:22 0 [Note] InnoDB: Using Linux native AIO
+2026-04-08  0:32:22 0 [Note] InnoDB: innodb_buffer_pool_size_max=128m, innodb_buffer_pool_size=128m
+2026-04-08  0:32:22 0 [Note] InnoDB: Completed initialization of buffer pool
+2026-04-08  0:32:22 0 [Note] InnoDB: End of log at LSN=104166
+2026-04-08  0:32:23 0 [Note] InnoDB: Opened 3 undo tablespaces
+2026-04-08  0:32:23 0 [Note] InnoDB: 128 rollback segments in 3 undo tablespaces are active.
+2026-04-08  0:32:23 0 [Note] InnoDB: Setting file './ibtmp1' size to 12.000MiB. Physically writing the file full; Please wait ...
+2026-04-08  0:32:23 0 [Note] InnoDB: File './ibtmp1' size is now 12.000MiB.
+2026-04-08  0:32:23 0 [Note] InnoDB: log sequence number 104166 (memory-mapped); transaction id 83
+2026-04-08  0:32:23 0 [Note] Plugin 'FEEDBACK' is disabled.
+2026-04-08  0:32:23 0 [Note] Plugin 'wsrep-provider' is disabled.
+2026-04-08  0:32:23 0 [Note] InnoDB: Loading buffer pool(s) from /home/Tubagus/ukk/rentals-php/.dev/mysql-data/ib_buffer_pool
+2026-04-08  0:32:23 0 [Note] InnoDB: Buffer pool(s) load completed at 260408  0:32:23
+2026-04-08  0:32:23 0 [Note] Server socket created on IP: '127.0.0.1', port: '3306'.
+2026-04-08  0:32:23 0 [Note] mysqld: Event Scheduler: Loaded 0 events
+2026-04-08  0:32:23 0 [Note] /usr/sbin/mysqld: ready for connections.
+Version: '11.8.6-MariaDB-0+deb13u1 from Debian'  socket: '/home/Tubagus/ukk/rentals-php/.dev/mysql.sock'  port: 3306  -- Please help get to 10k stars at https://github.com/MariaDB/Server
+2026-04-08  1:19:43 0 [Note] /usr/sbin/mysqld (initiated by: unknown): Normal shutdown
+2026-04-08  1:19:43 0 [Note] InnoDB: FTS optimize thread exiting.
+2026-04-08  1:19:43 0 [Note] InnoDB: Starting shutdown...
+2026-04-08  1:19:43 0 [Note] InnoDB: Dumping buffer pool(s) to /home/Tubagus/ukk/rentals-php/.dev/mysql-data/ib_buffer_pool
+2026-04-08  1:19:43 0 [Note] InnoDB: Buffer pool(s) dump completed at 260408  1:19:43
+2026-04-08  1:19:43 0 [Note] InnoDB: Removed temporary tablespace data file: "./ibtmp1"
+2026-04-08  1:19:43 0 [Note] InnoDB: Shutdown completed; log sequence number 295461; transaction id 260
+2026-04-08  1:19:43 0 [Note] /usr/sbin/mysqld: Shutdown complete

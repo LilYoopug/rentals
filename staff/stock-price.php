@@ -50,6 +50,7 @@ function staff_inventory_badge($row)
 }
 
 $staff_user = current_user();
+$staff_avatar_url = !empty($staff_user['avatar_path']) ? '../' . ltrim((string) $staff_user['avatar_path'], '/') : '';
 $product_rows = get_admin_products();
 $inventory_items = [];
 $available_units = 0;
@@ -381,8 +382,11 @@ foreach ($product_rows as $row) {
               <div class="text-sm font-medium text-white"><?= e((string) ($staff_user['fullname'] ?? 'Staff User')) ?></div>
               <div class="text-xs text-neutral-500">Staff Member</div>
             </div>
-            <div class="w-10 h-10 bg-neutral-800 rounded-full flex items-center justify-center border border-neutral-700">
-              <svg class="w-5 h-5 text-neutral-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <div class="w-10 h-10 bg-neutral-800 rounded-full flex items-center justify-center border border-neutral-700 overflow-hidden">
+              <?php if ($staff_avatar_url !== ''): ?>
+                <img src="<?= e($staff_avatar_url) ?>" alt="Staff avatar" class="w-full h-full object-cover" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
+              <?php endif; ?>
+              <svg class="w-5 h-5 text-neutral-400" style="<?= $staff_avatar_url !== '' ? 'display:none;' : '' ?>" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
               </svg>
             </div>

@@ -7,6 +7,7 @@ $user = find_user_by_id((int) current_user()['id']);
 $settings = get_user_settings_row((int) current_user()['id']);
 $user_json = json_encode($user, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
 $settings_json = json_encode($settings, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+$avatar_url = !empty($user['avatar_path']) ? '../' . ltrim((string) $user['avatar_path'], '/') : '';
 ?>
 <!doctype html>
 <html lang="en">
@@ -510,11 +511,14 @@ body.light-mode .bg-neutral-900 .text-sm.text-neutral-400 {
         <div class="flex items-center gap-4">
           <div class="flex items-center gap-3 border-l border-neutral-800 pl-4">
             <div class="text-right hidden sm:block">
-              <div class="text-sm font-medium text-white">User Name</div>
+              <div class="text-sm font-medium text-white"><?= e((string) ($user['fullname'] ?? 'User Name')) ?></div>
               <div class="text-xs text-neutral-500">Logged in</div>
             </div>
-            <div class="w-10 h-10 bg-neutral-800 rounded-full flex items-center justify-center border border-neutral-700">
-              <svg class="w-5 h-5 text-neutral-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <div class="w-10 h-10 bg-neutral-800 rounded-full flex items-center justify-center border border-neutral-700 overflow-hidden">
+              <?php if ($avatar_url !== ''): ?>
+                <img src="<?= e($avatar_url) ?>" alt="Profile avatar" class="w-full h-full object-cover" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
+              <?php endif; ?>
+              <svg class="w-5 h-5 text-neutral-400" style="<?= $avatar_url !== '' ? 'display:none;' : '' ?>" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
               </svg>
             </div>

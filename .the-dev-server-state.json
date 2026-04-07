@@ -1,0 +1,39 @@
+{
+  "managedProcesses": {
+    "rentals-mysql": {
+      "name": "rentals-mysql",
+      "script": "/usr/sbin/mysqld",
+      "cwd": "/home/Tubagus/ukk/rentals-php",
+      "args": [
+        "--no-defaults",
+        "--datadir=/home/Tubagus/ukk/rentals-php/.dev/mysql-data",
+        "--socket=/home/Tubagus/ukk/rentals-php/.dev/mysql.sock",
+        "--pid-file=/home/Tubagus/ukk/rentals-php/.dev/mysql.pid",
+        "--bind-address=127.0.0.1",
+        "--port=3306",
+        "--log-error=/home/Tubagus/ukk/rentals-php/.dev/mysql.log"
+      ],
+      "autorestart": false
+    },
+    "rentals-php": {
+      "name": "rentals-php",
+      "script": "php",
+      "cwd": "/home/Tubagus/ukk/rentals-php",
+      "args": [
+        "-S",
+        "127.0.0.1:8000",
+        "-t",
+        "/home/Tubagus/ukk/rentals-php"
+      ],
+      "env": {
+        "DB_HOST": "127.0.0.1",
+        "DB_PORT": "3306",
+        "DB_NAME": "lenscraft",
+        "DB_USER": "root",
+        "DB_PASS": ""
+      },
+      "autorestart": false
+    }
+  },
+  "lastSynced": "2026-04-07T13:39:57.926Z"
+}
