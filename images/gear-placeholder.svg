@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 640" fill="none">
+  <rect width="960" height="640" fill="#0a0a0a"/>
+  <rect x="80" y="80" width="800" height="480" rx="32" fill="#171717" stroke="#2a2a2a" stroke-width="4"/>
+  <circle cx="480" cy="320" r="120" fill="#0f0f0f" stroke="#c7a65a" stroke-width="18"/>
+  <circle cx="480" cy="320" r="64" fill="#1f1f1f" stroke="#3b3b3b" stroke-width="8"/>
+  <rect x="198" y="170" width="150" height="32" rx="16" fill="#262626"/>
+  <rect x="650" y="170" width="110" height="32" rx="16" fill="#262626"/>
+  <text x="480" y="548" fill="#a3a3a3" font-family="Arial, sans-serif" font-size="34" text-anchor="middle">LensCraft Placeholder</text>
+</svg>
