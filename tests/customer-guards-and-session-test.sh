@@ -7,8 +7,8 @@ start_test_stack
 
 password_hash="$(php -r 'echo password_hash("password", PASSWORD_DEFAULT);')"
 mysql_test lenscraft <<SQL
-UPDATE users SET password = '${password_hash}' WHERE username IN ('admin', 'staff');
-UPDATE users SET password = '${password_hash}' WHERE username = 'user';
+UPDATE users SET password = '${password_hash}' WHERE username IN ('admin', 'petugas');
+UPDATE users SET password = '${password_hash}' WHERE username = 'pelanggan';
 SQL
 
 staff_cookie="$(mktemp)"
@@ -19,7 +19,7 @@ trap 'rm -f "${staff_cookie}" "${user_cookie}" "${logout_headers}"' RETURN
 curl -sS \
   -c "${staff_cookie}" \
   -X POST \
-  -d 'username=staff&password=password' \
+  -d 'username=petugas&password=password' \
   "${TEST_BASE_URL}/process/login-process.php" \
   -o /dev/null
 
@@ -34,7 +34,7 @@ if [[ "${staff_location}" != "/products.php" ]]; then
 fi
 
 mysql_test lenscraft <<'SQL'
-UPDATE users SET status = 'inactive' WHERE username = 'user';
+UPDATE users SET status = 'nonaktif' WHERE username = 'pelanggan';
 SQL
 
 inactive_headers="$(mktemp)"
@@ -42,7 +42,7 @@ curl -sS \
   -D "${inactive_headers}" \
   -o /dev/null \
   -X POST \
-  -d 'username=user&password=password' \
+  -d 'username=pelanggan&password=password' \
   "${TEST_BASE_URL}/process/login-process.php"
 inactive_location="$(awk 'tolower($1) == "location:" {print $2}' "${inactive_headers}" | tr -d '\r')"
 rm -f "${inactive_headers}"
@@ -53,13 +53,13 @@ if [[ "${inactive_location}" != "/login.php" ]]; then
 fi
 
 mysql_test lenscraft <<'SQL'
-UPDATE users SET status = 'active' WHERE username = 'user';
+UPDATE users SET status = 'aktif' WHERE username = 'pelanggan';
 SQL
 
 curl -sS \
   -c "${user_cookie}" \
   -X POST \
-  -d 'username=user&password=password' \
+  -d 'username=pelanggan&password=password' \
   "${TEST_BASE_URL}/process/login-process.php" \
   -o /dev/null
 

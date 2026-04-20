@@ -5,7 +5,7 @@ require_once __DIR__ . '/../data/users/customer-data.php';
 require_once __DIR__ . '/../data/activity-data.php';
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST' || !verify_csrf_request()) {
-    redirect_to('user/security.php');
+    redirect_to('user/profile.php');
 }
 
 $user = find_user_by_id((int) current_user()['id']);
@@ -15,12 +15,12 @@ $confirm_password = (string) ($_POST['confirm_password'] ?? '');
 
 if (!$user || !password_verify($current_password, (string) $user['password'])) {
     set_flash('error', 'Kata sandi saat ini tidak valid.');
-    redirect_to('user/security.php');
+    redirect_to('user/profile.php');
 }
 
 if ($new_password === '' || $new_password !== $confirm_password) {
     set_flash('error', 'Konfirmasi kata sandi baru tidak cocok.');
-    redirect_to('user/security.php');
+    redirect_to('user/profile.php');
 }
 
 if (update_customer_password((int) $user['id'], password_hash($new_password, PASSWORD_DEFAULT))) {
@@ -30,4 +30,4 @@ if (update_customer_password((int) $user['id'], password_hash($new_password, PAS
     set_flash('error', 'Gagal memperbarui kata sandi.');
 }
 
-redirect_to('user/security.php');
+redirect_to('user/profile.php');

@@ -14,7 +14,7 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST' || !verify_csrf_request()) {
 $product_id = (int) ($_POST['product_id'] ?? 0);
 $start_date = (string) ($_POST['start_date'] ?? '');
 $end_date = (string) ($_POST['end_date'] ?? '');
-$delivery_method = (string) ($_POST['delivery_method'] ?? 'pickup');
+$delivery_method = (string) ($_POST['delivery_method'] ?? 'ambil_sendiri');
 
 if ($product_id < 1 || $start_date === '' || $end_date === '') {
     echo json_encode(['success' => false, 'message' => 'Data rental belum lengkap.']);

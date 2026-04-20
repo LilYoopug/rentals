@@ -5,15 +5,16 @@ require_once __DIR__ . '/data/products-data.php';
 $products_json = json_encode(get_all_products(), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
 $current_user_json = json_encode(current_user(), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
 $is_logged_in = is_logged_in();
-$is_user_catalog = (current_user()['role'] ?? '') === 'user';
-$account_name = (string) (current_user()['fullname'] ?? 'User');
+$is_user_catalog = $is_logged_in && is_customer_user();
+$account_name = (string) (current_user()['fullname'] ?? 'Pengguna');
+$avatar_url = $is_logged_in && !empty(current_user()['avatar_path']) ? ltrim((string) current_user()['avatar_path'], '/') : '';
 ?>
 <!doctype html>
-<html lang="en">
+<html lang="id">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>LensCraft - Product Details</title>
+    <title>LensCraft - Detail Produk</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link
       href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:wght@700&display=swap"
@@ -22,6 +23,7 @@ $account_name = (string) (current_user()['fullname'] ?? 'User');
     <style>
       :root {
         --accent-brass: #c7a65a;
+        --accent-brass-deep: #8f6421;
         --accent-brass-soft: rgba(199, 166, 90, 0.18);
       }
       body { font-family: "Inter", sans-serif; }
@@ -96,9 +98,30 @@ $account_name = (string) (current_user()['fullname'] ?? 'User');
         transition: all 0.2s ease;
       }
       .floating-nav-btn:hover { background: rgba(255, 255, 255, 0.08); color: #f3f4f6; }
-      .floating-nav-btn.active { background: linear-gradient(135deg, #b78a37 0%, #8f6421 100%); color: white; }
+      .floating-nav-btn.active { background: linear-gradient(135deg, #c7a65a 0%, #8f6421 100%); color: white; }
       .floating-nav-btn svg { width: 1.5rem; height: 1.5rem; }
-      .floating-nav-btn span { font-size: 0.58rem; font-weight: 500; letter-spacing: 0.02em; white-space: nowrap; }    </style>
+      .floating-nav-btn span { font-size: 0.58rem; font-weight: 500; letter-spacing: 0.02em; white-space: nowrap; }
+      @media (max-width: 640px) {
+        .floating-nav {
+          bottom: 1rem;
+          padding: 0.6rem 1rem;
+          gap: 0.55rem;
+        }
+        .floating-nav-btn {
+          min-width: 3.1rem;
+          width: auto;
+          height: 3.1rem;
+          padding: 0 0.45rem;
+        }
+        .floating-nav-btn svg {
+          width: 1.18rem;
+          height: 1.18rem;
+        }
+        .floating-nav-btn span {
+          font-size: 0.49rem;
+        }
+      }
+    </style>
   </head>
   <body class="bg-neutral-950 text-neutral-100 min-h-screen">
     <nav class="fixed top-0 w-full z-50 nav-blur border-b border-neutral-800">
@@ -110,10 +133,13 @@ $account_name = (string) (current_user()['fullname'] ?? 'User');
           <div class="flex items-center gap-3 border-l border-neutral-800 pl-4">
             <div class="text-right hidden sm:block">
               <div class="text-sm font-medium text-white"><?= e($account_name) ?></div>
-              <div class="text-xs text-neutral-500">Logged in</div>
+              <div class="text-xs text-neutral-500">Sudah masuk</div>
             </div>
-            <div class="w-10 h-10 bg-neutral-800 rounded-full flex items-center justify-center border border-neutral-700">
-              <svg class="w-5 h-5 text-neutral-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <div class="w-10 h-10 bg-neutral-800 rounded-full flex items-center justify-center border border-neutral-700 overflow-hidden">
+              <?php if ($avatar_url !== ''): ?>
+                <img src="<?= e($avatar_url) ?>" alt="Profile avatar" class="w-full h-full object-cover" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
+              <?php endif; ?>
+              <svg class="w-5 h-5 text-neutral-400" style="<?= $avatar_url !== '' ? 'display:none;' : '' ?>" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
               </svg>
             </div>
@@ -165,6 +191,10 @@ $account_name = (string) (current_user()['fullname'] ?? 'User');
             <div class="flex items-center justify-between mb-2">
               <span class="text-sm text-neutral-400">Dikirim</span>
               <span class="text-sm font-medium text-white capitalize" id="confirm-delivery-method"></span>
+            </div>
+            <div class="flex items-start justify-between gap-4 mb-2 hidden" id="confirm-delivery-address-row">
+              <span class="text-sm text-neutral-400">Alamat Pengiriman</span>
+              <span class="text-sm font-medium text-white text-right" id="confirm-delivery-address"></span>
             </div>
             <div class="border-t border-neutral-700 pt-2 mt-2">
               <div class="flex items-center justify-between">
@@ -313,11 +343,13 @@ $account_name = (string) (current_user()['fullname'] ?? 'User');
               <div class="border-t border-neutral-800 pt-6">
                 <div class="flex items-baseline gap-3 mb-2">
                   ${product.discount > 0 ? `
-                    <span class="text-xl text-neutral-500 line-through">$${product.price}</span>
-                    <span class="text-3xl font-bold text-green-400">$${Math.round(product.price * (1 - product.discount / 100))}<span class="text-lg font-normal text-neutral-500">/hari</span></span>
-                    <span class="px-3 py-1 text-sm font-medium bg-green-900/50 text-green-300 border border-green-800 rounded-full">-${product.discount}% OFF</span>
+                    <div class="flex flex-col items-start gap-1 mb-2">
+                      <span class="text-xl text-neutral-500 line-through">${window.formatCurrencyIDR(product.price)}</span>
+                      <span class="text-3xl font-bold text-green-400">${window.formatCurrencyIDR(Math.round(product.price * (1 - product.discount / 100)))}<span class="text-lg font-normal text-neutral-500">/hari</span></span>
+                    </div>
+                    <span class="px-3 py-1 text-sm font-medium bg-green-900/50 text-green-300 border border-green-800 rounded-full">-${product.discount}% hemat</span>
                   ` : `
-                    <span class="text-3xl font-bold text-white">$${product.price}<span class="text-lg font-normal text-neutral-500">/hari</span></span>
+                    <span class="text-3xl font-bold text-white">${window.formatCurrencyIDR(product.price)}<span class="text-lg font-normal text-neutral-500">/hari</span></span>
                   `}
                 </div>
               </div>
@@ -374,7 +406,7 @@ $account_name = (string) (current_user()['fullname'] ?? 'User');
                       <label class="relative flex items-center justify-center p-4 bg-neutral-900 border-2 border-neutral-700 rounded-lg cursor-pointer hover:border-neutral-500 transition-colors">
                         <input type="radio"
                                name="delivery-method-${product.id}"
-                               value="pickup"
+                               value="ambil_sendiri"
                                class="sr-only"
                                checked
                                onchange="calculateTotal(${product.id})">
@@ -390,7 +422,7 @@ $account_name = (string) (current_user()['fullname'] ?? 'User');
                       <label class="relative flex items-center justify-center p-4 bg-neutral-900 border-2 border-neutral-700 rounded-lg cursor-pointer hover:border-neutral-500 transition-colors">
                         <input type="radio"
                                name="delivery-method-${product.id}"
-                               value="delivery"
+                               value="diantar"
                                class="sr-only"
                                onchange="calculateTotal(${product.id})">
                         <div class="text-center">
@@ -398,7 +430,7 @@ $account_name = (string) (current_user()['fullname'] ?? 'User');
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16V6a1 1 0 00-1-1H4a1 1 0 00-1 1v10a1 1 0 001 1h1m8-1a1 1 0 01-1 1H9m4-1V8a1 1 0 011-1h2.586a1 1 0 01.707.293l3.414 3.414a1 1 0 01.293.707V16a1 1 0 01-1 1h-1m-6-1a1 1 0 001 1h1M5 17a2 2 0 104 0m-4 0a2 2 0 114 0m6 0a2 2 0 104 0m-4 0a2 2 0 114 0" />
                           </svg>
                           <div class="text-sm font-medium text-neutral-200">Dikirim</div>
-                          <div class="text-xs text-neutral-500 mt-1">+$15.00</div>
+                          <div class="text-xs text-neutral-500 mt-1">+${window.formatCurrencyIDR(50000)}</div>
                         </div>
                         <div class="absolute inset-0 border-2 rounded-lg hidden delivery-method-selected-${product.id}" style="border-color: var(--accent-brass);"></div>
                       </label>
@@ -409,7 +441,7 @@ $account_name = (string) (current_user()['fullname'] ?? 'User');
                     <div class="flex items-center justify-between mb-2">
                       <span class="text-sm text-neutral-400">Tarif Harian</span>
                       <span class="text-sm text-neutral-200" id="daily-rate-display-${product.id}">
-                        ${product.discount > 0 ? `$${Math.round(product.price * (1 - product.discount / 100))}` : `$${product.price}`}
+                        ${product.discount > 0 ? window.formatCurrencyIDR(Math.round(product.price * (1 - product.discount / 100))) : window.formatCurrencyIDR(product.price)}
                       </span>
                     </div>
                     <div class="flex items-center justify-between mb-2">
@@ -418,18 +450,18 @@ $account_name = (string) (current_user()['fullname'] ?? 'User');
                     </div>
                     <div class="flex items-center justify-between mb-2" id="delivery-row-${product.id}">
                       <span class="text-sm text-neutral-400">Biaya Pengiriman</span>
-                      <span class="text-sm text-neutral-200" id="delivery-fee-display-${product.id}">$0.00</span>
+                      <span class="text-sm text-neutral-200" id="delivery-fee-display-${product.id}">${window.formatCurrencyIDR(0)}</span>
                     </div>
                     ${product.discount > 0 ? `
                     <div class="flex items-center justify-between mb-2">
                       <span class="text-sm text-neutral-400">Diskon (${product.discount}%)</span>
-                      <span class="text-sm text-green-400">-$${(product.price * product.discount / 100).toFixed(2)}</span>
+                      <span class="text-sm text-green-400">-${window.formatCurrencyIDR(product.price * product.discount / 100)}</span>
                     </div>
                     ` : ''}
                     <div class="border-t border-neutral-700 pt-3 mt-3">
                       <div class="flex items-center justify-between">
                         <span class="text-base font-semibold text-white">Total</span>
-                        <span class="text-xl font-bold text-white" id="total-display-${product.id}">$${product.discount > 0 ? Math.round(product.price * (1 - product.discount / 100)) : product.price}</span>
+                        <span class="text-xl font-bold text-white" id="total-display-${product.id}">${window.formatCurrencyIDR(product.discount > 0 ? Math.round(product.price * (1 - product.discount / 100)) : product.price)}</span>
                       </div>
                     </div>
                   </div>
@@ -450,11 +482,11 @@ $account_name = (string) (current_user()['fullname'] ?? 'User');
               <div class="border-t border-neutral-800 pt-6">
                 <h3 class="text-sm font-semibold text-white mb-3">Syarat Rental</h3>
                 <ul class="text-sm text-neutral-400 space-y-2">
-                  <li>• Daily and weekly rates available</li>
-                  <li>• All equipment is professionally tested and cleaned</li>
-                  <li>• Damage insurance included in rental price</li>
-                  <li>• Ambil Sendiri and return at designated locations</li>
-                  <li>• Batallation free up to 24 hours before pickup</li>
+                  <li>• Tarif sewa harian tersedia untuk semua peralatan</li>
+                  <li>• Semua peralatan diperiksa dan dibersihkan sebelum dikirim</li>
+                  <li>• Dukungan operasional tersedia selama masa sewa</li>
+                  <li>• Ambil sendiri atau pengiriman sesuai pilihan Anda</li>
+                  <li>• Perubahan jadwal dapat diajukan sebelum hari pengambilan</li>
                 </ul>
               </div>
             </div>
@@ -466,7 +498,7 @@ $account_name = (string) (current_user()['fullname'] ?? 'User');
         const related = allProduk.filter(p => p.id !== product.id && p.category === product.category).slice(0, 4);
         const grid = document.getElementById('related-grid');
         if (related.length === 0) {
-          grid.innerHTML = '<p class="text-neutral-500">No related products in this category.</p>';
+          grid.innerHTML = '<p class="text-neutral-500">Belum ada produk terkait di kategori ini.</p>';
           return;
         }
         grid.innerHTML = related.map(p => {
@@ -479,8 +511,13 @@ $account_name = (string) (current_user()['fullname'] ?? 'User');
             : '<span class="absolute top-3 left-3 inline-flex items-center px-2.5 py-1 text-xs font-semibold bg-red-900/40 text-red-400 border border-red-800/50 rounded-full backdrop-blur-sm">Tidak Tersedia</span>';
           
           const priceDisplay = p.discount > 0
-            ? `<span class="text-xl font-bold text-white">$${Math.round(p.price * (1 - p.discount / 100))}<span class="text-sm font-normal text-neutral-500 ml-1">/hari</span></span>`
-            : `<span class="text-xl font-bold text-white">$${p.price}<span class="text-sm font-normal text-neutral-500 ml-1">/hari</span></span>`;
+            ? `
+              <div class="flex flex-col items-start gap-1">
+                <span class="text-sm text-neutral-600 line-through">${window.formatCurrencyIDR(p.price)}</span>
+                <span class="text-xl font-bold text-white">${window.formatCurrencyIDR(Math.round(p.price * (1 - p.discount / 100)))}<span class="text-sm font-normal text-neutral-500 ml-1">/hari</span></span>
+              </div>
+            `
+            : `<span class="text-xl font-bold text-white">${window.formatCurrencyIDR(p.price)}<span class="text-sm font-normal text-neutral-500 ml-1">/hari</span></span>`;
           
           return `
           <div class="bg-neutral-900 border border-neutral-800 rounded-2xl overflow-hidden card-hover animate-fade-in flex flex-col cursor-pointer" onclick="window.location.href='product-detail.php?id=${p.id}'">
@@ -503,7 +540,6 @@ $account_name = (string) (current_user()['fullname'] ?? 'User');
                 <div class="flex items-center justify-between gap-3">
                   <div>
                     ${priceDisplay}
-                    ${p.discount > 0 ? `<span class="text-sm text-neutral-600 line-through ml-2">$${p.price}</span>` : ''}
                   </div>
                 </div>
               </div>
@@ -519,8 +555,8 @@ $account_name = (string) (current_user()['fullname'] ?? 'User');
         if (!productId) {
           container.innerHTML = `
             <div class="text-center py-20">
-              <h1 class="text-2xl font-serif text-white mb-4">Product Not Found</h1>
-              <p class="text-neutral-400 mb-8">Please select a product from our catalog.</p>
+              <h1 class="text-2xl font-serif text-white mb-4">Produk Tidak Ditemukan</h1>
+              <p class="text-neutral-400 mb-8">Silakan pilih produk dari katalog kami.</p>
               <a href="products.php" class="px-6 py-3 bg-white text-black font-semibold rounded-lg hover:bg-neutral-200 transition-colors inline-block">Browse Produk</a>
             </div>`;
           return;
@@ -530,8 +566,8 @@ $account_name = (string) (current_user()['fullname'] ?? 'User');
         if (!product) {
           container.innerHTML = `
             <div class="text-center py-20">
-              <h1 class="text-2xl font-serif text-white mb-4">Product Not Found</h1>
-              <p class="text-neutral-400 mb-8">The requested product does not exist.</p>
+              <h1 class="text-2xl font-serif text-white mb-4">Produk Tidak Ditemukan</h1>
+              <p class="text-neutral-400 mb-8">Produk yang diminta tidak tersedia.</p>
               <a href="products.php" class="px-6 py-3 bg-white text-black font-semibold rounded-lg hover:bg-neutral-200 transition-colors inline-block">Browse Produk</a>
             </div>`;
           return;
@@ -575,8 +611,8 @@ $account_name = (string) (current_user()['fullname'] ?? 'User');
         const days = Math.ceil(timeDiff / (1000 * 60 * 60 * 24)) + 1;
         
         // Get delivery method
-        const deliveryMethod = document.querySelector(`input[name="delivery-method-${productId}"]:checked`)?.value || 'pickup';
-        const deliveryFee = deliveryMethod === 'delivery' ? 15 : 0;
+        const deliveryMethod = document.querySelector(`input[name="delivery-method-${productId}"]:checked`)?.value || 'ambil_sendiri';
+        const deliveryFee = deliveryMethod === 'diantar' ? 50000 : 0;
         
         // Calculate daily rate with discount
         const dailyRate = product.discount > 0
@@ -597,15 +633,15 @@ $account_name = (string) (current_user()['fullname'] ?? 'User');
         }
         
         if (deliveryFeeDisplay) {
-          deliveryFeeDisplay.textContent = `$${deliveryFee.toFixed(2)}`;
+          deliveryFeeDisplay.textContent = window.formatCurrencyIDR(deliveryFee);
         }
         
         if (deliveryRow) {
-          deliveryRow.style.display = deliveryMethod === 'delivery' ? 'flex' : 'none';
+          deliveryRow.style.display = deliveryMethod === 'diantar' ? 'flex' : 'none';
         }
         
         if (totalDisplay) {
-          totalDisplay.textContent = `$${total.toFixed(2)}`;
+          totalDisplay.textContent = window.formatCurrencyIDR(total);
         }
         
         // Update delivery method selection visual
@@ -631,6 +667,25 @@ $account_name = (string) (current_user()['fullname'] ?? 'User');
         return window.currentUser || null;
       }
 
+      function formatDeliveryAddress(user) {
+        if (!user) {
+          return 'Alamat belum diisi';
+        }
+
+        const parts = [
+          user.address_line1,
+          user.address_line2,
+          user.city,
+          user.province,
+          user.zip_code,
+          user.country
+        ]
+          .map(value => String(value || '').trim())
+          .filter(Boolean);
+
+        return parts.length > 0 ? parts.join(', ') : 'Alamat belum diisi';
+      }
+
       // Show confirmation modal
       function showKonfirmasiModal(productId) {
         const product = getProductById(productId);
@@ -646,7 +701,7 @@ $account_name = (string) (current_user()['fullname'] ?? 'User');
         const deliveryMethodInput = document.querySelector(`input[name="delivery-method-${productId}"]:checked`);
         
         if (!startDateInput || !endDateInput || !deliveryMethodInput) {
-          alert('Please fill in all required fields');
+          alert('Silakan lengkapi semua data yang wajib diisi.');
           return;
         }
 
@@ -657,12 +712,12 @@ $account_name = (string) (current_user()['fullname'] ?? 'User');
         
         // Validate dates
         if (startDate < today) {
-          alert('Start date cannot be in the past');
+          alert('Tanggal mulai tidak boleh sebelum hari ini.');
           return;
         }
         
         if (endDate < startDate) {
-          alert('End date must be after start date');
+          alert('Tanggal selesai harus setelah tanggal mulai.');
           return;
         }
 
@@ -672,7 +727,7 @@ $account_name = (string) (current_user()['fullname'] ?? 'User');
         const dailyRate = product.discount > 0
           ? Math.round(product.price * (1 - product.discount / 100))
           : product.price;
-        const deliveryFee = deliveryMethodInput.value === 'delivery' ? 15 : 0;
+        const deliveryFee = deliveryMethodInput.value === 'diantar' ? 50000 : 0;
         const total = (dailyRate * days) + deliveryFee;
 
         // Store pending rental data
@@ -689,9 +744,18 @@ $account_name = (string) (current_user()['fullname'] ?? 'User');
 
         // Populate confirmation modal
         document.getElementById('confirm-product-name').textContent = product.name;
-        document.getElementById('confirm-rental-dates').textContent = `${startDateInput.value} to ${endDateInput.value}`;
+        document.getElementById('confirm-rental-dates').textContent = `${startDateInput.value} sampai ${endDateInput.value}`;
         document.getElementById('confirm-delivery-method').textContent = deliveryMethodInput.value;
-        document.getElementById('confirm-total').textContent = `$${total.toFixed(2)}`;
+        document.getElementById('confirm-total').textContent = window.formatCurrencyIDR(total);
+
+        const confirmDeliveryAddressRow = document.getElementById('confirm-delivery-address-row');
+        const confirmDeliveryAddress = document.getElementById('confirm-delivery-address');
+        const isDelivery = deliveryMethodInput.value === 'diantar';
+
+        if (confirmDeliveryAddressRow && confirmDeliveryAddress) {
+          confirmDeliveryAddress.textContent = formatDeliveryAddress(getCurrentUser());
+          confirmDeliveryAddressRow.classList.toggle('hidden', !isDelivery);
+        }
 
         // Show confirmation modal
         const modal = document.getElementById('confirm-modal');
@@ -751,7 +815,7 @@ $account_name = (string) (current_user()['fullname'] ?? 'User');
           const endDateInput = document.getElementById(`end-date-${pendingRental.productId}`);
           startDateInput.value = new Date().toISOString().split('T')[0];
           endDateInput.value = new Date(Date.now() + 86400000).toISOString().split('T')[0];
-          document.querySelector(`input[name="delivery-method-${pendingRental.productId}"][value="pickup"]`).checked = true;
+          document.querySelector(`input[name="delivery-method-${pendingRental.productId}"][value="ambil_sendiri"]`).checked = true;
           calculateTotal(pendingRental.productId);
 
           pendingRental = null;
@@ -766,9 +830,9 @@ $account_name = (string) (current_user()['fullname'] ?? 'User');
         
         document.getElementById('modal-rental-id').textContent = rental.id;
         document.getElementById('modal-product-name').textContent = rental.product.name;
-        document.getElementById('modal-rental-dates').textContent = `${rental.startDate} to ${rental.endDate}`;
+        document.getElementById('modal-rental-dates').textContent = `${rental.startDate} sampai ${rental.endDate}`;
         document.getElementById('modal-delivery-method').textContent = rental.deliveryMethod;
-        document.getElementById('modal-total').textContent = `$${rental.total.toFixed(2)}`;
+        document.getElementById('modal-total').textContent = window.formatCurrencyIDR(rental.total);
         
         // Show modal with animation
         modal.classList.remove('hidden');

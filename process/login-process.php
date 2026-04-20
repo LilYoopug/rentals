@@ -15,21 +15,14 @@ if (!$user || !password_verify($password, (string) $user['password'])) {
     redirect_to('login.php');
 }
 
-if (($user['status'] ?? 'inactive') !== 'active') {
+if (normalize_user_status_value((string) ($user['status'] ?? 'nonaktif')) !== 'aktif') {
     set_flash('error', 'Akun Anda belum aktif. Silakan tunggu persetujuan admin.');
     redirect_to('login.php');
 }
 
 session_regenerate_id(true);
 
-$_SESSION['current_user'] = [
-    'id' => (int) $user['id'],
-    'fullname' => (string) $user['fullname'],
-    'email' => (string) $user['email'],
-    'username' => (string) $user['username'],
-    'role' => (string) $user['role'],
-    'avatar_path' => (string) ($user['avatar_path'] ?? ''),
-];
+$_SESSION['current_user'] = build_session_user_payload($user);
 
 csrf_token();
 
@@ -38,12 +31,13 @@ if (db_ready()) {
 }
 
 $product_id = trim((string) ($_POST['product_id'] ?? ''));
+$normalized_role = normalize_role_value((string) ($user['role'] ?? ''));
 
-if (($user['role'] ?? '') === 'admin') {
+if ($normalized_role === 'admin') {
     redirect_to('admin/index.php');
 }
 
-if (($user['role'] ?? '') === 'staff') {
+if ($normalized_role === 'petugas') {
     redirect_to('staff/index.php');
 }
 

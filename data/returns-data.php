@@ -10,9 +10,10 @@ function normalize_return_row($row)
         'fullname' => (string) ($row['fullname'] ?? ''),
         'productName' => (string) ($row['product_name'] ?? ''),
         'brand' => (string) ($row['brand'] ?? ''),
-        'category' => (string) ($row['category_slug'] ?? ''),
+        'category' => normalize_category_slug_value((string) ($row['category_slug'] ?? '')),
         'image' => (string) ($row['image_path'] ?? 'images/gear-placeholder.svg'),
-        'status' => (string) ($row['status'] ?? 'pending'),
+        'fineAmount' => (float) ($row['fine_amount'] ?? 0),
+        'status' => normalize_return_status_value((string) ($row['status'] ?? 'menunggu')),
         'returnedAt' => !empty($row['returned_at']) ? date('Y-m-d', strtotime((string) $row['returned_at'])) : null,
         'createdAt' => !empty($row['created_at']) ? date('Y-m-d', strtotime((string) $row['created_at'])) : '',
         'notes' => (string) ($row['notes'] ?? ''),
@@ -77,6 +78,48 @@ function get_customer_returns($user_id)
     );
 }
 
+function get_return_tracking_rows()
+{
+    if (!db_ready()) {
+        return [];
+    }
+
+    return db_all(
+        'SELECT
+             COALESCE(rt.return_code, r.rental_code) AS tracking_id,
+             rt.return_code,
+             rt.notes,
+             COALESCE(rt.fine_amount, 0) AS fine_amount,
+             rt.returned_at,
+             r.rental_code,
+             r.end_date,
+             u.fullname,
+             p.name AS product_name,
+             p.brand,
+             p.category_slug,
+             p.image_path,
+             CASE
+                 WHEN rt.id IS NULL THEN "dipinjam"
+                 ELSE rt.status
+             END AS status,
+             COALESCE(rt.created_at, r.created_at) AS tracking_created_at,
+             COALESCE(rt.id, r.id) AS tracking_sort_id
+         FROM rentals r
+         LEFT JOIN returns rt ON rt.rental_id = r.id
+         JOIN users u ON u.id = r.user_id
+         JOIN products p ON p.id = r.product_id
+         WHERE rt.id IS NOT NULL OR (r.status IN ("aktif", "active") AND rt.id IS NULL)
+         ORDER BY
+             CASE
+                 WHEN rt.id IS NULL THEN 0
+                 WHEN rt.status IN ("menunggu", "pending") THEN 1
+                 ELSE 2
+             END ASC,
+             tracking_created_at ASC,
+             tracking_sort_id ASC'
+    );
+}
+
 function create_return_for_rental($rental_code, $processed_by = null, $options = [])
 {
     if (!db_ready()) {
@@ -92,7 +135,7 @@ function create_return_for_rental($rental_code, $processed_by = null, $options =
         return false;
     }
 
-    if (($rental['status'] ?? '') !== 'active') {
+    if (normalize_rental_status_value((string) ($rental['status'] ?? '')) !== 'aktif') {
         return false;
     }
 
@@ -100,12 +143,10 @@ function create_return_for_rental($rental_code, $processed_by = null, $options =
         return false;
     }
 
-    $return_status = trim((string) ($options['status'] ?? 'completed'));
-    if (!in_array($return_status, ['pending', 'completed'], true)) {
-        $return_status = 'completed';
-    }
+    $return_status = normalize_return_status_value((string) ($options['status'] ?? 'menunggu'));
+    $stored_return_status = storage_return_status_value($return_status);
 
-    $notes = trim((string) ($options['notes'] ?? 'Returned through website flow.'));
+    $notes = trim((string) ($options['notes'] ?? 'Pengembalian diajukan melalui website.'));
 
     return db_execute(
         'INSERT INTO returns (return_code, rental_id, processed_by, notes, status, returned_at, created_at) VALUES (?, ?, ?, ?, ?, ?, NOW())',
@@ -114,8 +155,8 @@ function create_return_for_rental($rental_code, $processed_by = null, $options =
             (int) $rental['id'],
             $processed_by ? (int) $processed_by : null,
             $notes,
-            $return_status,
-            $return_status === 'completed' ? date('Y-m-d H:i:s') : null,
+            $stored_return_status,
+            $return_status === 'selesai' ? date('Y-m-d H:i:s') : null,
         ]
     );
 }
@@ -143,25 +184,25 @@ function update_return_record($return_code, $data)
         return false;
     }
 
-    $old_status = trim((string) ($return_row['status'] ?? 'pending'));
-    $new_status = trim((string) ($data['status'] ?? $old_status));
-    if (!in_array($new_status, ['pending', 'completed'], true)) {
-        $new_status = $old_status;
-    }
+    $old_status = normalize_return_status_value((string) ($return_row['status'] ?? 'menunggu'));
+    $new_status = normalize_return_status_value((string) ($data['status'] ?? $old_status));
 
-    if ($old_status === 'completed' && $new_status !== 'completed') {
+    if ($old_status === 'selesai' && $new_status !== 'selesai') {
         return false;
     }
 
+    $stored_new_status = storage_return_status_value($new_status);
+    $is_completed = $new_status === 'selesai' ? 1 : 0;
+
     return db_execute(
         'UPDATE returns
-         SET notes = ?, status = ?, processed_by = ?, returned_at = CASE WHEN ? = "completed" THEN COALESCE(returned_at, NOW()) ELSE NULL END
+         SET notes = ?, status = ?, processed_by = ?, returned_at = CASE WHEN ? = 1 THEN COALESCE(returned_at, NOW()) ELSE NULL END
          WHERE return_code = ?',
         [
             trim((string) ($data['notes'] ?? '')),
-            $new_status,
+            $stored_new_status,
             !empty($data['processed_by']) ? (int) $data['processed_by'] : null,
-            $new_status,
+            $is_completed,
             $return_code,
         ]
     );

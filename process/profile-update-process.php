@@ -42,21 +42,17 @@ if (!empty($_POST['settings_only'])) {
         set_flash('success', 'Preferensi berhasil disimpan.');
     }
 
-    $settings_redirect = 'user/appearance.php';
-    if (!empty($_POST['export_data']) || array_key_exists('is_profile_public', $_POST) || array_key_exists('allow_marketing', $_POST) || array_key_exists('allow_data_export', $_POST)) {
-        $settings_redirect = 'user/privacy.php';
-    }
-
-    redirect_to($settings_redirect);
+    redirect_to('user/profile.php');
 }
 
 $_POST['avatar_path'] = save_uploaded_user_avatar('avatar_file', (string) ($_POST['existing_avatar_path'] ?? ((string) (current_user()['avatar_path'] ?? ''))));
 
 if (update_customer_profile($user_id, $_POST)) {
-    $_SESSION['current_user']['fullname'] = trim((string) ($_POST['first_name'] ?? '') . ' ' . (string) ($_POST['last_name'] ?? ''));
-    $_SESSION['current_user']['email'] = trim((string) ($_POST['email'] ?? ''));
-    $_SESSION['current_user']['avatar_path'] = trim((string) ($_POST['avatar_path'] ?? ''));
-    add_activity_log($user_id, (string) $_SESSION['current_user']['fullname'], (string) current_user()['role'], 'profile', 'Memperbarui profil.');
+    $updated_user = find_user_by_id($user_id);
+    if ($updated_user) {
+        $_SESSION['current_user'] = build_session_user_payload($updated_user);
+    }
+    add_activity_log($user_id, (string) current_user()['fullname'], (string) current_user()['role'], 'profile', 'Memperbarui profil.');
     set_flash('success', 'Profil berhasil diperbarui.');
 } else {
     set_flash('error', 'Gagal memperbarui profil.');

@@ -8,7 +8,12 @@ function find_user_by_login($login)
         return null;
     }
 
-    return db_one('SELECT * FROM users WHERE username = ? OR email = ? LIMIT 1', [$login, $login]);
+    $normalized_login = normalize_login_identifier($login);
+
+    return db_one(
+        'SELECT * FROM users WHERE username IN (?, ?) OR email IN (?, ?) LIMIT 1',
+        [$login, $normalized_login, $login, $normalized_login]
+    );
 }
 
 function find_user_by_email($email)
@@ -29,6 +34,30 @@ function find_user_by_id($id)
     return db_one('SELECT * FROM users WHERE id = ? LIMIT 1', [(int) $id]);
 }
 
+function build_session_user_payload($user)
+{
+    if (!is_array($user)) {
+        return null;
+    }
+
+    return [
+        'id' => (int) ($user['id'] ?? 0),
+        'fullname' => (string) ($user['fullname'] ?? ''),
+        'email' => (string) ($user['email'] ?? ''),
+        'username' => (string) ($user['username'] ?? ''),
+        'role' => normalize_role_value((string) ($user['role'] ?? 'pelanggan')),
+        'avatar_path' => (string) ($user['avatar_path'] ?? ''),
+        'phone' => (string) ($user['phone'] ?? ''),
+        'address_line1' => (string) ($user['address_line1'] ?? ''),
+        'address_line2' => (string) ($user['address_line2'] ?? ''),
+        'city' => (string) ($user['city'] ?? ''),
+        'province' => (string) ($user['province'] ?? ''),
+        'zip_code' => (string) ($user['zip_code'] ?? ''),
+        'country' => (string) ($user['country'] ?? ''),
+        'bio' => (string) ($user['bio'] ?? ''),
+    ];
+}
+
 function create_customer_user($data)
 {
     if (!db_ready()) {
@@ -36,7 +65,7 @@ function create_customer_user($data)
     }
 
     $saved = db_execute(
-        'INSERT INTO users (fullname, email, username, password, role, status, created_at) VALUES (?, ?, ?, ?, "user", "pending", NOW())',
+        'INSERT INTO users (fullname, email, username, password, role, status, created_at) VALUES (?, ?, ?, ?, "pelanggan", "menunggu", NOW())',
         [
             trim((string) ($data['fullname'] ?? '')),
             trim((string) ($data['email'] ?? '')),

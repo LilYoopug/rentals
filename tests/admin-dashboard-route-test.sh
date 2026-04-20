@@ -1,7 +1,11 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-base_url="${1:-http://127.0.0.1:8000}"
+source "$(cd "$(dirname "$0")/.." && pwd)/tests/helpers/test-env.sh"
+
+start_test_stack
+
+base_url="${1:-${TEST_BASE_URL}}"
 cookie_file="$(mktemp)"
 headers_file="$(mktemp)"
 trap 'rm -f "$cookie_file" "$headers_file"' EXIT

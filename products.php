@@ -4,11 +4,12 @@ require_once __DIR__ . '/includes/flash.php';
 $products_json = json_encode(get_all_products(), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
 $current_user_json = json_encode(current_user(), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
 $is_logged_in = is_logged_in();
-$is_user_catalog = (current_user()['role'] ?? '') === 'user';
-$account_name = (string) (current_user()['fullname'] ?? 'User');
+$is_user_catalog = $is_logged_in && is_customer_user();
+$account_name = (string) (current_user()['fullname'] ?? 'Pengguna');
+$avatar_url = $is_logged_in && !empty(current_user()['avatar_path']) ? ltrim((string) current_user()['avatar_path'], '/') : '';
 ?>
 <!doctype html>
-<html lang="en">
+<html lang="id">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -21,6 +22,7 @@ $account_name = (string) (current_user()['fullname'] ?? 'User');
     <style>
       :root {
         --accent-brass: #c7a65a;
+        --accent-brass-deep: #8f6421;
         --accent-brass-soft: rgba(199, 166, 90, 0.18);
         --panel-border: rgba(255, 255, 255, 0.08);
       }
@@ -129,7 +131,7 @@ $account_name = (string) (current_user()['fullname'] ?? 'User');
         }
 
         .floating-nav-btn.active {
-          background: linear-gradient(135deg, #b78a37 0%, #8f6421 100%);
+          background: linear-gradient(135deg, #c7a65a 0%, #8f6421 100%);
           color: white;
         }
 
@@ -180,10 +182,13 @@ $account_name = (string) (current_user()['fullname'] ?? 'User');
           <?php if ($is_logged_in): ?>
           <div class="text-right hidden sm:block">
             <div class="text-sm font-medium text-white"><?= e($account_name) ?></div>
-            <div class="text-xs text-neutral-500">Logged in</div>
+            <div class="text-xs text-neutral-500">Sudah masuk</div>
           </div>
-          <div class="w-10 h-10 bg-neutral-800 rounded-full flex items-center justify-center border border-neutral-700">
-            <svg class="w-5 h-5 text-neutral-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <div class="w-10 h-10 bg-neutral-800 rounded-full flex items-center justify-center border border-neutral-700 overflow-hidden">
+            <?php if ($avatar_url !== ''): ?>
+              <img src="<?= e($avatar_url) ?>" alt="Profile avatar" class="w-full h-full object-cover" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
+            <?php endif; ?>
+            <svg class="w-5 h-5 text-neutral-400" style="<?= $avatar_url !== '' ? 'display:none;' : '' ?>" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
             </svg>
           </div>
@@ -224,8 +229,8 @@ $account_name = (string) (current_user()['fullname'] ?? 'User');
                     <label class="block text-xs font-medium text-neutral-300 mb-2">Kategori</label>
                     <select id="category" class="w-full px-3 py-2 bg-neutral-800 border border-neutral-700 rounded-xl text-neutral-100 text-sm focus:outline-none control-focus">
                       <option value="">Semua Kategori</option>
-                      <option value="mirrorless">Mirrorless</option>
-                      <option value="lens">Lensa</option>
+                      <option value="kamera-mirrorless">Mirrorless</option>
+                      <option value="lensa">Lensa</option>
                       <option value="video">Video</option>
                     </select>
                   </div>
@@ -363,6 +368,16 @@ $account_name = (string) (current_user()['fullname'] ?? 'User');
         return div.innerHTML;
       }
 
+      function getCategoryLabel(category) {
+        const labels = {
+          'kamera-mirrorless': 'Mirrorless',
+          'lensa': 'Lensa',
+          'video': 'Video',
+        };
+
+        return labels[category] || category;
+      }
+
       // Get filtered and sorted products based on current state
       // Get filtered and sorted products based on current state
       function getFilteredProducts() {
@@ -414,9 +429,24 @@ $account_name = (string) (current_user()['fullname'] ?? 'User');
           ? '<span class="absolute top-3 left-3 inline-flex items-center px-2.5 py-1 text-xs font-semibold bg-neutral-900/80 backdrop-blur-sm text-neutral-100 border border-neutral-700/50 rounded-full">Tersedia</span>'
           : '<span class="absolute top-3 left-3 inline-flex items-center px-2.5 py-1 text-xs font-semibold bg-red-900/40 text-red-400 border border-red-800/50 rounded-full backdrop-blur-sm">Tidak Tersedia</span>';
         
-        const priceDisplay = product.discount > 0
-          ? `<span class="text-xl font-bold text-white">$${Math.round(product.price * (1 - product.discount / 100))}<span class="text-sm font-normal text-neutral-500 ml-1">/day</span></span>`
-          : `<span class="text-xl font-bold text-white">$${product.price}<span class="text-sm font-normal text-neutral-500 ml-1">/day</span></span>`;
+       const priceDisplay = product.discount > 0
+          ? `
+            <div class="flex flex-col items-start gap-1">
+              <span class="text-sm text-neutral-600 line-through">${window.formatCurrencyIDR(product.price)}</span>
+              <span class="text-xl font-bold text-white">${window.formatCurrencyIDR(Math.round(product.price * (1 - product.discount / 100)))}<span class="text-sm font-normal text-neutral-500 ml-1">/hari</span></span>
+            </div>
+          `
+          : `<span class="text-xl font-bold text-white">${window.formatCurrencyIDR(product.price)}<span class="text-sm font-normal text-neutral-500 ml-1">/hari</span></span>`;
+
+        const categoryBadge = `
+          <span class="inline-flex flex-shrink-0 items-center px-2.5 py-1 rounded-full border border-neutral-700 bg-neutral-800/80 text-[11px] font-semibold uppercase tracking-[0.16em] text-neutral-300">
+            ${escapeHtml(getCategoryLabel(product.category))}
+          </span>
+        `;
+
+        const descriptionPreview = product.description
+          ? `<p class="line-clamp-2 leading-6 text-sm text-neutral-400">${escapeHtml(product.description)}</p>`
+          : '';
         
         card.innerHTML = `
           <div class="relative aspect-[4/3] overflow-hidden bg-neutral-800 flex-shrink-0">
@@ -426,16 +456,19 @@ $account_name = (string) (current_user()['fullname'] ?? 'User');
           </div>
           <div class="p-5 flex flex-col flex-1 min-h-0">
             <div class="flex-1 flex flex-col min-h-0 space-y-3">
-              <div>
-                <p class="text-xs font-semibold text-neutral-400 uppercase tracking-wider mb-1.5">${escapeHtml(product.brand)}</p>
+              <div class="space-y-2">
+                <div class="flex items-start justify-between gap-3">
+                  <p class="text-xs font-semibold text-neutral-400 uppercase tracking-wider mb-1.5">${escapeHtml(product.brand)}</p>
+                  ${categoryBadge}
+                </div>
                 <h3 class="font-medium text-white leading-snug line-clamp-2 text-base">${escapeHtml(product.name)}</h3>
               </div>
+              ${descriptionPreview}
             </div>
             <div class="pt-4 mt-4 border-t border-neutral-800 flex-shrink-0">
               <div class="flex items-center justify-between gap-3">
                 <div>
                   ${priceDisplay}
-                  ${product.discount > 0 ? `<span class="text-sm text-neutral-600 line-through ml-2">$${product.price}</span>` : ''}
                 </div>
                 <a href="product-detail.php?id=${product.id}" class="px-5 py-2.5 bg-neutral-800 border border-neutral-700 hover:bg-neutral-700 text-white text-sm font-medium rounded-xl transition-colors whitespace-nowrap">Detail</a>
               </div>
@@ -541,7 +574,7 @@ $account_name = (string) (current_user()['fullname'] ?? 'User');
         if (!isNaN(page)) {
           goToPage(page);
         } else {
-          alert('Enter a valid page number');
+          alert('Masukkan nomor halaman yang valid');
         }
       }
 
@@ -557,7 +590,7 @@ $account_name = (string) (current_user()['fullname'] ?? 'User');
         ).slice(0, 5);
         suggestionsList.innerHTML = '';
         if (matches.length === 0) {
-          suggestionsList.innerHTML = '<div class="px-4 py-2 text-neutral-400 text-sm">No results</div>';
+          suggestionsList.innerHTML = '<div class="px-4 py-2 text-neutral-400 text-sm">Tidak ada hasil</div>';
         } else {
           matches.forEach(p => {
             const div = document.createElement('div');

@@ -12,7 +12,7 @@ trap 'rm -f "${cookie_file}" "${page_body}"' RETURN
 curl -sS \
   -c "${cookie_file}" \
   -X POST \
-  -d 'username=staff&password=staff123' \
+  -d 'username=petugas&password=staff123' \
   "${TEST_BASE_URL}/process/login-process.php" \
   -o /dev/null
 

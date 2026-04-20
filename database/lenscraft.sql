@@ -8,8 +8,8 @@ CREATE TABLE users (
     email VARCHAR(120) NOT NULL UNIQUE,
     username VARCHAR(60) NOT NULL UNIQUE,
     password VARCHAR(255) NOT NULL,
-    role ENUM('admin', 'staff', 'user') NOT NULL DEFAULT 'user',
-    status ENUM('active', 'inactive', 'pending') NOT NULL DEFAULT 'active',
+    role ENUM('admin', 'petugas', 'pelanggan') NOT NULL DEFAULT 'pelanggan',
+    status ENUM('aktif', 'nonaktif', 'menunggu') NOT NULL DEFAULT 'aktif',
     phone VARCHAR(30) DEFAULT NULL,
     address_line1 VARCHAR(150) DEFAULT NULL,
     address_line2 VARCHAR(150) DEFAULT NULL,
@@ -30,7 +30,7 @@ CREATE TABLE categories (
     description TEXT DEFAULT NULL,
     icon VARCHAR(60) DEFAULT 'camera',
     color VARCHAR(30) DEFAULT 'blue',
-    status ENUM('active', 'inactive') NOT NULL DEFAULT 'active',
+    status ENUM('aktif', 'nonaktif') NOT NULL DEFAULT 'aktif',
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -47,7 +47,7 @@ CREATE TABLE products (
     stock_total INT NOT NULL DEFAULT 1,
     stock_available INT NOT NULL DEFAULT 1,
     in_stock TINYINT(1) NOT NULL DEFAULT 1,
-    status ENUM('active', 'inactive') NOT NULL DEFAULT 'active',
+    status ENUM('aktif', 'nonaktif') NOT NULL DEFAULT 'aktif',
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT fk_products_category FOREIGN KEY (category_id) REFERENCES categories(id)
 );
@@ -62,10 +62,10 @@ CREATE TABLE rentals (
     total_days INT NOT NULL DEFAULT 1,
     daily_rate DECIMAL(10,2) NOT NULL DEFAULT 0,
     discount_percentage INT NOT NULL DEFAULT 0,
-    delivery_method ENUM('pickup', 'delivery') NOT NULL DEFAULT 'pickup',
+    delivery_method ENUM('ambil_sendiri', 'diantar') NOT NULL DEFAULT 'ambil_sendiri',
     delivery_fee DECIMAL(10,2) NOT NULL DEFAULT 0,
     total_price DECIMAL(10,2) NOT NULL DEFAULT 0,
-    status ENUM('pending', 'upcoming', 'active', 'completed', 'cancelled', 'rejected') NOT NULL DEFAULT 'pending',
+    status ENUM('menunggu', 'mendatang', 'aktif', 'selesai', 'dibatalkan', 'ditolak') NOT NULL DEFAULT 'menunggu',
     cancel_reason VARCHAR(255) DEFAULT NULL,
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     approved_at DATETIME DEFAULT NULL,
@@ -81,7 +81,8 @@ CREATE TABLE returns (
     rental_id INT NOT NULL,
     processed_by INT DEFAULT NULL,
     notes TEXT DEFAULT NULL,
-    status ENUM('pending', 'completed') NOT NULL DEFAULT 'pending',
+    fine_amount DECIMAL(10,2) NOT NULL DEFAULT 0,
+    status ENUM('menunggu', 'selesai') NOT NULL DEFAULT 'menunggu',
     returned_at DATETIME DEFAULT NULL,
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     UNIQUE KEY uq_returns_rental (rental_id),
@@ -130,12 +131,12 @@ CREATE TRIGGER trg_rentals_before_insert
 BEFORE INSERT ON rentals
 FOR EACH ROW
 BEGIN
-    IF NEW.status IN ('pending', 'upcoming', 'active') THEN
+    IF NEW.status IN ('menunggu', 'mendatang', 'aktif') THEN
         UPDATE products
         SET stock_available = stock_available - 1,
             in_stock = CASE WHEN stock_available - 1 > 0 THEN 1 ELSE 0 END
         WHERE id = NEW.product_id
-          AND status = 'active'
+          AND status = 'aktif'
           AND stock_available > 0;
 
         IF ROW_COUNT() <> 1 THEN
@@ -143,15 +144,15 @@ BEGIN
         END IF;
     END IF;
 
-    IF NEW.status = 'active' AND NEW.approved_at IS NULL THEN
+    IF NEW.status = 'aktif' AND NEW.approved_at IS NULL THEN
         SET NEW.approved_at = NOW();
     END IF;
 
-    IF NEW.status = 'completed' AND NEW.completed_at IS NULL THEN
+    IF NEW.status = 'selesai' AND NEW.completed_at IS NULL THEN
         SET NEW.completed_at = NOW();
     END IF;
 
-    IF NEW.status IN ('cancelled', 'rejected') AND NEW.cancelled_at IS NULL THEN
+    IF NEW.status IN ('dibatalkan', 'ditolak') AND NEW.cancelled_at IS NULL THEN
         SET NEW.cancelled_at = NOW();
     END IF;
 END$$
@@ -163,8 +164,8 @@ BEGIN
     DECLARE old_reserves_stock TINYINT(1) DEFAULT 0;
     DECLARE new_reserves_stock TINYINT(1) DEFAULT 0;
 
-    SET old_reserves_stock = IF(OLD.status IN ('pending', 'upcoming', 'active'), 1, 0);
-    SET new_reserves_stock = IF(NEW.status IN ('pending', 'upcoming', 'active'), 1, 0);
+    SET old_reserves_stock = IF(OLD.status IN ('menunggu', 'mendatang', 'aktif'), 1, 0);
+    SET new_reserves_stock = IF(NEW.status IN ('menunggu', 'mendatang', 'aktif'), 1, 0);
 
     IF OLD.product_id <> NEW.product_id THEN
         IF old_reserves_stock = 1 THEN
@@ -179,7 +180,7 @@ BEGIN
             SET stock_available = stock_available - 1,
                 in_stock = CASE WHEN stock_available - 1 > 0 THEN 1 ELSE 0 END
             WHERE id = NEW.product_id
-              AND status = 'active'
+              AND status = 'aktif'
               AND stock_available > 0;
 
             IF ROW_COUNT() <> 1 THEN
@@ -192,7 +193,7 @@ BEGIN
             SET stock_available = stock_available - 1,
                 in_stock = CASE WHEN stock_available - 1 > 0 THEN 1 ELSE 0 END
             WHERE id = NEW.product_id
-              AND status = 'active'
+              AND status = 'aktif'
               AND stock_available > 0;
 
             IF ROW_COUNT() <> 1 THEN
@@ -206,19 +207,19 @@ BEGIN
         END IF;
     END IF;
 
-    IF NEW.status = 'active' AND NEW.approved_at IS NULL THEN
+    IF NEW.status = 'aktif' AND NEW.approved_at IS NULL THEN
         SET NEW.approved_at = COALESCE(OLD.approved_at, NOW());
     END IF;
 
-    IF NEW.status = 'completed' AND NEW.completed_at IS NULL THEN
+    IF NEW.status = 'selesai' AND NEW.completed_at IS NULL THEN
         SET NEW.completed_at = COALESCE(OLD.completed_at, NOW());
     END IF;
 
-    IF NEW.status IN ('cancelled', 'rejected') AND NEW.cancelled_at IS NULL THEN
+    IF NEW.status IN ('dibatalkan', 'ditolak') AND NEW.cancelled_at IS NULL THEN
         SET NEW.cancelled_at = COALESCE(OLD.cancelled_at, NOW());
     END IF;
 
-    IF NEW.status NOT IN ('cancelled', 'rejected') THEN
+    IF NEW.status NOT IN ('dibatalkan', 'ditolak') THEN
         SET NEW.cancel_reason = NULL;
     END IF;
 END$$
@@ -227,7 +228,7 @@ CREATE TRIGGER trg_rentals_before_delete
 BEFORE DELETE ON rentals
 FOR EACH ROW
 BEGIN
-    IF OLD.status IN ('pending', 'upcoming', 'active') THEN
+    IF OLD.status IN ('menunggu', 'mendatang', 'aktif') THEN
         UPDATE products
         SET stock_available = LEAST(stock_total, stock_available + 1),
             in_stock = CASE WHEN LEAST(stock_total, stock_available + 1) > 0 THEN 1 ELSE 0 END
@@ -239,8 +240,23 @@ CREATE TRIGGER trg_returns_before_insert
 BEFORE INSERT ON returns
 FOR EACH ROW
 BEGIN
-    IF NEW.status = 'completed' AND NEW.returned_at IS NULL THEN
+    DECLARE rental_end_date DATE DEFAULT NULL;
+    DECLARE rental_daily_rate DECIMAL(10,2) DEFAULT 0;
+
+    IF NEW.status = 'selesai' AND NEW.returned_at IS NULL THEN
         SET NEW.returned_at = NOW();
+    END IF;
+
+    SELECT end_date, daily_rate
+    INTO rental_end_date, rental_daily_rate
+    FROM rentals
+    WHERE id = NEW.rental_id
+    LIMIT 1;
+
+    IF NEW.status = 'selesai' AND rental_end_date IS NOT NULL THEN
+        SET NEW.fine_amount = GREATEST(DATEDIFF(DATE(NEW.returned_at), rental_end_date), 0) * rental_daily_rate;
+    ELSE
+        SET NEW.fine_amount = 0;
     END IF;
 END$$
 
@@ -248,12 +264,12 @@ CREATE TRIGGER trg_returns_after_insert
 AFTER INSERT ON returns
 FOR EACH ROW
 BEGIN
-    IF NEW.status = 'completed' THEN
+    IF NEW.status = 'selesai' THEN
         UPDATE rentals
-        SET status = 'completed',
+        SET status = 'selesai',
             completed_at = COALESCE(NEW.returned_at, NOW())
         WHERE id = NEW.rental_id
-          AND status <> 'completed';
+          AND status <> 'selesai';
     END IF;
 END$$
 
@@ -261,8 +277,23 @@ CREATE TRIGGER trg_returns_before_update
 BEFORE UPDATE ON returns
 FOR EACH ROW
 BEGIN
-    IF NEW.status = 'completed' AND NEW.returned_at IS NULL THEN
+    DECLARE rental_end_date DATE DEFAULT NULL;
+    DECLARE rental_daily_rate DECIMAL(10,2) DEFAULT 0;
+
+    IF NEW.status = 'selesai' AND NEW.returned_at IS NULL THEN
         SET NEW.returned_at = COALESCE(OLD.returned_at, NOW());
+    END IF;
+
+    SELECT end_date, daily_rate
+    INTO rental_end_date, rental_daily_rate
+    FROM rentals
+    WHERE id = NEW.rental_id
+    LIMIT 1;
+
+    IF NEW.status = 'selesai' AND rental_end_date IS NOT NULL THEN
+        SET NEW.fine_amount = GREATEST(DATEDIFF(DATE(NEW.returned_at), rental_end_date), 0) * rental_daily_rate;
+    ELSE
+        SET NEW.fine_amount = 0;
     END IF;
 END$$
 
@@ -270,12 +301,12 @@ CREATE TRIGGER trg_returns_after_update
 AFTER UPDATE ON returns
 FOR EACH ROW
 BEGIN
-    IF NEW.status = 'completed' AND OLD.status <> 'completed' THEN
+    IF NEW.status = 'selesai' AND OLD.status <> 'selesai' THEN
         UPDATE rentals
-        SET status = 'completed',
+        SET status = 'selesai',
             completed_at = COALESCE(NEW.returned_at, NOW())
         WHERE id = NEW.rental_id
-          AND status <> 'completed';
+          AND status <> 'selesai';
     END IF;
 END$$
 

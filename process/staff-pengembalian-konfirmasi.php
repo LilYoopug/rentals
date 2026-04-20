@@ -5,7 +5,7 @@ require_once __DIR__ . '/../data/returns-data.php';
 
 $rental_code = (string) ($_POST['rental_code'] ?? '');
 $return_code = (string) ($_POST['return_code'] ?? '');
-$status = (string) ($_POST['status'] ?? 'completed');
+$status = (string) ($_POST['status'] ?? 'selesai');
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST' || !verify_csrf_request()) {
     set_flash('error', 'Request tidak valid.');
@@ -23,13 +23,13 @@ if ($rental_code === '' && $return_code !== '') {
 
 if ($return_code !== '') {
     $saved = update_return_record($return_code, [
-        'status' => $status === 'pending' ? 'pending' : 'completed',
+        'status' => $status === 'menunggu' ? 'menunggu' : 'selesai',
         'notes' => 'Pengembalian dikonfirmasi oleh petugas.',
         'processed_by' => (int) current_user()['id'],
     ]);
 } else {
     $saved = $rental_code !== '' && create_return_for_rental($rental_code, (int) current_user()['id'], [
-        'status' => $status === 'pending' ? 'pending' : 'completed',
+        'status' => $status === 'menunggu' ? 'menunggu' : 'selesai',
         'notes' => 'Pengembalian dikonfirmasi oleh petugas.',
     ]);
 }

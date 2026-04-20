@@ -2,11 +2,11 @@
 require_once __DIR__ . '/includes/flash.php';
 
 if (is_logged_in()) {
-    $role = current_user()['role'] ?? 'user';
+    $role = normalize_role_value(current_user()['role'] ?? 'pelanggan');
     if ($role === 'admin') {
         redirect_to('admin/index.php');
     }
-    if ($role === 'staff') {
+    if ($role === 'petugas') {
         redirect_to('staff/index.php');
     }
     redirect_to('products.php');
@@ -15,11 +15,11 @@ if (is_logged_in()) {
 $requestedProductId = trim((string) ($_GET['product_id'] ?? ''));
 ?>
 <!doctype html>
-<html lang="en">
+<html lang="id">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>LensCraft - Sign In</title>
+    <title>LensCraft - Masuk</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link
       href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:wght@700&display=swap"
@@ -174,7 +174,7 @@ $requestedProductId = trim((string) ($_GET['product_id'] ?? ''));
               type="button"
               onclick="togglePassword('password', this)"
               class="absolute right-3 top-9 text-neutral-400 hover:text-white transition-colors p-1"
-              aria-label="Toggle password visibility"
+              aria-label="Tampilkan atau sembunyikan kata sandi"
             >
               <svg id="eye-icon" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
@@ -211,15 +211,15 @@ $requestedProductId = trim((string) ($_GET['product_id'] ?? ''));
           <h3 class="text-sm font-semibold text-neutral-200 mb-2">Akses Demo</h3>
           <div class="text-xs text-neutral-500 space-y-1">
             <div><span class="text-neutral-400">Admin:</span> admin / admin123</div>
-            <div><span class="text-neutral-400">Petugas:</span> staff / staff123</div>
-            <div><span class="text-neutral-400">Peminjam:</span> user / user123</div>
+            <div><span class="text-neutral-400">Petugas:</span> petugas / staff123</div>
+            <div><span class="text-neutral-400">Pelanggan:</span> pelanggan / user123</div>
           </div>
         </div>
 
         <!-- Footer -->
         <div class="text-center text-xs text-neutral-500 pt-4">
           <p>© 2026 LensCraft. Sistem Rental Kamera.</p>
-          <p class="mt-1">Mockup antarmuka untuk alur login dan katalog.</p>
+          <p class="mt-1">Antarmuka alur login dan katalog LensCraft.</p>
         </div>
       </div>
     </main>

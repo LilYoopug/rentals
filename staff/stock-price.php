@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . '/../includes/staff-check.php';
+require_once __DIR__ . '/../data/categories-data.php';
 require_once __DIR__ . '/../data/products-data.php';
 require_once __DIR__ . '/../includes/flash.php';
 
@@ -20,11 +21,11 @@ function staff_inventory_image_path($path)
 function staff_inventory_badge($row)
 {
     $available = (int) ($row['stock_available'] ?? 0);
-    $status = (string) ($row['status'] ?? 'active');
+    $status = (string) ($row['status'] ?? 'aktif');
 
-    if ($status !== 'active') {
+    if ($status !== 'aktif') {
         return [
-            'label' => 'Maintenance',
+            'label' => 'Perawatan',
             'class' => 'badge badge-danger',
         ];
     }
@@ -52,6 +53,7 @@ function staff_inventory_badge($row)
 $staff_user = current_user();
 $staff_avatar_url = !empty($staff_user['avatar_path']) ? '../' . ltrim((string) $staff_user['avatar_path'], '/') : '';
 $product_rows = get_admin_products();
+$stock_filter_categories = get_all_categories();
 $inventory_items = [];
 $available_units = 0;
 $reserved_units = 0;
@@ -75,6 +77,7 @@ foreach ($product_rows as $row) {
         'name' => (string) ($row['name'] ?? ''),
         'brand' => (string) ($row['brand'] ?? ''),
         'category' => (string) ($row['category_name'] ?? $row['category_slug'] ?? ''),
+        'category_slug' => (string) ($row['category_slug'] ?? ''),
         'description' => (string) ($row['description'] ?? ''),
         'price' => (float) ($row['price_per_day'] ?? 0),
         'discount' => (int) ($row['discount_percentage'] ?? 0),
@@ -88,11 +91,11 @@ foreach ($product_rows as $row) {
 }
 ?>
 <!doctype html>
-<html lang="en">
+<html lang="id">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>LensCraft - Stock & Price</title>
+    <title>LensCraft - Stok & Harga</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link
       href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:wght@700&display=swap"
@@ -354,6 +357,36 @@ foreach ($product_rows as $row) {
         .mobile-control {
           width: min(11rem, 100%);
         }
+        .mobile-name-ellipsis {
+          display: block;
+          max-width: 100%;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+        }
+        .mobile-card-title-ellipsis {
+          max-width: min(13rem, 100%);
+        }
+        .stock-price-table-wrapper {
+          overflow-x: clip;
+        }
+        .stock-price-table,
+        .stock-price-table tbody {
+          display: block;
+          width: 100%;
+        }
+        .stock-price-table tr {
+          display: block;
+          width: 100%;
+        }
+        .stock-price-table td {
+          display: block;
+          width: 100%;
+          min-width: 0;
+        }
+        .stock-price-table .field-shell {
+          width: 100%;
+        }
       }
       .hero-panel {
         background:
@@ -430,7 +463,7 @@ foreach ($product_rows as $row) {
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-2.21 0-4 .895-4 2s1.79 2 4 2 4 .895 4 2-1.79 2-4 2m0-10V6m0 12v2m8-8a8 8 0 11-16 0 8 8 0 0116 0z" />
           </svg>
-          <span>Stock & Price</span>
+          <span>Stok & Harga</span>
         </a>
 
         <a href="reports.php" class="nav-item flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium text-neutral-400 transition-all hover:bg-white/5 hover:text-white">
@@ -461,11 +494,11 @@ foreach ($product_rows as $row) {
             <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
               <div>
                 <h1 class="text-3xl md:text-4xl font-serif text-white mb-2">Memantau Pengembalian</h1>
-                <p class="text-neutral-400">Track and manage equipment returns and return records.</p>
+                <p class="text-neutral-400">Pantau dan kelola stok, harga, dan ketersediaan peralatan.</p>
               </div>
               <div class="flex flex-wrap gap-3 items-center">
                 <label class="mode-toggle-shell cursor-pointer">
-                  <span class="text-sm font-medium text-white">Edit Mode</span>
+                  <span class="text-sm font-medium text-white">Mode Edit</span>
                   <input type="checkbox" id="edit-mode-toggle" class="discount-toggle sr-only">
                   <span class="discount-switch" aria-hidden="true"></span>
                 </label>
@@ -473,29 +506,36 @@ foreach ($product_rows as $row) {
                   <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
                   </svg>
-                  Export
-                </button>
-                <button class="px-4 py-2 bg-neutral-800 border border-neutral-700 rounded-lg text-sm font-medium text-neutral-300 hover:bg-neutral-700 transition-colors flex items-center gap-2">
-                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
-                  </svg>
-                  Filter
+                  Ekspor
                 </button>
               </div>
             </div>
           </div>
 
           <div class="bg-neutral-900 border border-neutral-800 rounded-2xl p-6 mb-6">
-            <div class="flex flex-col md:flex-row gap-4 md:items-center">
-              <div class="relative md:flex-shrink-0">
-                <button class="flex items-center justify-center w-10 h-10 bg-neutral-800 border border-neutral-700 rounded-lg text-neutral-400 hover:bg-neutral-700 hover:text-white transition-colors" aria-label="Toggle filters">
+            <div class="flex flex-row items-center gap-4">
+              <div class="relative flex-shrink-0">
+                <button id="stock-filter-btn" class="flex items-center justify-center w-10 h-10 bg-neutral-800 border border-neutral-700 rounded-lg text-neutral-400 hover:bg-neutral-700 hover:text-white transition-colors" aria-label="Toggle filters">
                   <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" /></svg>
                 </button>
+                <div id="stock-filter-dropdown" class="absolute left-0 top-full mt-2 w-80 bg-neutral-900 border border-neutral-800 rounded-xl shadow-xl z-20 hidden p-4">
+                  <div class="space-y-4">
+                    <div>
+                      <label class="block text-xs font-medium text-neutral-300 mb-2">Kategori Produk</label>
+                      <select id="stock-category-filter" class="w-full px-3 py-2 bg-neutral-800 border border-neutral-700 rounded-lg text-neutral-100 text-sm focus:outline-none focus:ring-2 focus:ring-neutral-700">
+                        <option value="">Semua Kategori</option>
+                        <?php foreach ($stock_filter_categories as $category): ?>
+                          <option value="<?= e((string) ($category['slug'] ?? '')) ?>"><?= e((string) ($category['name'] ?? 'Kategori')) ?></option>
+                        <?php endforeach; ?>
+                      </select>
+                    </div>
+                  </div>
+                </div>
               </div>
 
-              <div class="flex-1 relative">
-                <input type="text" placeholder="Search by return ID, customer name, or equipment..." class="w-full pl-4 pr-12 py-3 bg-neutral-800 border border-neutral-700 rounded-lg text-neutral-100 placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-neutral-700 focus:border-neutral-600 transition-all" />
-                <button type="button" class="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-white transition-colors" aria-label="Search">
+              <div class="min-w-0 flex-1 relative">
+                <input type="text" id="stock-search" placeholder="Cari produk berdasarkan nama atau brand..." class="w-full pl-4 pr-12 py-3 bg-neutral-800 border border-neutral-700 rounded-lg text-neutral-100 placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-neutral-700 focus:border-neutral-600 transition-all" />
+                <button type="button" class="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-white transition-colors" aria-label="Cari">
                   <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
                 </button>
               </div>
@@ -506,8 +546,8 @@ foreach ($product_rows as $row) {
         <section class="rounded-3xl border border-neutral-800 bg-neutral-900/70 overflow-hidden">
           <form id="stock-price-form" action="../process/staff-stock-price-bulk-update.php" method="POST">
             <?= csrf_input() ?>
-            <div class="overflow-x-auto">
-              <table class="w-full">
+            <div class="overflow-x-auto stock-price-table-wrapper">
+              <table class="w-full stock-price-table">
                 <thead class="hidden sm:table-header-group">
                   <tr class="border-b border-neutral-800 bg-neutral-800/30">
                     <th class="px-6 py-4 text-left text-xs font-semibold text-neutral-400 uppercase tracking-wider">Produk</th>
@@ -518,15 +558,32 @@ foreach ($product_rows as $row) {
                   </tr>
                 </thead>
                 <tbody class="divide-y divide-neutral-800">
+                  <?php if (empty($inventory_items)): ?>
+                    <tr>
+                      <td colspan="5" class="px-6 py-10">
+                        <div class="flex flex-col items-center justify-center gap-4 rounded-2xl border border-dashed border-neutral-700 bg-neutral-950/60 px-6 py-10 text-center">
+                          <div class="flex h-14 w-14 items-center justify-center rounded-2xl border border-neutral-700 bg-neutral-900 text-neutral-300">
+                            <svg class="h-7 w-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M4 7h16m-2 0v10a2 2 0 01-2 2H8a2 2 0 01-2-2V7m3-3h6a2 2 0 012 2v1H7V6a2 2 0 012-2z" />
+                            </svg>
+                          </div>
+                          <div class="space-y-2">
+                            <p class="text-base font-semibold text-white">Belum ada produk</p>
+                            <p class="mx-auto max-w-md text-sm leading-6 text-neutral-400">Coba ubah filter atau tambah data baru.</p>
+                          </div>
+                        </div>
+                      </td>
+                    </tr>
+                  <?php else: ?>
                   <?php foreach ($inventory_items as $item): ?>
                     <?php $discount_enabled = $item['discount'] > 0; ?>
-                    <tr class="table-row-hover transition-colors block sm:table-row p-4 sm:p-0" data-stock-row data-reserved-count="<?= e((string) $item['reserved']) ?>">
+                    <tr class="table-row-hover transition-colors block sm:table-row p-4 sm:p-0" data-stock-row data-stock-name="<?= e(strtolower($item['name'])) ?>" data-stock-brand="<?= e(strtolower($item['brand'])) ?>" data-stock-category="<?= e((string) $item['category_slug']) ?>" data-reserved-count="<?= e((string) $item['reserved']) ?>">
                       <td class="block sm:table-cell px-0 pb-4 sm:px-6 sm:py-5 align-top border-b border-neutral-800 sm:border-b-0">
                         <input type="hidden" name="product_ids[]" value="<?= $item['id'] ?>">
-                        <div class="flex items-center gap-4 min-w-[16rem]">
+                        <div class="flex w-full min-w-0 items-center gap-4">
                           <img src="<?= e($item['image']) ?>" alt="<?= e($item['name']) ?>" class="w-16 h-16 rounded-2xl object-cover bg-neutral-800 border border-neutral-700 shrink-0">
                           <div class="min-w-0">
-                            <div class="text-sm font-semibold text-white"><?= e($item['name']) ?></div>
+                            <div class="text-sm font-semibold text-white mobile-name-ellipsis mobile-card-title-ellipsis"><?= e($item['name']) ?></div>
                             <div class="text-sm text-neutral-400 mt-1"><?= e($item['brand']) ?> • <?= e($item['category']) ?></div>
                             <div class="text-xs text-neutral-500 mt-2"><?= number_format($item['reserved']) ?> unit sedang dipakai</div>
                           </div>
@@ -557,7 +614,7 @@ foreach ($product_rows as $row) {
                             <?= $discount_enabled ? e((string) $item['discount']) . '%' : 'Nonaktif' ?>
                           </div>
                           <div class="text-xs text-neutral-500 mt-1">
-                            <?= $discount_enabled ? 'Enabled' : 'Disabled' ?>
+                            <?= $discount_enabled ? 'Aktif' : 'Nonaktif' ?>
                           </div>
                         </div>
                         <div data-edit-only class="min-w-[11rem] hidden mobile-control">
@@ -613,6 +670,7 @@ foreach ($product_rows as $row) {
                       </td>
                     </tr>
                   <?php endforeach; ?>
+                  <?php endif; ?>
                 </tbody>
               </table>
             </div>
@@ -642,7 +700,7 @@ foreach ($product_rows as $row) {
         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
         </svg>
-        <span>Cancel</span>
+        <span>Batal</span>
       </button>
       <button id="edit-save-btn" type="submit" form="stock-price-form" class="floating-nav-btn primary">
         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -659,13 +717,18 @@ foreach ($product_rows as $row) {
       const editModeToggle = document.getElementById('edit-mode-toggle');
       const editModeBar = document.getElementById('edit-mode-bar');
       const stockPriceForm = document.getElementById('stock-price-form');
-      const editCancelButton = document.getElementById('edit-cancel-btn');
+      const editBatalButton = document.getElementById('edit-cancel-btn');
       const stockRows = Array.from(document.querySelectorAll('[data-stock-row]'));
+      let filteredStockRows = [...stockRows];
       const stockPrevButton = document.getElementById('stock-price-prev');
       const stockNextButton = document.getElementById('stock-price-next');
       const stockShownLabel = document.getElementById('stock-price-shown');
       const stockTotalLabel = document.getElementById('stock-price-total');
       const stockPageNumbers = document.getElementById('stock-price-page-numbers');
+      const stockSearchInput = document.getElementById('stock-search');
+      const stockCategoryFilter = document.getElementById('stock-category-filter');
+      const stockFilterBtn = document.getElementById('stock-filter-btn');
+      const stockFilterDropdown = document.getElementById('stock-filter-dropdown');
       let stockCurrentPage = 1;
 
       function toggleSidebar() {
@@ -689,7 +752,7 @@ foreach ($product_rows as $row) {
 
       function renderStockPagination() {
         const perPage = getStockItemsPerPage();
-        const totalRows = stockRows.length;
+        const totalRows = filteredStockRows.length;
         const totalPages = Math.max(1, Math.ceil(totalRows / perPage));
         if (stockCurrentPage > totalPages) {
           stockCurrentPage = totalPages;
@@ -697,12 +760,14 @@ foreach ($product_rows as $row) {
 
         const start = (stockCurrentPage - 1) * perPage;
         const end = start + perPage;
+        const pageRows = filteredStockRows.slice(start, end);
+        const pageRowSet = new Set(pageRows);
 
         stockRows.forEach(function (row, index) {
-          row.classList.toggle('hidden', index < start || index >= end);
+          row.style.display = pageRowSet.has(row) ? '' : 'none';
         });
 
-        stockShownLabel.textContent = String(Math.max(0, Math.min(totalRows - start, perPage)));
+        stockShownLabel.textContent = String(pageRows.length);
         stockTotalLabel.textContent = String(totalRows);
 
         stockPageNumbers.innerHTML = '';
@@ -722,6 +787,22 @@ foreach ($product_rows as $row) {
 
         stockPrevButton.disabled = stockCurrentPage <= 1;
         stockNextButton.disabled = stockCurrentPage >= totalPages;
+      }
+
+      function filterStockRows() {
+        const searchTerm = (stockSearchInput?.value || '').trim().toLowerCase();
+        const categoryValue = stockCategoryFilter?.value || '';
+
+        filteredStockRows = stockRows.filter(function (row) {
+          const matchesSearch = searchTerm === ''
+            || (row.dataset.stockName || '').includes(searchTerm)
+            || (row.dataset.stockBrand || '').includes(searchTerm);
+          const matchesCategory = categoryValue === '' || (row.dataset.stockCategory || '') === categoryValue;
+          return matchesSearch && matchesCategory;
+        });
+
+        stockCurrentPage = 1;
+        renderStockPagination();
       }
 
       function syncFloatingBarFooterState() {
@@ -856,7 +937,7 @@ foreach ($product_rows as $row) {
       });
 
       stockNextButton.addEventListener('click', function () {
-        const totalPages = Math.max(1, Math.ceil(stockRows.length / getStockItemsPerPage()));
+        const totalPages = Math.max(1, Math.ceil(filteredStockRows.length / getStockItemsPerPage()));
         if (stockCurrentPage >= totalPages) {
           return;
         }
@@ -873,11 +954,31 @@ foreach ($product_rows as $row) {
         resetEditState(false);
       });
 
-      editCancelButton.addEventListener('click', resetEditState);
+      editBatalButton.addEventListener('click', resetEditState);
 
       stockPriceForm.addEventListener('submit', function () {
         setEditMode(true);
       });
+
+      if (stockSearchInput) {
+        stockSearchInput.addEventListener('input', filterStockRows);
+      }
+
+      if (stockCategoryFilter) {
+        stockCategoryFilter.addEventListener('change', filterStockRows);
+      }
+
+      if (stockFilterBtn && stockFilterDropdown) {
+        stockFilterBtn.addEventListener('click', function () {
+          stockFilterDropdown.classList.toggle('hidden');
+        });
+
+        document.addEventListener('click', function (event) {
+          if (!stockFilterBtn.contains(event.target) && !stockFilterDropdown.contains(event.target)) {
+            stockFilterDropdown.classList.add('hidden');
+          }
+        });
+      }
 
       setEditMode(false);
       renderStockPagination();

@@ -33,7 +33,41 @@
         "DB_PASS": ""
       },
       "autorestart": false
+    },
+    "rentals-main-mysql": {
+      "name": "rentals-main-mysql",
+      "script": "/usr/sbin/mysqld",
+      "cwd": "/home/Tubagus/ujian/rentals-main",
+      "args": [
+        "--no-defaults",
+        "--datadir=/home/Tubagus/ujian/rentals-main/.dev/mysql-data",
+        "--socket=/home/Tubagus/ujian/rentals-main/.dev/mysql.sock",
+        "--pid-file=/home/Tubagus/ujian/rentals-main/.dev/mysql.pid",
+        "--bind-address=127.0.0.1",
+        "--port=3306",
+        "--log-error=/home/Tubagus/ujian/rentals-main/.dev/mysql.log"
+      ],
+      "autorestart": false
+    },
+    "rentals-main-php": {
+      "name": "rentals-main-php",
+      "script": "php",
+      "cwd": "/home/Tubagus/ujian/rentals-main",
+      "args": [
+        "-S",
+        "127.0.0.1:8000",
+        "-t",
+        "/home/Tubagus/ujian/rentals-main"
+      ],
+      "env": {
+        "DB_HOST": "127.0.0.1",
+        "DB_PORT": "3306",
+        "DB_NAME": "lenscraft",
+        "DB_USER": "root",
+        "DB_PASS": ""
+      },
+      "autorestart": false
     }
   },
-  "lastSynced": "2026-04-07T13:39:57.926Z"
+  "lastSynced": "2026-04-16T20:01:23.364Z"
 }

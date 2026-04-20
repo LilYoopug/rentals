@@ -9,7 +9,7 @@ before_count="$(mysql_test -N -B lenscraft -e "SELECT COUNT(*) FROM password_res
 
 curl -sS \
   -X POST \
-  -d 'email=user@example.com' \
+  -d 'email=pelanggan@example.com' \
   "${TEST_BASE_URL}/process/forgot-password-process.php" \
   -o /dev/null
 
@@ -46,7 +46,7 @@ curl -sS \
   -D "${headers_file}" \
   -o /dev/null \
   -X POST \
-  -d 'username=user&password=user123' \
+  -d 'username=pelanggan&password=user123' \
   "${TEST_BASE_URL}/process/login-process.php"
 
 location="$(awk 'tolower($1) == "location:" {print $2}' "${headers_file}" | tr -d '\r')"

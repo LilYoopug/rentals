@@ -8,6 +8,10 @@ require_once __DIR__ . '/../data/rentals-data.php';
 require_once __DIR__ . '/../data/returns-data.php';
 require_once __DIR__ . '/../includes/flash.php';
 
+$staff_active_section = 'reports';
+$staff_active_href = 'reports.php';
+$staff_active_section_selector = preg_replace('/[^a-z0-9_-]/i', '', $staff_active_section) ?: 'overview';
+
 $staff_user = current_user();
 $staff_avatar_url = !empty($staff_user['avatar_path']) ? '../' . ltrim((string) $staff_user['avatar_path'], '/') : '';
 
@@ -59,202 +63,219 @@ function staff_change_meta($current, $previous)
     return ['text' => '0%', 'class' => 'text-neutral-400 bg-neutral-800/50 border border-neutral-700'];
 }
 
-function staff_report_row_timestamp($row, $preferred_keys)
+function staff_report_normalize_date_string($value)
 {
-    foreach ($preferred_keys as $key) {
-        if (empty($row[$key])) {
-            continue;
-        }
-
-        $timestamp = strtotime((string) $row[$key]);
-        if ($timestamp !== false) {
-            return $timestamp;
-        }
+    if (empty($value)) {
+        return null;
     }
 
-    return null;
+    $timestamp = strtotime((string) $value);
+    if ($timestamp === false) {
+        return null;
+    }
+
+    return date('Y-m-d', $timestamp);
 }
 
-function staff_report_filter_rows($rows, $preferred_keys, $start_timestamp, $end_timestamp)
+function staff_report_request_filters()
 {
-    $filtered = [];
-
-    foreach ($rows as $row) {
-        $timestamp = staff_report_row_timestamp($row, $preferred_keys);
-        if ($timestamp === null) {
-            continue;
-        }
-
-        if ($timestamp >= $start_timestamp && $timestamp <= $end_timestamp) {
-            $filtered[] = $row;
-        }
+    $range = (string) ($_GET['report_date_range'] ?? '30');
+    if (!in_array($range, ['7', '30', '90', '365', 'custom'], true)) {
+        $range = '30';
     }
 
-    return $filtered;
-}
-
-function staff_report_range_config($range, $custom_from, $custom_to)
-{
-    $allowed_ranges = ['7', '30', '90', '365', 'custom'];
-    $selected_range = in_array($range, $allowed_ranges, true) ? $range : '30';
-
-    $end = new DateTimeImmutable('today 23:59:59');
-    $start = $end->modify('-29 days')->setTime(0, 0, 0);
-    $label = 'Last 30 days';
-
-    if ($selected_range === 'custom') {
-        $from = DateTimeImmutable::createFromFormat('Y-m-d', $custom_from ?: '');
-        $to = DateTimeImmutable::createFromFormat('Y-m-d', $custom_to ?: '');
-
-        if ($from instanceof DateTimeImmutable && $to instanceof DateTimeImmutable && $from <= $to) {
-            $start = $from->setTime(0, 0, 0);
-            $end = $to->setTime(23, 59, 59);
-            $label = $from->format('M j, Y') . ' - ' . $to->format('M j, Y');
-        } else {
-            $selected_range = '30';
-        }
+    $sections = $_GET['report_sections'] ?? ['stock', 'borrowings', 'returns'];
+    if (!is_array($sections)) {
+        $sections = [$sections];
     }
 
-    if ($selected_range !== 'custom') {
-        $days = (int) $selected_range;
-        $start = $end->modify('-' . max(0, $days - 1) . ' days')->setTime(0, 0, 0);
-        $label = 'Last ' . $days . ' days';
-    }
-
-    $period_seconds = max(1, ($end->getTimestamp() - $start->getTimestamp()) + 1);
-    $previous_end = $start->modify('-1 second');
-    $previous_start = $previous_end->modify('-' . ($period_seconds - 1) . ' seconds');
-
-    return [
-        'selected_range' => $selected_range,
-        'start' => $start,
-        'end' => $end,
-        'previous_start' => $previous_start,
-        'previous_end' => $previous_end,
-        'label' => $label,
-    ];
-}
-
-function staff_report_cards($report_type, $current_borrowings, $previous_borrowings, $current_returns, $previous_returns, $current_products, $previous_products)
-{
-    $current_requests = count($current_borrowings);
-    $previous_requests = count($previous_borrowings);
-    $current_approved = 0;
-    $previous_approved = 0;
-    $current_pending = 0;
-    $previous_pending = 0;
-    $current_revenue = 0.0;
-    $previous_revenue = 0.0;
-
-    foreach ($current_borrowings as $row) {
-        $status = (string) ($row['status'] ?? '');
-        if (in_array($status, ['active', 'completed'], true)) {
-            $current_approved++;
-        }
-        if (in_array($status, ['pending', 'upcoming'], true)) {
-            $current_pending++;
-        }
-        $current_revenue += (float) ($row['total_price'] ?? 0);
-    }
-
-    foreach ($previous_borrowings as $row) {
-        $status = (string) ($row['status'] ?? '');
-        if (in_array($status, ['active', 'completed'], true)) {
-            $previous_approved++;
-        }
-        if (in_array($status, ['pending', 'upcoming'], true)) {
-            $previous_pending++;
-        }
-        $previous_revenue += (float) ($row['total_price'] ?? 0);
-    }
-
-    $current_returns_count = count($current_returns);
-    $previous_returns_count = count($previous_returns);
-    $current_completed_returns = 0;
-    $previous_completed_returns = 0;
-
-    foreach ($current_returns as $row) {
-        $status = (string) ($row['status'] ?? '');
-        if ($status === 'completed') {
-            $current_completed_returns++;
-        }
-    }
-
-    foreach ($previous_returns as $row) {
-        $status = (string) ($row['status'] ?? '');
-        if ($status === 'completed') {
-            $previous_completed_returns++;
-        }
-    }
-
-    $current_products_count = count($current_products);
-    $previous_products_count = count($previous_products);
-    $current_available_units = 0;
-    $previous_available_units = 0;
-    $current_reserved_units = 0;
-    $previous_reserved_units = 0;
-    $current_low_stock = 0;
-    $previous_low_stock = 0;
-
-    foreach ($current_products as $row) {
-        $available = (int) ($row['stock_available'] ?? 0);
-        $total = (int) ($row['stock_total'] ?? 0);
-        $current_available_units += $available;
-        $current_reserved_units += max(0, $total - $available);
-        if ($available <= 1) {
-            $current_low_stock++;
-        }
-    }
-
-    foreach ($previous_products as $row) {
-        $available = (int) ($row['stock_available'] ?? 0);
-        $total = (int) ($row['stock_total'] ?? 0);
-        $previous_available_units += $available;
-        $previous_reserved_units += max(0, $total - $available);
-        if ($available <= 1) {
-            $previous_low_stock++;
-        }
-    }
-
-    $approval_rate = $current_requests > 0 ? (int) round(($current_approved / $current_requests) * 100) : 0;
-    $previous_approval_rate = $previous_requests > 0 ? (int) round(($previous_approved / $previous_requests) * 100) : 0;
-    $return_rate = $current_requests > 0 ? (int) round(($current_returns_count / $current_requests) * 100) : 0;
-    $previous_return_rate = $previous_requests > 0 ? (int) round(($previous_returns_count / $previous_requests) * 100) : 0;
-    $average_order = $current_requests > 0 ? $current_revenue / $current_requests : 0;
-    $previous_average_order = $previous_requests > 0 ? $previous_revenue / $previous_requests : 0;
-
-    if ($report_type === 'returns') {
-        return [
-            ['label' => 'Total Returns', 'value' => number_format($current_returns_count), 'change' => staff_change_meta($current_returns_count, $previous_returns_count)],
-            ['label' => 'Completed Returns', 'value' => number_format($current_completed_returns), 'change' => staff_change_meta($current_completed_returns, $previous_completed_returns)],
-            ['label' => 'Return Rate', 'value' => $return_rate . '%', 'change' => staff_change_meta($return_rate, $previous_return_rate)],
-        ];
-    }
-
-    if ($report_type === 'revenue') {
-        return [
-            ['label' => 'Total Revenue', 'value' => format_currency($current_revenue), 'change' => staff_change_meta($current_revenue, $previous_revenue)],
-            ['label' => 'Transactions', 'value' => number_format($current_requests), 'change' => staff_change_meta($current_requests, $previous_requests)],
-            ['label' => 'Average Order', 'value' => format_currency($average_order), 'change' => staff_change_meta($average_order, $previous_average_order)],
-            ['label' => 'Approval Rate', 'value' => $approval_rate . '%', 'change' => staff_change_meta($approval_rate, $previous_approval_rate)],
-        ];
-    }
-
-    if ($report_type === 'inventory') {
-        return [
-            ['label' => 'Products Added', 'value' => number_format($current_products_count), 'change' => staff_change_meta($current_products_count, $previous_products_count)],
-            ['label' => 'Available Units', 'value' => number_format($current_available_units), 'change' => staff_change_meta($current_available_units, $previous_available_units)],
-            ['label' => 'Reserved Units', 'value' => number_format($current_reserved_units), 'change' => staff_change_meta($current_reserved_units, $previous_reserved_units)],
-            ['label' => 'Low Stock Items', 'value' => number_format($current_low_stock), 'change' => staff_change_meta($current_low_stock, $previous_low_stock)],
-        ];
+    $allowed_sections = ['stock', 'borrowings', 'returns'];
+    $sections = array_values(array_intersect($allowed_sections, array_map('strval', $sections)));
+    if ($sections === []) {
+        $sections = ['stock', 'borrowings', 'returns'];
     }
 
     return [
-        ['label' => 'Total Requests', 'value' => number_format($current_requests), 'change' => staff_change_meta($current_requests, $previous_requests)],
-        ['label' => 'Approved Requests', 'value' => number_format($current_approved), 'change' => staff_change_meta($current_approved, $previous_approved)],
-        ['label' => 'Pending Requests', 'value' => number_format($current_pending), 'change' => staff_change_meta($current_pending, $previous_pending)],
-        ['label' => 'Total Revenue', 'value' => format_currency($current_revenue), 'change' => staff_change_meta($current_revenue, $previous_revenue)],
+        'range' => $range,
+        'custom_from' => staff_report_normalize_date_string((string) ($_GET['custom_date_from'] ?? '')),
+        'custom_to' => staff_report_normalize_date_string((string) ($_GET['custom_date_to'] ?? '')),
+        'sections' => $sections,
     ];
+}
+
+function staff_report_resolve_bounds($range, $custom_from, $custom_to)
+{
+    if ($range === 'custom') {
+        if ($custom_from === null || $custom_to === null || $custom_from > $custom_to) {
+            return [null, null];
+        }
+
+        return [$custom_from, $custom_to];
+    }
+
+    $days = (int) $range;
+    if ($days <= 0) {
+        $days = 30;
+    }
+
+    $end = date('Y-m-d');
+    $start = date('Y-m-d', strtotime('-' . ($days - 1) . ' days'));
+
+    return [$start, $end];
+}
+
+function staff_report_filter_records_by_date($records, $date_key, $range, $custom_from, $custom_to)
+{
+    [$start, $end] = staff_report_resolve_bounds($range, $custom_from, $custom_to);
+    if ($range === 'custom' && ($start === null || $end === null)) {
+        return [];
+    }
+
+    return array_values(array_filter($records, function ($record) use ($date_key, $start, $end) {
+        $date = (string) ($record[$date_key] ?? '');
+        if ($date === '' || $start === null || $end === null) {
+            return false;
+        }
+
+        return $date >= $start && $date <= $end;
+    }));
+}
+
+function staff_report_status_label($status)
+{
+    $map = [
+        'approved' => 'Approved',
+        'menunggu' => 'Pending',
+        'ditolak' => 'Rejected',
+        'returned' => 'Returned',
+        'borrowed' => 'Borrowed',
+        'overdue' => 'Overdue',
+    ];
+
+    return $map[$status] ?? ucfirst((string) $status);
+}
+
+function staff_report_build_summary($borrowings)
+{
+    $approved_count = 0;
+    $pending_count = 0;
+    $revenue_total = 0.0;
+
+    foreach ($borrowings as $row) {
+        $status = (string) ($row['status'] ?? 'menunggu');
+        if ($status === 'approved') {
+            $approved_count++;
+        }
+        if ($status === 'menunggu') {
+            $pending_count++;
+        }
+        $revenue_total += (float) ($row['amount'] ?? 0);
+    }
+
+    return [
+        'total_requests' => count($borrowings),
+        'approved_requests' => $approved_count,
+        'pending_requests' => $pending_count,
+        'total_revenue' => format_currency($revenue_total),
+    ];
+}
+
+function staff_report_build_revenue_chart($borrowings)
+{
+    $daily_totals = [];
+    foreach ($borrowings as $row) {
+        $day = (string) ($row['createdAt'] ?? '');
+        if ($day === '') {
+            continue;
+        }
+        $daily_totals[$day] = ($daily_totals[$day] ?? 0) + (float) ($row['amount'] ?? 0);
+    }
+
+    ksort($daily_totals);
+
+    return [
+        'labels' => array_keys($daily_totals),
+        'values' => array_values($daily_totals),
+    ];
+}
+
+function staff_report_build_category_chart($borrowings)
+{
+    $category_counts = [];
+    foreach ($borrowings as $row) {
+        $category = (string) ($row['category'] ?? 'lainnya');
+        $category_counts[$category] = ($category_counts[$category] ?? 0) + 1;
+    }
+
+    arsort($category_counts);
+
+    return [
+        'labels' => array_keys($category_counts),
+        'values' => array_values($category_counts),
+    ];
+}
+
+function staff_report_build_top_equipment_chart($borrowings)
+{
+    $top_counts = [];
+    foreach ($borrowings as $row) {
+        $equipment = (string) ($row['equipment'] ?? 'Peralatan');
+        $top_counts[$equipment] = ($top_counts[$equipment] ?? 0) + 1;
+    }
+
+    arsort($top_counts);
+    $top_counts = array_slice($top_counts, 0, 5, true);
+
+    return [
+        'labels' => array_keys($top_counts),
+        'values' => array_values($top_counts),
+    ];
+}
+
+function staff_report_build_table_rows($primary_section, $borrowings, $returns, $inventory)
+{
+    $rows = [];
+
+    if ($primary_section === 'returns') {
+        foreach ($returns as $row) {
+            $rows[] = [
+                'date' => (string) ($row['date'] ?? '-'),
+                'metric' => (string) ($row['equipment'] ?? 'Pengembalian'),
+                'value' => (string) ($row['id'] ?? '-'),
+                'change' => staff_report_status_label((string) ($row['status'] ?? 'menunggu')),
+                'positive' => (string) ($row['status'] ?? '') !== 'overdue',
+            ];
+        }
+
+        return array_slice($rows, 0, 8);
+    }
+
+    if ($primary_section === 'stock') {
+        foreach ($inventory as $row) {
+            $rows[] = [
+                'date' => 'Live',
+                'metric' => (string) ($row['name'] ?? 'Produk'),
+                'value' => (string) ($row['available'] ?? 0) . '/' . (string) ($row['total'] ?? 0) . ' unit',
+                'change' => ucfirst(str_replace('-', ' ', (string) ($row['category'] ?? 'lainnya'))),
+                'positive' => true,
+            ];
+        }
+
+        return array_slice($rows, 0, 8);
+    }
+
+    foreach ($borrowings as $row) {
+        $status = (string) ($row['status'] ?? 'menunggu');
+        $rows[] = [
+            'date' => (string) ($row['createdAt'] ?? '-'),
+            'metric' => (string) ($row['equipment'] ?? 'Peminjaman'),
+            'value' => (string) ($row['id'] ?? '-'),
+            'change' => staff_report_status_label($status),
+            'positive' => $status === 'approved',
+        ];
+    }
+
+    return array_slice($rows, 0, 8);
 }
 
 $staff_borrowing_rows = get_staff_borrowing_rows();
@@ -265,17 +286,70 @@ $all_user_rows = get_admin_users();
 $all_products = get_admin_products();
 $all_category_rows = get_all_categories();
 
+$staff_report_filters = staff_report_request_filters();
+$report_borrowing_records = [];
+foreach ($all_borrowing_rows as $row) {
+    $report_borrowing_records[] = [
+        'id' => (string) ($row['rental_code'] ?? '-'),
+        'equipment' => (string) ($row['product_name'] ?? 'Peralatan'),
+        'category' => normalize_category_slug_value((string) ($row['category_slug'] ?? 'lainnya')),
+        'amount' => (float) ($row['total_price'] ?? 0),
+        'status' => present_borrowing_workflow_status((string) ($row['status'] ?? 'menunggu')),
+        'createdAt' => staff_report_normalize_date_string($row['created_at'] ?? ''),
+    ];
+}
+
+$report_return_records = [];
+foreach ($all_return_rows as $row) {
+    $report_return_records[] = [
+        'id' => (string) ($row['id'] ?? '-'),
+        'equipment' => (string) ($row['productName'] ?? 'Pengembalian'),
+        'status' => present_return_workflow_status((string) ($row['status'] ?? 'menunggu'), true),
+        'date' => (string) ($row['returnedAt'] ?? $row['createdAt'] ?? ''),
+    ];
+}
+
+$report_inventory_records = [];
+foreach ($all_products as $row) {
+    $report_inventory_records[] = [
+        'name' => (string) ($row['name'] ?? 'Produk'),
+        'category' => normalize_category_slug_value((string) ($row['category_slug'] ?? 'lainnya')),
+        'total' => (int) ($row['stock_total'] ?? 0),
+        'available' => (int) ($row['stock_available'] ?? 0),
+    ];
+}
+
+$filtered_report_borrowings = staff_report_filter_records_by_date(
+    $report_borrowing_records,
+    'createdAt',
+    $staff_report_filters['range'],
+    $staff_report_filters['custom_from'],
+    $staff_report_filters['custom_to']
+);
+
+$filtered_report_returns = staff_report_filter_records_by_date(
+    $report_return_records,
+    'date',
+    $staff_report_filters['range'],
+    $staff_report_filters['custom_from'],
+    $staff_report_filters['custom_to']
+);
+
+$staff_report_summary_cards = staff_report_build_summary($filtered_report_borrowings);
+$staff_report_primary_section = $staff_report_filters['sections'][0] ?? 'stock';
+$staff_report_initial_table_rows = staff_report_build_table_rows(
+    $staff_report_primary_section,
+    $filtered_report_borrowings,
+    $filtered_report_returns,
+    $report_inventory_records
+);
+$staff_report_revenue_chart = staff_report_build_revenue_chart($filtered_report_borrowings);
+$staff_report_category_chart = staff_report_build_category_chart($filtered_report_borrowings);
+$staff_report_top_equipment_chart = staff_report_build_top_equipment_chart($filtered_report_borrowings);
+
 $staff_borrowings = [];
 foreach ($staff_borrowing_rows as $row) {
-    $status = (string) ($row['status'] ?? 'pending');
-    $map = [
-        'pending' => 'pending',
-        'upcoming' => 'pending',
-        'active' => 'approved',
-        'completed' => 'approved',
-        'cancelled' => 'rejected',
-        'rejected' => 'rejected',
-    ];
+    $status = present_borrowing_workflow_status((string) ($row['status'] ?? 'menunggu'));
 
     $staff_borrowings[] = [
         'id' => (string) ($row['rental_code'] ?? ''),
@@ -288,29 +362,24 @@ foreach ($staff_borrowing_rows as $row) {
         'endDate' => (string) ($row['end_date'] ?? ''),
         'days' => (int) ($row['total_days'] ?? 0),
         'amount' => (float) ($row['total_price'] ?? 0),
-        'status' => (string) ($map[$status] ?? 'pending'),
+        'status' => $status,
     ];
 }
 
 $staff_returns = [];
 foreach ($staff_return_rows as $row) {
-    $status = (string) ($row['status'] ?? 'pending');
-    $map = [
-        'completed' => 'returned',
-        'pending' => 'pending',
-        'overdue' => 'overdue',
-    ];
+    $status = present_return_workflow_status((string) ($row['status'] ?? 'menunggu'), true);
 
     $staff_returns[] = [
-        'id' => (string) ($row['return_code'] ?? ''),
+        'id' => (string) ($row['tracking_id'] ?? $row['return_code'] ?? $row['rental_code'] ?? ''),
         'customer' => (string) ($row['fullname'] ?? ''),
         'equipment' => (string) ($row['product_name'] ?? ''),
         'brand' => (string) ($row['brand'] ?? ''),
         'category' => (string) ($row['category'] ?? $row['category_slug'] ?? ''),
         'image' => (string) ($row['image_path'] ?? '../images/gear-placeholder.svg'),
-        'returnDate' => !empty($row['returned_at']) ? date('Y-m-d', strtotime((string) $row['returned_at'])) : '',
+        'returnDate' => !empty($row['returned_at']) ? date('Y-m-d', strtotime((string) $row['returned_at'])) : (string) ($row['end_date'] ?? ''),
         'notes' => (string) ($row['notes'] ?? ''),
-        'status' => (string) ($map[$status] ?? 'pending'),
+        'status' => $status,
     ];
 }
 
@@ -379,14 +448,14 @@ foreach ($all_borrowing_rows as $row) {
     $status = (string) ($row['status'] ?? '');
     $created_day = !empty($row['created_at']) ? date('Y-m-d', strtotime((string) $row['created_at'])) : '';
 
-    if (in_array($status, ['pending', 'upcoming'], true)) {
+    if (in_array($status, ['menunggu', 'mendatang'], true)) {
         $pending_approval_count++;
         if ($created_day === $yesterday) {
             $pending_yesterday_count++;
         }
     }
 
-    if ($status === 'active') {
+    if ($status === 'aktif') {
         $active_rental_count++;
     }
 
@@ -397,7 +466,7 @@ foreach ($all_borrowing_rows as $row) {
         $revenue_yesterday += (float) ($row['total_price'] ?? 0);
     }
 
-    if (in_array($status, ['active', 'completed'], true)) {
+    if (in_array($status, ['aktif', 'selesai'], true)) {
         $approved_count++;
     }
 }
@@ -414,7 +483,7 @@ foreach ($all_return_rows as $row) {
     if ($returned_day === $yesterday) {
         $returns_yesterday++;
     }
-    if (($row['status'] ?? '') === 'completed') {
+    if (($row['status'] ?? '') === 'selesai') {
         $completed_return_count++;
     }
     if ($returned_day !== '') {
@@ -453,7 +522,7 @@ $staff_summary = [
 
 $staff_pending_approvals = [];
 foreach ($all_borrowing_rows as $row) {
-    if (!in_array((string) ($row['status'] ?? ''), ['pending', 'upcoming'], true)) {
+    if (!in_array((string) ($row['status'] ?? ''), ['menunggu', 'mendatang'], true)) {
         continue;
     }
 
@@ -528,64 +597,6 @@ $staff_report_summary = [
     ],
 ];
 
-$selected_report_type = (string) ($_GET['report_type'] ?? 'borrowings');
-if (!in_array($selected_report_type, ['borrowings', 'returns', 'revenue', 'inventory'], true)) {
-    $selected_report_type = 'borrowings';
-}
-
-$selected_report_date_range = (string) ($_GET['report_date_range'] ?? '30');
-$selected_custom_date_from = (string) ($_GET['custom_date_from'] ?? '');
-$selected_custom_date_to = (string) ($_GET['custom_date_to'] ?? '');
-$report_range = staff_report_range_config($selected_report_date_range, $selected_custom_date_from, $selected_custom_date_to);
-$selected_report_date_range = $report_range['selected_range'];
-
-$current_report_borrowings = staff_report_filter_rows(
-    $all_borrowing_rows,
-    ['created_at'],
-    $report_range['start']->getTimestamp(),
-    $report_range['end']->getTimestamp()
-);
-$previous_report_borrowings = staff_report_filter_rows(
-    $all_borrowing_rows,
-    ['created_at'],
-    $report_range['previous_start']->getTimestamp(),
-    $report_range['previous_end']->getTimestamp()
-);
-$current_report_returns = staff_report_filter_rows(
-    $all_return_rows,
-    ['returnedAt', 'returned_at', 'createdAt', 'created_at'],
-    $report_range['start']->getTimestamp(),
-    $report_range['end']->getTimestamp()
-);
-$previous_report_returns = staff_report_filter_rows(
-    $all_return_rows,
-    ['returnedAt', 'returned_at', 'createdAt', 'created_at'],
-    $report_range['previous_start']->getTimestamp(),
-    $report_range['previous_end']->getTimestamp()
-);
-$current_report_products = staff_report_filter_rows(
-    $all_products,
-    ['created_at'],
-    $report_range['start']->getTimestamp(),
-    $report_range['end']->getTimestamp()
-);
-$previous_report_products = staff_report_filter_rows(
-    $all_products,
-    ['created_at'],
-    $report_range['previous_start']->getTimestamp(),
-    $report_range['previous_end']->getTimestamp()
-);
-
-$report_summary_cards = staff_report_cards(
-    $selected_report_type,
-    $current_report_borrowings,
-    $previous_report_borrowings,
-    $current_report_returns,
-    $previous_report_returns,
-    $current_report_products,
-    $previous_report_products
-);
-
 $staff_report_tables = [
     'borrowings' => [],
     'returns' => [],
@@ -598,7 +609,7 @@ for ($i = 0; $i < count($revenue_labels); $i++) {
     $change = staff_change_meta((float) ($revenue_values[$i] ?? 0), $previous_value);
     $staff_report_tables['revenue'][] = [
         'date' => $revenue_labels[$i],
-        'metric' => 'Daily Revenue',
+        'metric' => 'Pendapatan Harian',
         'value' => format_currency((float) ($revenue_values[$i] ?? 0)),
         'change' => $change['text'],
         'positive' => strpos($change['text'], '-') !== 0,
@@ -610,8 +621,8 @@ foreach ($all_borrowing_rows as $row) {
         'date' => !empty($row['created_at']) ? date('Y-m-d', strtotime((string) $row['created_at'])) : date('Y-m-d'),
         'metric' => (string) ($row['product_name'] ?? 'Borrowing Request'),
         'value' => (string) ($row['rental_code'] ?? '-'),
-        'change' => ucfirst((string) ($row['status'] ?? 'pending')),
-        'positive' => in_array((string) ($row['status'] ?? ''), ['active', 'completed', 'pending', 'upcoming'], true),
+        'change' => ucfirst((string) ($row['status'] ?? 'menunggu')),
+        'positive' => in_array((string) ($row['status'] ?? ''), ['aktif', 'selesai', 'menunggu', 'mendatang'], true),
     ];
 }
 $staff_report_tables['borrowings'] = array_slice($staff_report_tables['borrowings'], 0, 8);
@@ -621,7 +632,7 @@ foreach ($all_return_rows as $row) {
         'date' => (string) ($row['returnedAt'] ?? $row['createdAt'] ?? date('Y-m-d')),
         'metric' => (string) ($row['productName'] ?? 'Return'),
         'value' => (string) ($row['id'] ?? '-'),
-        'change' => ucfirst((string) ($row['status'] ?? 'pending')),
+        'change' => ucfirst((string) ($row['status'] ?? 'menunggu')),
         'positive' => true,
     ];
 }
@@ -637,23 +648,21 @@ for ($i = 0; $i < count($inventory_labels); $i++) {
     ];
 }
 
-$borrowings_json = json_encode($staff_borrowings, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
-$returns_json = json_encode($staff_returns, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
-$revenue_json = json_encode(['labels' => $revenue_labels, 'values' => $revenue_values], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
-$user_growth_json = json_encode(['labels' => $return_labels, 'values' => $return_values], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
-$inventory_json = json_encode(['labels' => $inventory_labels, 'values' => $inventory_values], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
-$transaction_json = json_encode(['labels' => $transaction_labels, 'values' => $transaction_values], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
-$top_equipment_json = json_encode(['labels' => array_keys($top_counts), 'values' => array_values($top_counts)], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
-$staff_report_summary_json = json_encode($staff_report_summary, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
-$staff_report_tables_json = json_encode($staff_report_tables, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
-$staff_default_report_rows = $staff_report_tables['borrowings'];
+$report_borrowing_records_json = json_encode($report_borrowing_records, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+$report_return_records_json = json_encode($report_return_records, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+$report_inventory_records_json = json_encode($report_inventory_records, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+$staff_report_initial_summary_json = json_encode($staff_report_summary_cards, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+$staff_report_initial_revenue_json = json_encode($staff_report_revenue_chart, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+$staff_report_initial_category_json = json_encode($staff_report_category_chart, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+$staff_report_initial_top_equipment_json = json_encode($staff_report_top_equipment_chart, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+$staff_report_initial_table_rows_json = json_encode($staff_report_initial_table_rows, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
 ?>
 <!doctype html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>LensCraft - Dashboard Petugas</title>
+    <title>LensCraft - Laporan &amp; Analitik</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <link
@@ -751,10 +760,28 @@ $staff_default_report_rows = $staff_report_tables['borrowings'];
         border-left: 3px solid var(--accent-brass);
         color: #fff;
       }
+      .content-section {
+        display: none;
+      }
+      #<?= e($staff_active_section_selector) ?>.content-section {
+        display: block;
+      }
 
       /* Table styles */
       .table-row-hover:hover {
         background-color: rgba(255, 255, 255, 0.03);
+      }
+      @media (max-width: 639px) {
+        .mobile-name-ellipsis {
+          display: block;
+          max-width: 100%;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+        }
+        .mobile-card-title-ellipsis {
+          max-width: min(13rem, 100%);
+        }
       }
 
       /* Status badges */
@@ -979,7 +1006,7 @@ $staff_default_report_rows = $staff_report_tables['borrowings'];
             </svg>
           </button>
           <a href="index.php" class="text-2xl font-bold font-serif text-white tracking-tight">LensCraft</a>
-          <span class="hidden md:inline-block text-sm text-neutral-500 border-l border-neutral-800 pl-4">Dashboard Petugas</span>
+          <span class="hidden md:inline-block text-sm text-neutral-500 border-l border-neutral-800 pl-4">Laporan &amp; Analitik</span>
         </div>
 
         <!-- Right Side Actions -->
@@ -1014,7 +1041,7 @@ $staff_default_report_rows = $staff_report_tables['borrowings'];
     <aside id="sidebar" class="fixed left-0 top-16 bottom-0 w-64 sidebar-blur border-r border-neutral-800 z-40 transform -translate-x-full lg:translate-x-0 transition-transform duration-300 ease-in-out overflow-y-auto sidebar-scroll">
       <div class="p-4 space-y-2">
         <!-- Navigation Items -->
-        <a href="index.php" class="nav-item nav-item-active flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all hover:bg-white/5" data-section="overview">
+        <a href="index.php" class="nav-item flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium text-neutral-400 transition-all hover:bg-white/5 hover:text-white" data-section="overview">
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
           </svg>
@@ -1039,9 +1066,9 @@ $staff_default_report_rows = $staff_report_tables['borrowings'];
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-2.21 0-4 .895-4 2s1.79 2 4 2 4 .895 4 2-1.79 2-4 2m0-10V6m0 12v2m8-8a8 8 0 11-16 0 8 8 0 0116 0z" />
           </svg>
-          <span>Stock & Price</span>
+          <span>Stok & Harga</span>
         </a>
-<a href="reports.php" class="nav-item flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium text-neutral-400 transition-all hover:bg-white/5 hover:text-white" data-section="reports">
+<a href="reports.php" class="nav-item nav-item-active flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all hover:bg-white/5" data-section="reports">
   <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
   </svg>
@@ -1076,1481 +1103,609 @@ $staff_default_report_rows = $staff_report_tables['borrowings'];
         <div id="content-area">
 
           <!-- Ringkasan Section -->
-          <section id="overview" class="content-section animate-fade-in">
-            <div class="mb-8">
-              <h1 class="text-3xl md:text-4xl font-serif text-white mb-2">Dashboard Petugas Ringkasan</h1>
-              <p class="text-neutral-400">Pantau ringkasan tugas petugas dan aktivitas harian dari satu tempat.</p>
-            </div>
-
-            <!-- Stats Cards -->
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-              <!-- Card 1 -->
-              <div class="bg-neutral-900 border border-neutral-800 rounded-2xl p-6 card-hover">
-                <div class="flex items-center justify-between mb-4">
-                  <div class="w-12 h-12 bg-amber-900/30 rounded-xl flex items-center justify-center border border-amber-800/50">
-                    <svg class="w-6 h-6 text-amber-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                    </svg>
-                  </div>
-                  <span class="text-xs font-medium px-2 py-1 rounded-full <?= e($staff_summary['pending_change']['class']) ?>"><?= e($staff_summary['pending_change']['text']) ?></span>
-                </div>
-                <div class="text-3xl font-bold text-white mb-1"><?= e((string) $staff_summary['pending_approvals']) ?></div>
-                <div class="text-sm text-neutral-400">Persetujuan Menunggu</div>
-              </div>
-
-              <!-- Card 2 -->
-              <div class="bg-neutral-900 border border-neutral-800 rounded-2xl p-6 card-hover">
-                <div class="flex items-center justify-between mb-4">
-                  <div class="w-12 h-12 bg-green-900/30 rounded-xl flex items-center justify-center border border-green-800/50">
-                    <svg class="w-6 h-6 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-                    </svg>
-                  </div>
-                  <span class="text-xs font-medium px-2 py-1 rounded-full <?= e($staff_summary['returns_change']['class']) ?>"><?= e($staff_summary['returns_change']['text']) ?></span>
-                </div>
-                <div class="text-3xl font-bold text-white mb-1"><?= e((string) $staff_summary['returns_today']) ?></div>
-                <div class="text-sm text-neutral-400">Pengembalian Hari Ini</div>
-              </div>
-
-              <!-- Card 3 -->
-              <div class="bg-neutral-900 border border-neutral-800 rounded-2xl p-6 card-hover">
-                <div class="flex items-center justify-between mb-4">
-                  <div class="w-12 h-12 bg-purple-900/30 rounded-xl flex items-center justify-center border border-purple-800/50">
-                    <svg class="w-6 h-6 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                  </div>
-                  <span class="text-xs font-medium px-2 py-1 rounded-full <?= e($staff_summary['revenue_change']['class']) ?>"><?= e($staff_summary['revenue_change']['text']) ?></span>
-                </div>
-                <div class="text-3xl font-bold text-white mb-1"><?= e($staff_summary['revenue_today']) ?></div>
-                <div class="text-sm text-neutral-400">Pendapatan Hari Ini</div>
-              </div>
-
-              <!-- Card 4 -->
-              <div class="bg-neutral-900 border border-neutral-800 rounded-2xl p-6 card-hover">
-                <div class="flex items-center justify-between mb-4">
-                  <div class="w-12 h-12 bg-orange-900/30 rounded-xl flex items-center justify-center border border-orange-800/50">
-                    <svg class="w-6 h-6 text-orange-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                  </div>
-                  <span class="text-xs font-medium px-2 py-1 rounded-full <?= e($staff_summary['active_badge_class']) ?>"><?= e($staff_summary['active_badge_text']) ?></span>
-                </div>
-                <div class="text-3xl font-bold text-white mb-1"><?= e((string) $staff_summary['active_rentals']) ?></div>
-                <div class="text-sm text-neutral-400">Rental Aktif</div>
-              </div>
-            </div>
-
-            <!-- Quick Actions & Recent Activity -->
-            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              <!-- Persetujuan Menunggu -->
-              <div class="lg:col-span-2 bg-neutral-900 border border-neutral-800 rounded-2xl p-6">
-                <div class="flex items-center justify-between mb-6">
-                  <h2 class="text-xl font-semibold text-white">Persetujuan Menunggu</h2>
-                  <a href="borrowings.php" class="text-sm text-neutral-400 hover:text-white transition-colors">Lihat Semua</a>
-                </div>
-                <div class="space-y-4" id="pending-approvals-list">
-                  <?php if (empty($staff_pending_approvals)): ?>
-                    <div class="py-6 text-sm text-neutral-500">Tidak ada permintaan yang menunggu persetujuan.</div>
-                  <?php else: ?>
-                    <?php foreach ($staff_pending_approvals as $approval): ?>
-                      <div class="flex items-center justify-between py-3 border-b border-neutral-800">
-                        <div class="flex items-center gap-3">
-                          <div class="w-10 h-10 bg-neutral-800 rounded-lg flex items-center justify-center">
-                            <span class="text-xs font-medium text-neutral-300"><?= e($approval['code']) ?></span>
-                          </div>
-                          <div>
-                            <p class="text-sm font-medium text-white"><?= e($approval['product_name']) ?></p>
-                            <p class="text-xs text-neutral-500"><?= e($approval['customer']) ?> • <?= e($approval['time_ago']) ?></p>
-                          </div>
-                        </div>
-                        <div class="flex gap-2">
-                          <button onclick="approveBorrowing('<?= e($approval['code']) ?>')" class="px-3 py-1 bg-green-900/30 border border-green-800/50 text-green-400 text-xs rounded-lg hover:bg-green-900/50 transition-colors">Setujui</button>
-                          <button onclick="rejectBorrowing('<?= e($approval['code']) ?>')" class="px-3 py-1 bg-red-900/30 border border-red-800/50 text-red-400 text-xs rounded-lg hover:bg-red-900/50 transition-colors">Tolak</button>
-                        </div>
-                      </div>
-                    <?php endforeach; ?>
-                  <?php endif; ?>
-                </div>
-              </div>
-
-              <!-- Tugas Cepat -->
-              <div class="bg-neutral-900 border border-neutral-800 rounded-2xl p-6">
-                <h2 class="text-xl font-semibold text-white mb-6">Tugas Cepat</h2>
-                <div class="space-y-3">
-                  <button onclick="window.location.href='borrowings.php'" class="w-full px-4 py-3 bg-neutral-800 border border-neutral-700 rounded-lg text-left text-sm font-medium text-neutral-300 hover:bg-neutral-700 hover:text-white transition-colors flex items-center gap-3">
-                    <svg class="w-5 h-5 text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                    Setujui Peminjaman
-                  </button>
-                  <button onclick="window.location.href='returns.php'" class="w-full px-4 py-3 bg-neutral-800 border border-neutral-700 rounded-lg text-left text-sm font-medium text-neutral-300 hover:bg-neutral-700 hover:text-white transition-colors flex items-center gap-3">
-                    <svg class="w-5 h-5 text-amber-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                    </svg>
-                    Pantau Pengembalian
-                  </button>
-                  <button onclick="window.location.href='reports.php'" class="w-full px-4 py-3 bg-neutral-800 border border-neutral-700 rounded-lg text-left text-sm font-medium text-neutral-300 hover:bg-neutral-700 hover:text-white transition-colors flex items-center gap-3">
-                    <svg class="w-5 h-5 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
-                    </svg>
-                    Cetak Laporan
-                  </button>
-                </div>
-
-                <div class="mt-8">
-                  <h3 class="text-sm font-semibold text-white mb-4">Progres Hari Ini</h3>
-                  <div class="space-y-4">
-                    <div>
-                      <div class="flex items-center justify-between mb-2">
-                        <span class="text-xs text-neutral-400">Persetujuan Selesai</span>
-                        <span class="text-xs font-medium text-white"><?= e((string) $staff_summary['approvals_done_count']) ?>/<?= e((string) $staff_summary['approvals_done_total']) ?></span>
-                      </div>
-                      <div class="w-full bg-neutral-800 rounded-full h-2">
-                        <div class="bg-green-500 h-2 rounded-full" style="width: <?= e((string) $staff_summary['approvals_done_percent']) ?>%"></div>
-                      </div>
-                    </div>
-                    <div>
-                      <div class="flex items-center justify-between mb-2">
-                        <span class="text-xs text-neutral-400">Pengembalian Selesai</span>
-                        <span class="text-xs font-medium text-white"><?= e((string) $staff_summary['returns_done_count']) ?>/<?= e((string) $staff_summary['returns_done_total']) ?></span>
-                      </div>
-                      <div class="w-full bg-neutral-800 rounded-full h-2">
-                        <div class="bg-amber-400 h-2 rounded-full" style="width: <?= e((string) $staff_summary['returns_done_percent']) ?>%"></div>
-                      </div>
-                    </div>
-                    <div>
-                      <div class="flex items-center justify-between mb-2">
-                        <span class="text-xs text-neutral-400">Rental Aktif</span>
-                        <span class="text-xs font-medium text-white"><?= e((string) $staff_summary['active_count']) ?>/<?= e((string) $staff_summary['active_total']) ?></span>
-                      </div>
-                      <div class="w-full bg-neutral-800 rounded-full h-2">
-                        <div class="bg-purple-500 h-2 rounded-full" style="width: <?= e((string) $staff_summary['active_percent']) ?>%"></div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </section>
-
-          <!-- Menyetujui Peminjaman Section -->
-          <section id="approve-borrowings" class="content-section hidden">
+          <section id="reports" class="content-section">
             <div class="mb-8">
               <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
                 <div>
-                  <h1 class="text-3xl md:text-4xl font-serif text-white mb-2">Menyetujui Peminjaman</h1>
-                  <p class="text-neutral-400">Review and approve equipment borrowing requests.</p>
-                </div>
-                <div class="flex gap-3">
-                  <button class="px-4 py-2 bg-neutral-800 border border-neutral-700 rounded-lg text-sm font-medium text-neutral-300 hover:bg-neutral-700 transition-colors flex items-center gap-2">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                    </svg>
-                    Export
-                  </button>
-                  <button class="px-4 py-2 bg-neutral-800 border border-neutral-700 rounded-lg text-sm font-medium text-neutral-300 hover:bg-neutral-700 transition-colors flex items-center gap-2">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
-                    </svg>
-                    Filter
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            <!-- Filters & Search -->
-            <div class="bg-neutral-900 border border-neutral-800 rounded-2xl p-6 mb-6">
-              <div class="flex flex-col md:flex-row gap-4 md:items-center">
-                <!-- Filter Dropdown -->
-                <div class="relative md:flex-shrink-0">
-                  <button id="approve-filter-btn" class="flex items-center justify-center w-10 h-10 bg-neutral-800 border border-neutral-700 rounded-lg text-neutral-400 hover:bg-neutral-700 hover:text-white transition-colors" aria-label="Toggle filters">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" /></svg>
-                  </button>
-                  <div id="approve-filter-dropdown" class="absolute left-0 top-full mt-2 w-80 bg-neutral-900 border border-neutral-800 rounded-xl shadow-xl z-20 hidden p-4">
-                    <div class="space-y-4">
-                      <div>
-                        <label class="block text-xs font-medium text-neutral-300 mb-2">Status</label>
-                        <select id="approve-status-filter" class="w-full px-3 py-2 bg-neutral-800 border border-neutral-700 rounded-lg text-neutral-100 text-sm focus:outline-none focus:ring-2 focus:ring-neutral-700">
-                          <option value="">All Status</option>
-                          <option value="pending">Menunggu</option>
-                          <option value="approved">Setujuid</option>
-                          <option value="rejected">Tolaked</option>
-                        </select>
-                      </div>
-                      <div>
-                        <label class="block text-xs font-medium text-neutral-300 mb-2">Date Range</label>
-                        <select id="approve-date-filter" class="w-full px-3 py-2 bg-neutral-800 border border-neutral-700 rounded-lg text-neutral-100 text-sm focus:outline-none focus:ring-2 focus:ring-neutral-700">
-                          <option value="">All Time</option>
-                          <option value="today">Today</option>
-                          <option value="week">This Week</option>
-                          <option value="month">This Month</option>
-                        </select>
-                      </div>
-                    </div>
-                  </div>
+                  <h1 class="text-3xl md:text-4xl font-serif text-white mb-2">Laporan & Analitik</h1>
+                  <p class="text-neutral-400">Generate insights and export data for decision making.</p>
                 </div>
 
-                <!-- Search Bar -->
-                <div class="flex-1 relative">
-                  <input type="text" id="approve-search" placeholder="Search by request ID, customer name, or equipment..." class="w-full pl-4 pr-12 py-3 bg-neutral-800 border border-neutral-700 rounded-lg text-neutral-100 placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-neutral-700 focus:border-neutral-600 transition-all" />
-                  <button type="button" class="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-white transition-colors" aria-label="Search">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            <!-- Borrowings Table -->
-            <div class="bg-neutral-900 border border-neutral-800 rounded-2xl overflow-hidden">
-              <div class="overflow-x-auto">
-                <table class="w-full">
-                  <thead>
-                    <tr class="border-b border-neutral-800 bg-neutral-800/30">
-                      <th class="px-6 py-4 text-left text-xs font-semibold text-neutral-400 uppercase tracking-wider">Request ID</th>
-                      <th class="px-6 py-4 text-left text-xs font-semibold text-neutral-400 uppercase tracking-wider">Customer</th>
-                      <th class="px-6 py-4 text-left text-xs font-semibold text-neutral-400 uppercase tracking-wider">Equipment</th>
-                      <th class="px-6 py-4 text-left text-xs font-semibold text-neutral-400 uppercase tracking-wider">Borrowing Period</th>
-                      <th class="px-6 py-4 text-left text-xs font-semibold text-neutral-400 uppercase tracking-wider">Amount</th>
-                      <th class="px-6 py-4 text-left text-xs font-semibold text-neutral-400 uppercase tracking-wider">Status</th>
-                      <th class="px-6 py-4 text-right text-xs font-semibold text-neutral-400 uppercase tracking-wider">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody id="borrowings-table-body" class="divide-y divide-neutral-800">
-                    <!-- Borrowings will be populated by JavaScript -->
-                  </tbody>
-                </table>
-              </div>
-
-              <!-- Pagination -->
-              <div class="flex flex-col sm:flex-row items-center justify-between gap-4 p-6 border-t border-neutral-800">
-                <div class="text-sm text-neutral-400">
-                  Showing <span id="borrowings-shown" class="font-medium text-white">0</span> of <span id="borrowings-total" class="font-medium text-white">0</span> requests
-                </div>
-                <div class="flex items-center gap-2">
-                  <button id="borrowings-prev" class="px-4 py-2 text-sm font-medium bg-neutral-800 border border-neutral-700 rounded-lg text-neutral-300 hover:bg-neutral-700 transition-colors disabled:opacity-50" disabled>Sebelumnya</button>
-                  <div id="borrowings-page-numbers" class="flex items-center gap-1"></div>
-                  <button id="borrowings-next" class="px-4 py-2 text-sm font-medium bg-neutral-800 border border-neutral-700 rounded-lg text-neutral-300 hover:bg-neutral-700 transition-colors">Berikutnya</button>
-                </div>
-              </div>
-            </div>
-          </section>
-
-          <!-- Memantau Pengembalian Section -->
-          <section id="monitor-returns" class="content-section hidden">
-            <div class="mb-8">
-              <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-                <div>
-                  <h1 class="text-3xl md:text-4xl font-serif text-white mb-2">Memantau Pengembalian</h1>
-                  <p class="text-neutral-400">Track and manage equipment returns and return records.</p>
-                </div>
-                <div class="flex gap-3">
-                  <button class="px-4 py-2 bg-neutral-800 border border-neutral-700 rounded-lg text-sm font-medium text-neutral-300 hover:bg-neutral-700 transition-colors flex items-center gap-2">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                    </svg>
-                    Export
-                  </button>
-                  <button class="px-4 py-2 bg-neutral-800 border border-neutral-700 rounded-lg text-sm font-medium text-neutral-300 hover:bg-neutral-700 transition-colors flex items-center gap-2">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
-                    </svg>
-                    Filter
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            <!-- Filters & Search -->
-            <div class="bg-neutral-900 border border-neutral-800 rounded-2xl p-6 mb-6">
-              <div class="flex flex-col md:flex-row gap-4 md:items-center">
-                <!-- Filter Dropdown -->
-                <div class="relative md:flex-shrink-0">
-                  <button id="returns-filter-btn" class="flex items-center justify-center w-10 h-10 bg-neutral-800 border border-neutral-700 rounded-lg text-neutral-400 hover:bg-neutral-700 hover:text-white transition-colors" aria-label="Toggle filters">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" /></svg>
-                  </button>
-                  <div id="returns-filter-dropdown" class="absolute left-0 top-full mt-2 w-80 bg-neutral-900 border border-neutral-800 rounded-xl shadow-xl z-20 hidden p-4">
-                    <div class="space-y-4">
-                      <div>
-                        <label class="block text-xs font-medium text-neutral-300 mb-2">Return Status</label>
-                        <select id="returns-status-filter" class="w-full px-3 py-2 bg-neutral-800 border border-neutral-700 rounded-lg text-neutral-100 text-sm focus:outline-none focus:ring-2 focus:ring-neutral-700">
-                          <option value="">All Status</option>
-                          <option value="pending">Menunggu Return</option>
-                          <option value="returned">Returned</option>
-                          <option value="overdue">Overdue</option>
-                        </select>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                <!-- Search Bar -->
-                <div class="flex-1 relative">
-                  <input type="text" id="returns-search" placeholder="Search by return ID, customer name, or equipment..." class="w-full pl-4 pr-12 py-3 bg-neutral-800 border border-neutral-700 rounded-lg text-neutral-100 placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-neutral-700 focus:border-neutral-600 transition-all" />
-                  <button type="button" class="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-white transition-colors" aria-label="Search">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            <!-- Returns Table -->
-            <div class="bg-neutral-900 border border-neutral-800 rounded-2xl overflow-hidden">
-              <div class="overflow-x-auto">
-                <table class="w-full">
-                  <thead>
-                    <tr class="border-b border-neutral-800 bg-neutral-800/30">
-                      <th class="px-6 py-4 text-left text-xs font-semibold text-neutral-400 uppercase tracking-wider">Return ID</th>
-                      <th class="px-6 py-4 text-left text-xs font-semibold text-neutral-400 uppercase tracking-wider">Customer</th>
-                      <th class="px-6 py-4 text-left text-xs font-semibold text-neutral-400 uppercase tracking-wider">Equipment</th>
-                      <th class="px-6 py-4 text-left text-xs font-semibold text-neutral-400 uppercase tracking-wider">Return Date</th>
-                      <th class="px-6 py-4 text-left text-xs font-semibold text-neutral-400 uppercase tracking-wider">Status</th>
-                      <th class="px-6 py-4 text-right text-xs font-semibold text-neutral-400 uppercase tracking-wider">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody id="returns-table-body" class="divide-y divide-neutral-800">
-                    <!-- Returns will be populated by JavaScript -->
-                  </tbody>
-                </table>
-              </div>
-
-              <!-- Pagination -->
-              <div class="flex flex-col sm:flex-row items-center justify-between gap-4 p-6 border-t border-neutral-800">
-                <div class="text-sm text-neutral-400">
-                  Showing <span id="returns-shown" class="font-medium text-white">0</span> of <span id="returns-total" class="font-medium text-white">0</span> returns
-                </div>
-                <div class="flex items-center gap-2">
-                  <button id="returns-prev" class="px-4 py-2 text-sm font-medium bg-neutral-800 border border-neutral-700 rounded-lg text-neutral-300 hover:bg-neutral-700 transition-colors disabled:opacity-50" disabled>Sebelumnya</button>
-                  <div id="returns-page-numbers" class="flex items-center gap-1"></div>
-                  <button id="returns-next" class="px-4 py-2 text-sm font-medium bg-neutral-800 border border-neutral-700 rounded-lg text-neutral-300 hover:bg-neutral-700 transition-colors">Berikutnya</button>
-                </div>
-              </div>
-            </div>
-          </section>
-
-          <!-- Reports Section -->
-          <section id="reports" class="content-section hidden">
-            <div class="mb-8">
-              <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-                <div>
-                  <h1 class="text-3xl md:text-4xl font-serif text-white mb-2">Laporan</h1>
-                  <p class="text-neutral-400">Generate report summaries from the selected type and date range.</p>
-                </div>
               </div>
             </div>
 
             <!-- Report Controls -->
-            <form method="GET" action="reports.php" class="bg-neutral-900 border border-neutral-800 rounded-2xl p-5 sm:p-6 mb-6">
-              <div class="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6">
-                <!-- Report Type -->
+            <form id="report-export-form" method="GET" action="reports.php" class="bg-neutral-900 border border-neutral-800 rounded-2xl p-6 mb-6">
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
                 <div>
-                  <label class="block text-sm font-medium text-neutral-400 mb-2">Report Type</label>
-                  <select id="report-type" name="report_type" class="w-full px-4 py-3 bg-neutral-800 border border-neutral-700 rounded-xl text-neutral-100 text-sm focus:outline-none focus:ring-2 focus:ring-neutral-700">
-                    <option value="borrowings" <?= $selected_report_type === 'borrowings' ? 'selected' : '' ?>>Borrowing Requests</option>
-                    <option value="returns" <?= $selected_report_type === 'returns' ? 'selected' : '' ?>>Equipment Returns</option>
-                    <option value="revenue" <?= $selected_report_type === 'revenue' ? 'selected' : '' ?>>Revenue Summary</option>
-                    <option value="inventory" <?= $selected_report_type === 'inventory' ? 'selected' : '' ?>>Inventory Status</option>
-                  </select>
+                  <label class="block text-sm font-medium text-neutral-400 mb-3">Report Sections</label>
+                  <div class="space-y-3">
+                    <label class="flex items-center gap-3 px-4 py-3 bg-neutral-800 border border-neutral-700 rounded-xl cursor-pointer hover:bg-neutral-700/60 transition-colors">
+                      <input type="checkbox" id="report-section-stock" name="report_sections[]" value="stock" class="rounded border-neutral-600 bg-neutral-900 text-[var(--accent-brass)] focus:ring-0" <?= in_array('stock', $staff_report_filters['sections'], true) ? 'checked' : '' ?>>
+                      <span class="text-sm text-neutral-100">Stock</span>
+                    </label>
+                    <label class="flex items-center gap-3 px-4 py-3 bg-neutral-800 border border-neutral-700 rounded-xl cursor-pointer hover:bg-neutral-700/60 transition-colors">
+                      <input type="checkbox" id="report-section-borrowings" name="report_sections[]" value="borrowings" class="rounded border-neutral-600 bg-neutral-900 text-[var(--accent-brass)] focus:ring-0" <?= in_array('borrowings', $staff_report_filters['sections'], true) ? 'checked' : '' ?>>
+                      <span class="text-sm text-neutral-100">Peminjaman</span>
+                    </label>
+                    <label class="flex items-center gap-3 px-4 py-3 bg-neutral-800 border border-neutral-700 rounded-xl cursor-pointer hover:bg-neutral-700/60 transition-colors">
+                      <input type="checkbox" id="report-section-returns" name="report_sections[]" value="returns" class="rounded border-neutral-600 bg-neutral-900 text-[var(--accent-brass)] focus:ring-0" <?= in_array('returns', $staff_report_filters['sections'], true) ? 'checked' : '' ?>>
+                      <span class="text-sm text-neutral-100">Pengembalian</span>
+                    </label>
+                  </div>
                 </div>
-                <!-- Date Range -->
                 <div>
                   <label class="block text-sm font-medium text-neutral-400 mb-2">Date Range</label>
-                  <select id="report-date-range" name="report_date_range" class="w-full px-4 py-3 bg-neutral-800 border border-neutral-700 rounded-xl text-neutral-100 text-sm focus:outline-none focus:ring-2 focus:ring-neutral-700">
-                    <option value="7" <?= $selected_report_date_range === '7' ? 'selected' : '' ?>>Last 7 days</option>
-                    <option value="30" <?= $selected_report_date_range === '30' ? 'selected' : '' ?>>Last 30 days</option>
-                    <option value="90" <?= $selected_report_date_range === '90' ? 'selected' : '' ?>>Last 90 days</option>
-                    <option value="365" <?= $selected_report_date_range === '365' ? 'selected' : '' ?>>Last year</option>
-                    <option value="custom" <?= $selected_report_date_range === 'custom' ? 'selected' : '' ?>>Custom range</option>
+                  <select id="report-date-range" name="report_date_range" class="w-full px-4 py-3 bg-neutral-800 border border-neutral-700 rounded-lg text-neutral-100 text-sm focus:outline-none focus:ring-2 focus:ring-neutral-700">
+                    <option value="7" <?= $staff_report_filters['range'] === '7' ? 'selected' : '' ?>>Last 7 days</option>
+                    <option value="30" <?= $staff_report_filters['range'] === '30' ? 'selected' : '' ?>>Last 30 days</option>
+                    <option value="90" <?= $staff_report_filters['range'] === '90' ? 'selected' : '' ?>>Last 90 days</option>
+                    <option value="365" <?= $staff_report_filters['range'] === '365' ? 'selected' : '' ?>>Last year</option>
+                    <option value="custom" <?= $staff_report_filters['range'] === 'custom' ? 'selected' : '' ?>>Custom range</option>
                   </select>
                 </div>
-                <!-- Custom Date Range (hidden by default) -->
-                <div id="custom-date-range" class="<?= $selected_report_date_range === 'custom' ? 'flex' : 'hidden' ?> flex-col sm:flex-row items-stretch sm:items-end gap-3">
-                  <div class="flex-1">
-                    <label class="block text-sm font-medium text-neutral-400 mb-2">From</label>
-                    <input type="date" name="custom_date_from" id="custom-date-from" value="<?= e($selected_custom_date_from) ?>" class="w-full px-4 py-3 bg-neutral-800 border border-neutral-700 rounded-xl text-neutral-100 text-sm focus:outline-none focus:ring-2 focus:ring-neutral-700" />
-                  </div>
-                  <div class="flex-1">
-                    <label class="block text-sm font-medium text-neutral-400 mb-2">To</label>
-                    <input type="date" name="custom_date_to" id="custom-date-to" value="<?= e($selected_custom_date_to) ?>" class="w-full px-4 py-3 bg-neutral-800 border border-neutral-700 rounded-xl text-neutral-100 text-sm focus:outline-none focus:ring-2 focus:ring-neutral-700" />
-                  </div>
+              </div>
+              <div id="custom-date-range" class="mt-4 <?= $staff_report_filters['range'] === 'custom' ? 'grid' : 'hidden' ?> grid-cols-1 sm:grid-cols-2 gap-3 border-t border-neutral-800 pt-4">
+                <div>
+                  <label class="block text-sm font-medium text-neutral-400 mb-2">From</label>
+                  <input type="date" name="custom_date_from" id="custom-date-from" value="<?= e((string) ($staff_report_filters['custom_from'] ?? '')) ?>" class="w-full px-4 py-3 bg-neutral-800 border border-neutral-700 rounded-lg text-neutral-100 text-sm focus:outline-none focus:ring-2 focus:ring-neutral-700" />
+                </div>
+                <div>
+                  <label class="block text-sm font-medium text-neutral-400 mb-2">To</label>
+                  <input type="date" name="custom_date_to" id="custom-date-to" value="<?= e((string) ($staff_report_filters['custom_to'] ?? '')) ?>" class="w-full px-4 py-3 bg-neutral-800 border border-neutral-700 rounded-lg text-neutral-100 text-sm focus:outline-none focus:ring-2 focus:ring-neutral-700" />
                 </div>
               </div>
-              <div class="mt-5 flex justify-stretch sm:justify-end">
-                <button type="submit" class="w-full sm:w-auto px-6 py-3 bg-white text-black font-semibold rounded-xl hover:bg-neutral-200 transition-all transform hover:scale-[1.02]">
-                  Generate Report
+              <div class="mt-5 flex flex-col sm:flex-row justify-stretch sm:justify-end gap-3">
+                <button type="submit" formaction="../process/staff-report-export.php" name="format" value="pdf" class="w-full sm:w-auto px-5 py-3 bg-neutral-800 border border-neutral-700 rounded-xl text-sm font-medium text-neutral-200 hover:bg-neutral-700 transition-colors flex items-center justify-center gap-2">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 3h6l5 5v13a1 1 0 01-1 1H7a2 2 0 01-2-2V5a2 2 0 012-2z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 13h6M9 17h6M9 9h1" /></svg>
+                  <span>PDF</span>
+                </button>
+                <button type="submit" formaction="../process/staff-report-export.php" name="format" value="xlsx" class="w-full sm:w-auto px-5 py-3 bg-neutral-800 border border-neutral-700 rounded-xl text-sm font-medium text-neutral-200 hover:bg-neutral-700 transition-colors flex items-center justify-center gap-2">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7h16M8 3v4m8-4v4M6 11h12M6 15h12M6 19h12" /></svg>
+                  <span>XLSX</span>
+                </button>
+                <button type="submit" formaction="../process/staff-report-export.php" name="format" value="csv" class="w-full sm:w-auto px-5 py-3 bg-white text-black font-semibold rounded-xl hover:bg-neutral-200 transition-all transform hover:scale-[1.02] flex items-center justify-center gap-2">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 16v-8m0 8l-3-3m3 3l3-3M5 20h14" /></svg>
+                  <span>CSV</span>
                 </button>
               </div>
             </form>
 
             <!-- Summary Stats -->
             <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
-              <?php foreach ($report_summary_cards as $card): ?>
-                <?php
-                $change_text_class = strpos($card['change']['class'], 'text-red-400') !== false
-                    ? 'text-red-400'
-                    : (strpos($card['change']['class'], 'text-neutral-400') !== false ? 'text-neutral-400' : 'text-green-400');
-                ?>
-                <div class="bg-neutral-900 border border-neutral-800 rounded-2xl p-6">
-                  <div class="text-sm text-neutral-400 mb-2"><?= e($card['label']) ?></div>
-                  <div class="text-2xl font-bold text-white"><?= e($card['value']) ?></div>
-                  <div class="text-xs <?= $change_text_class ?> mt-2"><?= e($card['change']['text']) ?> from previous period</div>
-                </div>
-              <?php endforeach; ?>
+              <div class="bg-neutral-900 border border-neutral-800 rounded-2xl p-6">
+                <div class="text-sm text-neutral-400 mb-2">Total Requests</div>
+                <div class="text-2xl font-bold text-white" id="report-total-requests"><?= e((string) $staff_report_summary_cards['total_requests']) ?></div>
+                <div class="text-xs text-neutral-400 mt-2">Borrowings inside the selected range</div>
+              </div>
+              <div class="bg-neutral-900 border border-neutral-800 rounded-2xl p-6">
+                <div class="text-sm text-neutral-400 mb-2">Approved Requests</div>
+                <div class="text-2xl font-bold text-white" id="report-total-approved"><?= e((string) $staff_report_summary_cards['approved_requests']) ?></div>
+                <div class="text-xs text-neutral-400 mt-2">Requests already approved in range</div>
+              </div>
+              <div class="bg-neutral-900 border border-neutral-800 rounded-2xl p-6">
+                <div class="text-sm text-neutral-400 mb-2">Pending Requests</div>
+                <div class="text-2xl font-bold text-white" id="report-total-pending"><?= e((string) $staff_report_summary_cards['pending_requests']) ?></div>
+                <div class="text-xs text-neutral-400 mt-2">Requests still waiting for action</div>
+              </div>
+              <div class="bg-neutral-900 border border-neutral-800 rounded-2xl p-6">
+                <div class="text-sm text-neutral-400 mb-2">Total Revenue</div>
+                <div class="text-2xl font-bold text-white" id="report-total-revenue"><?= e($staff_report_summary_cards['total_revenue']) ?></div>
+                <div class="text-xs text-neutral-400 mt-2">Revenue from requests in the selected range</div>
+              </div>
             </div>
 
-            <div class="text-sm text-neutral-500">
-              Range applied: <span class="text-neutral-300"><?= e($report_range['label']) ?></span>
+            <!-- Charts Grid -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+              <!-- Main Chart -->
+              <div class="lg:col-span-2 bg-neutral-900 border border-neutral-800 rounded-2xl p-6">
+                <h3 class="text-lg font-semibold text-white mb-4">Tren Pendapatan</h3>
+                <div class="h-80">
+                  <canvas id="mainChart"></canvas>
+                </div>
+              </div>
+
+              <!-- Pie Chart -->
+              <div class="bg-neutral-900 border border-neutral-800 rounded-2xl p-6">
+                <h3 class="text-lg font-semibold text-white mb-4">Category Distribution</h3>
+                <div class="h-64">
+                  <canvas id="categoryChart"></canvas>
+                </div>
+              </div>
+
+              <!-- Bar Chart -->
+              <div class="bg-neutral-900 border border-neutral-800 rounded-2xl p-6">
+                <h3 class="text-lg font-semibold text-white mb-4">Top Equipment</h3>
+                <div class="h-64">
+                  <canvas id="topEquipmentChart"></canvas>
+                </div>
+              </div>
+            </div>
+
+            <!-- Data Table -->
+            <div class="bg-neutral-900 border border-neutral-800 rounded-2xl overflow-hidden">
+              <div class="p-6 border-b border-neutral-800">
+                <h3 class="text-lg font-semibold text-white">Data Laporan</h3>
+              </div>
+              <div class="overflow-x-auto">
+                <table class="w-full">
+                  <thead>
+                    <tr class="border-b border-neutral-800 bg-neutral-800/30">
+                      <th class="px-6 py-4 text-left text-xs font-semibold text-neutral-400 uppercase tracking-wider">Date</th>
+                      <th class="px-6 py-4 text-left text-xs font-semibold text-neutral-400 uppercase tracking-wider">Metric</th>
+                      <th class="px-6 py-4 text-left text-xs font-semibold text-neutral-400 uppercase tracking-wider">Value</th>
+                      <th class="px-6 py-4 text-left text-xs font-semibold text-neutral-400 uppercase tracking-wider">Change</th>
+                    </tr>
+                  </thead>
+                  <tbody id="report-table-body" class="divide-y divide-neutral-800">
+                    <?php foreach ($staff_report_initial_table_rows as $row): ?>
+                      <tr class="table-row-hover transition-colors">
+                        <td class="px-6 py-4 text-sm text-neutral-300"><?= e($row['date']) ?></td>
+                        <td class="px-6 py-4 text-sm text-neutral-300"><?= e($row['metric']) ?></td>
+                        <td class="px-6 py-4 text-sm font-semibold text-white"><?= e($row['value']) ?></td>
+                        <td class="px-6 py-4">
+                          <span class="text-sm <?= !empty($row['positive']) ? 'text-green-400' : 'text-red-400' ?>">
+                            <?= e($row['change']) ?>
+                          </span>
+                        </td>
+                      </tr>
+                    <?php endforeach; ?>
+                  </tbody>
+                </table>
+              </div>
             </div>
           </section>
-
-        </div>
-      </div>
     </main>
 
-            <div id="staff-detail-modal" class="fixed inset-0 z-50 flex items-center justify-center hidden opacity-0 transition-opacity duration-200">
-      <div class="absolute inset-0 bg-neutral-950/80 backdrop-blur-sm" onclick="closeStaffDetailModal()"></div>
-      <div class="relative bg-neutral-900 border border-neutral-800 rounded-2xl shadow-2xl max-w-2xl w-full mx-4 overflow-hidden transform scale-95 opacity-0 transition-all duration-200" id="staff-detail-modal-content">
-        <div class="p-8">
-          <div class="flex items-start justify-between mb-6">
-            <div>
-              <h3 class="text-2xl font-serif text-white mb-1" id="staff-detail-modal-title">Detail</h3>
-              <p class="text-sm text-neutral-400" id="staff-detail-modal-subtitle"></p>
-            </div>
-            <button onclick="closeStaffDetailModal()" class="text-neutral-400 hover:text-white transition-colors">
-              <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
-          </div>
-          <div id="staff-detail-modal-body"></div>
-          <div class="mt-6 pt-4 border-t border-neutral-800 flex justify-end gap-3">
-            <button onclick="closeStaffDetailModal()" class="px-6 py-2.5 bg-neutral-800 border border-neutral-700 hover:bg-neutral-700 text-white text-sm font-medium rounded-xl transition-colors">
-              Tutup
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
-
-
-
-    <div id="staff-action-modal" class="fixed inset-0 z-50 hidden flex items-center justify-center p-4 modal-overlay">
-      <div class="modal-panel rounded-3xl w-full max-w-md">
-        <div class="modal-header p-6 border-b border-neutral-800 flex items-center justify-between">
-          <h3 class="text-xl font-semibold text-white" id="staff-action-modal-title">Konfirmasi</h3>
-          <button type="button" onclick="closeStaffActionModal()" class="modal-close text-neutral-400 hover:text-white transition-colors">
-            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
-        </div>
-        <div class="p-6 modal-body-shell mx-6 mt-6">
-          <div class="action-sheet">
-            <div class="action-sheet-icon" id="staff-action-modal-icon">
-              <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-            </div>
-            <div class="space-y-2">
-              <div class="action-sheet-eyebrow">Please confirm</div>
-              <p class="action-sheet-copy" id="staff-action-modal-message"></p>
-            </div>
-          </div>
-        </div>
-        <div class="px-6 pb-6 action-sheet-actions">
-          <button type="button" onclick="closeStaffActionModal()" class="flex-1 px-4 py-3 bg-neutral-800 border border-neutral-700 rounded-lg text-neutral-300 hover:bg-neutral-700 transition-colors">Batal</button>
-          <button type="button" id="staff-action-confirm-btn" class="flex-1 px-4 py-3 bg-white text-black font-semibold rounded-lg hover:bg-neutral-200 transition-colors">Lanjutkan</button>
-        </div>
-      </div>
-    </div>
-
     <script>
-      // Sidebar toggle for mobile
-      const sidebar = document.getElementById('sidebar');
-      const sidebarToggle = document.getElementById('sidebar-toggle');
-      const sidebarOverlay = document.getElementById('sidebar-overlay');
+      (function () {
+        const sidebar = document.getElementById('sidebar');
+        const sidebarToggle = document.getElementById('sidebar-toggle');
+        const sidebarOverlay = document.getElementById('sidebar-overlay');
+        const dateRangeSelect = document.getElementById('report-date-range');
+        const customDateRange = document.getElementById('custom-date-range');
+        const customDateFrom = document.getElementById('custom-date-from');
+        const customDateTo = document.getElementById('custom-date-to');
+        const reportSectionInputs = Array.from(document.querySelectorAll('input[name="report_sections[]"]'));
+        const reportTableBody = document.getElementById('report-table-body');
+        const reportBorrowings = <?= $report_borrowing_records_json ?>;
+        const reportReturns = <?= $report_return_records_json ?>;
+        const reportInventory = <?= $report_inventory_records_json ?>;
+        let mainChart = null;
+        let categoryChart = null;
+        let topEquipmentChart = null;
 
-      function toggleSidebar() {
-        const isClosed = sidebar.classList.contains('-translate-x-full');
-        if (isClosed) {
-          sidebar.classList.remove('-translate-x-full');
-          sidebarOverlay.classList.remove('hidden');
-        } else {
-          sidebar.classList.add('-translate-x-full');
-          sidebarOverlay.classList.add('hidden');
+        function toggleSidebar() {
+          const isClosed = sidebar.classList.contains('-translate-x-full');
+          sidebar.classList.toggle('-translate-x-full', !isClosed);
+          sidebarOverlay.classList.toggle('hidden', !isClosed);
         }
-      }
 
-      sidebarToggle.addEventListener('click', toggleSidebar);
-      sidebarOverlay.addEventListener('click', toggleSidebar);
+        if (sidebarToggle && sidebarOverlay) {
+          sidebarToggle.addEventListener('click', toggleSidebar);
+          sidebarOverlay.addEventListener('click', toggleSidebar);
+        }
 
-      // Navigation handling
-      const navItems = document.querySelectorAll('.legacy-tab-nav');
-      const sections = document.querySelectorAll('.content-section');
+        document.querySelectorAll('a.nav-item[href]').forEach(function (link) {
+          const active = link.getAttribute('href') === <?= json_encode($staff_active_href) ?>;
+          link.classList.toggle('nav-item-active', active);
+          link.classList.toggle('text-neutral-400', !active);
+          link.classList.toggle('text-white', active);
+        });
 
-      function showSection(sectionId) {
-        // Update nav items
-        navItems.forEach(item => {
-          if (item.dataset.section === sectionId) {
-            item.classList.add('nav-item-active');
-            item.classList.remove('text-neutral-400', 'hover:text-white');
-          } else {
-            item.classList.remove('nav-item-active');
-            item.classList.add('text-neutral-400', 'hover:text-white');
+        function escapeHtml(text) {
+          const div = document.createElement('div');
+          div.textContent = text;
+          return div.innerHTML;
+        }
+
+        function formatDate(dateStr) {
+          if (!dateStr) {
+            return '-';
           }
-        });
 
-        // Show selected section, hide others
-        sections.forEach(section => {
-          if (section.id === sectionId) {
-            section.classList.remove('hidden');
-            // Re-trigger animation
-            section.style.opacity = '0';
-            section.style.transform = 'translateY(30px)';
-            setTimeout(() => {
-              section.style.opacity = '1';
-              section.style.transform = 'translateY(0)';
-            }, 50);
-          } else {
-            section.classList.add('hidden');
+          const date = new Date(`${dateStr}T00:00:00`);
+          if (Number.isNaN(date.getTime())) {
+            return dateStr;
           }
-        });
-// Render tables when sections are shown
-if (sectionId === 'approve-borrowings') {
-  renderBorrowingsTable();
-} else if (sectionId === 'monitor-returns') {
-  renderReturnsTable();
-}
 
-// Close mobile sidebar after selection
-        if (window.innerWidth < 1024 && !sidebar.classList.contains('-translate-x-full')) {
-          toggleSidebar();
+          return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
         }
-      }
 
-      // Add click listeners to nav items
-      navItems.forEach(item => {
-        item.addEventListener('click', (e) => {
-          e.preventDefault();
-          const sectionId = item.dataset.section;
-          showSection(sectionId);
-
-          // Update URL hash without scrolling
-          history.pushState(null, null, `#${sectionId}`);
-        });
-      });
-
-      // Handle initial hash or default to overview
-      function initializeSection() {
-        const hash = window.location.hash.substring(1);
-        if (hash && document.getElementById(hash)) {
-          showSection(hash);
-        } else {
-          showSection('overview');
-        }
-      }
-
-      // Handle browser back/forward
-      window.addEventListener('popstate', initializeSection);
-
-      // Initialize on load
-      initializeSection();
-
-      // ============================================
-      // SAMPLE DATA
-      // ============================================
-
-      // Sample borrowings data
-      const borrowings = <?= $borrowings_json ?>;
-
-      let filteredBorrowings = [...borrowings];
-      let borrowingsCurrentPage = 1;
-      const borrowingsPerPage = 5;
-
-      // Sample returns data
-      const returns = <?= $returns_json ?>;
-
-      let filteredReturns = [...returns];
-      let returnsCurrentPage = 1;
-      const returnsPerPage = 5;
-
-      // Helper functions
-      function escapeHtml(text) {
-        const div = document.createElement('div');
-        div.textContent = text;
-        return div.innerHTML;
-      }
-
-      function capitalizeFirst(str) {
-        return str.charAt(0).toUpperCase() + str.slice(1);
-      }
-
-      function formatDate(dateStr) {
-        const date = new Date(dateStr);
-        return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-      }
-
-      function getStatusBadgeClass(status) {
-        switch(status) {
-          case 'pending': return 'badge-warning';
-          case 'approved': return 'badge-success';
-          case 'rejected': return 'badge-danger';
-          case 'returned': return 'badge-success';
-          case 'overdue': return 'badge-danger';
-          default: return 'badge-info';
-        }
-      }
-
-      // ============================================
-      // BORROWINGS TABLE
-      // ============================================
-
-      function renderBorrowingsTable() {
-        const tbody = document.getElementById('borrowings-table-body');
-        if (!tbody) return;
-
-        const start = (borrowingsCurrentPage - 1) * borrowingsPerPage;
-        const end = start + borrowingsPerPage;
-        const pageBorrowings = filteredBorrowings.slice(start, end);
-
-        tbody.innerHTML = pageBorrowings.map(borrowing => `
-          <tr class="table-row-hover transition-colors">
-            <td class="px-6 py-4">
-              <span class="text-sm font-medium text-white">${escapeHtml(borrowing.id)}</span>
-            </td>
-            <td class="px-6 py-4">
-              <div class="space-y-1">
-                <p class="text-sm font-medium text-white">${escapeHtml(borrowing.customer)}</p>
-                <p class="text-xs text-neutral-500">Borrower</p>
-              </div>
-            </td>
-            <td class="px-6 py-4 text-sm text-neutral-300">${escapeHtml(borrowing.equipment)}</td>
-            <td class="px-6 py-4 text-sm text-neutral-400">${formatDate(borrowing.startDate)} - ${formatDate(borrowing.endDate)}</td>
-            <td class="px-6 py-4 text-sm font-semibold text-white">$${borrowing.amount}</td>
-            <td class="px-6 py-4">
-              <span class="badge ${getStatusBadgeClass(borrowing.status)}">${capitalizeFirst(borrowing.status)}</span>
-            </td>
-            <td class="px-6 py-4 text-right">
-              <div class="flex items-center justify-end gap-2">
-                ${borrowing.status === 'pending' ? `
-                  <button onclick="approveBorrowing('${borrowing.id}')" class="p-2 text-neutral-400 hover:text-green-400 hover:bg-neutral-800 rounded transition-colors" title="Setujui">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
-                    </svg>
-                  </button>
-                  <button onclick="rejectBorrowing('${borrowing.id}')" class="p-2 text-neutral-400 hover:text-red-400 hover:bg-neutral-800 rounded transition-colors" title="Tolak">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                    </svg>
-                  </button>
-                ` : `
-                  <button onclick="viewBorrowing('${borrowing.id}')" class="p-2 text-neutral-400 hover:text-white hover:bg-neutral-800 rounded transition-colors" title="View">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                    </svg>
-                  </button>
-                `}
-              </div>
-            </td>
-          </tr>
-        `).join('');
-
-        // Update pagination info
-        document.getElementById('borrowings-shown').textContent = Math.min(filteredBorrowings.length, end - start);
-        document.getElementById('borrowings-total').textContent = filteredBorrowings.length;
-
-        // Render pagination buttons
-        renderPagination('borrowings', filteredBorrowings.length, borrowingsPerPage, borrowingsCurrentPage);
-      }
-
-      function approveBorrowing(id) {
-        const borrowing = borrowings.find(b => b.id === id);
-        if (borrowing) {
-          borrowing.status = 'approved';
-          filterBorrowings();
-          renderBorrowingsTable();
-        }
-      }
-
-      function rejectBorrowing(id) {
-        const borrowing = borrowings.find(b => b.id === id);
-        if (borrowing) {
-          borrowing.status = 'rejected';
-          filterBorrowings();
-          renderBorrowingsTable();
-        }
-      }
-
-      // ============================================
-      // RETURNS TABLE
-      // ============================================
-
-      function renderReturnsTable() {
-        const tbody = document.getElementById('returns-table-body');
-        if (!tbody) return;
-
-        const start = (returnsCurrentPage - 1) * returnsPerPage;
-        const end = start + returnsPerPage;
-        const pageReturns = filteredReturns.slice(start, end);
-
-        tbody.innerHTML = pageReturns.map(returnItem => `
-          <tr class="table-row-hover transition-colors">
-            <td class="px-6 py-4">
-              <span class="text-sm font-medium text-white">${escapeHtml(returnItem.id)}</span>
-            </td>
-            <td class="px-6 py-4">
-              <div class="space-y-1">
-                <p class="text-sm font-medium text-white">${escapeHtml(returnItem.customer)}</p>
-                <p class="text-xs text-neutral-500">Customer</p>
-              </div>
-            </td>
-            <td class="px-6 py-4 text-sm text-neutral-300">${escapeHtml(returnItem.equipment)}</td>
-            <td class="px-6 py-4 text-sm text-neutral-400">${formatDate(returnItem.returnDate)}</td>
-            <td class="px-6 py-4">
-              <span class="badge ${getStatusBadgeClass(returnItem.status)}">${capitalizeFirst(returnItem.status)}</span>
-            </td>
-            <td class="px-6 py-4 text-right">
-              <div class="flex items-center justify-end gap-2">
-                ${returnItem.status === 'pending' ? `
-                  <button onclick="markReturned('${returnItem.id}')" class="p-2 text-neutral-400 hover:text-green-400 hover:bg-neutral-800 rounded transition-colors" title="Mark as Returned">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
-                    </svg>
-                  </button>
-                ` : `
-                  <button onclick="viewReturn('${returnItem.id}')" class="p-2 text-neutral-400 hover:text-white hover:bg-neutral-800 rounded transition-colors" title="View Details">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                    </svg>
-                  </button>
-                `}
-              </div>
-            </td>
-          </tr>
-        `).join('');
-
-        // Update pagination info
-        document.getElementById('returns-shown').textContent = Math.min(filteredReturns.length, end - start);
-        document.getElementById('returns-total').textContent = filteredReturns.length;
-
-        // Render pagination buttons
-        renderPagination('returns', filteredReturns.length, returnsPerPage, returnsCurrentPage);
-      }
-
-      function markReturned(id) {
-        const returnItem = returns.find(r => r.id === id);
-        if (returnItem) {
-          returnItem.status = 'returned';
-          filterReturns();
-          renderReturnsTable();
-        }
-      }
-      // ============================================
-      // PAGINATION
-      // ============================================
-
-      function renderPagination(type, totalItems, itemsPerPage, currentPage) {
-        const totalPages = Math.ceil(totalItems / itemsPerPage);
-        const pageNumbersContainer = document.getElementById(`${type}-page-numbers`);
-        const prevBtn = document.getElementById(`${type}-prev`);
-        const nextBtn = document.getElementById(`${type}-next`);
-
-        if (!pageNumbersContainer) return;
-
-        pageNumbersContainer.innerHTML = '';
-
-        for (let i = 1; i <= totalPages; i++) {
-          const btn = document.createElement('button');
-          btn.textContent = i;
-          btn.className = `px-3 py-1 text-sm font-medium rounded-lg transition-colors ${
-            i === currentPage
-              ? 'bg-white text-black'
-              : 'bg-neutral-800 border border-neutral-700 text-neutral-300 hover:bg-neutral-700'
-          }`;
-          btn.addEventListener('click', () => {
-            if (type === 'borrowings') {
-              borrowingsCurrentPage = i;
-              renderBorrowingsTable();
-            } else if (type === 'returns') {
-              returnsCurrentPage = i;
-              renderReturnsTable();
-            }
+        function formatCurrency(value) {
+          return 'Rp' + Number(value || 0).toLocaleString('id-ID', {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2
           });
-          pageNumbersContainer.appendChild(btn);
         }
 
-        if (prevBtn) {
-          prevBtn.disabled = currentPage === 1;
-          prevBtn.onclick = () => {
-            if (currentPage > 1) {
-              if (type === 'borrowings') {
-                borrowingsCurrentPage--;
-                renderBorrowingsTable();
-              } else if (type === 'returns') {
-                returnsCurrentPage--;
-                renderReturnsTable();
-              }
-            }
+        function statusLabel(status) {
+          const map = {
+            approved: 'Approved',
+            menunggu: 'Pending',
+            ditolak: 'Rejected',
+            returned: 'Returned',
+            borrowed: 'Borrowed',
+            overdue: 'Overdue'
+          };
+
+          return map[status] || status;
+        }
+
+        function formatCategory(value) {
+          return String(value || 'lainnya')
+            .replace(/-/g, ' ')
+            .replace(/\b\w/g, (char) => char.toUpperCase());
+        }
+
+        function getSelectedSections() {
+          return reportSectionInputs.filter((input) => input.checked).map((input) => input.value);
+        }
+
+        function syncCustomDateRange() {
+          if (!customDateRange) {
+            return;
+          }
+
+          if (dateRangeSelect.value === 'custom') {
+            customDateRange.classList.remove('hidden');
+            customDateRange.classList.add('grid');
+          } else {
+            customDateRange.classList.add('hidden');
+            customDateRange.classList.remove('grid');
+          }
+        }
+
+        function syncCustomDateConstraints() {
+          if (!customDateFrom || !customDateTo) {
+            return;
+          }
+
+          const fromValue = customDateFrom.value || '';
+          customDateTo.min = fromValue;
+
+          if (fromValue !== '' && customDateTo.value !== '' && customDateTo.value < fromValue) {
+            customDateTo.value = fromValue;
+          }
+        }
+
+        function parseDateInput(value) {
+          if (!value) {
+            return null;
+          }
+
+          const parsed = new Date(`${value}T00:00:00`);
+          return Number.isNaN(parsed.getTime()) ? null : parsed;
+        }
+
+        function resolveDateBounds() {
+          if (dateRangeSelect.value === 'custom') {
+            const start = parseDateInput(customDateFrom.value);
+            const end = parseDateInput(customDateTo.value);
+            return { start, end, custom: true };
+          }
+
+          const days = Number(dateRangeSelect.value || 30);
+          const end = new Date();
+          end.setHours(0, 0, 0, 0);
+          const start = new Date(end);
+          start.setDate(end.getDate() - (days - 1));
+
+          return { start, end, custom: false };
+        }
+
+        function isWithinBounds(dateStr, bounds) {
+          if (!dateStr) {
+            return false;
+          }
+
+          if (bounds.custom && (!bounds.start || !bounds.end)) {
+            return true;
+          }
+
+          const date = parseDateInput(dateStr);
+          if (!date || !bounds.start || !bounds.end) {
+            return false;
+          }
+
+          return date >= bounds.start && date <= bounds.end;
+        }
+
+        function getFilteredBorrowings(bounds) {
+          return reportBorrowings.filter((row) => isWithinBounds(row.createdAt, bounds));
+        }
+
+        function getFilteredReturns(bounds) {
+          return reportReturns.filter((row) => isWithinBounds(row.date, bounds));
+        }
+
+        function buildSummary(filteredBorrowings) {
+          const totalRequests = filteredBorrowings.length;
+          const approvedRequests = filteredBorrowings.filter((row) => row.status === 'approved').length;
+          const pendingRequests = filteredBorrowings.filter((row) => row.status === 'menunggu').length;
+          const totalRevenue = filteredBorrowings.reduce((sum, row) => sum + Number(row.amount || 0), 0);
+
+          return {
+            totalRequests,
+            approvedRequests,
+            pendingRequests,
+            totalRevenue
           };
         }
 
-        if (nextBtn) {
-          nextBtn.disabled = currentPage === totalPages;
-          nextBtn.onclick = () => {
-            if (currentPage < totalPages) {
-              if (type === 'borrowings') {
-                borrowingsCurrentPage++;
-                renderBorrowingsTable();
-              } else if (type === 'returns') {
-                returnsCurrentPage++;
-                renderReturnsTable();
-              }
-            }
-          };
-        }
-      }
+        function buildRevenueSeries(filteredBorrowings) {
+          const totals = new Map();
 
-      // ============================================
-      // FILTER & SEARCH
-      // ============================================
-
-      function filterBorrowings() {
-        const statusFilter = document.getElementById('approve-status-filter')?.value || '';
-        const dateFilter = document.getElementById('approve-date-filter')?.value || '';
-        const searchFilter = document.getElementById('approve-search')?.value.toLowerCase() || '';
-
-        filteredBorrowings = borrowings.filter(borrowing => {
-          let match = true;
-
-          if (statusFilter && borrowing.status !== statusFilter) match = false;
-
-          if (dateFilter) {
-            const borrowingDate = new Date(borrowing.startDate);
-            const now = new Date();
-            if (dateFilter === 'today') {
-              match = match && borrowingDate.toDateString() === now.toDateString();
-            } else if (dateFilter === 'week') {
-              const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-              match = match && borrowingDate >= weekAgo;
-            } else if (dateFilter === 'month') {
-              match = match && borrowingDate.getMonth() === now.getMonth() && borrowingDate.getFullYear() === now.getFullYear();
-            }
-          }
-
-          if (searchFilter) {
-            const searchMatch = borrowing.id.toLowerCase().includes(searchFilter) ||
-                              borrowing.customer.toLowerCase().includes(searchFilter) ||
-                              borrowing.equipment.toLowerCase().includes(searchFilter);
-            match = match && searchMatch;
-          }
-
-          return match;
-        });
-
-        borrowingsCurrentPage = 1;
-        renderBorrowingsTable();
-      }
-
-      function filterReturns() {
-        const statusFilter = document.getElementById('returns-status-filter')?.value || '';
-        const searchFilter = document.getElementById('returns-search')?.value.toLowerCase() || '';
-
-        filteredReturns = returns.filter(returnItem => {
-          let match = true;
-
-          if (statusFilter && returnItem.status !== statusFilter) match = false;
-
-          if (searchFilter) {
-            const searchMatch = returnItem.id.toLowerCase().includes(searchFilter) ||
-                              returnItem.customer.toLowerCase().includes(searchFilter) ||
-                              returnItem.equipment.toLowerCase().includes(searchFilter);
-            match = match && searchMatch;
-          }
-
-          return match;
-        });
-
-        returnsCurrentPage = 1;
-        renderReturnsTable();
-      }
-
-      // Add event listeners for filters
-      document.addEventListener('DOMContentLoaded', () => {
-        // Borrowings filters
-        const approveStatusFilter = document.getElementById('approve-status-filter');
-        const approveDateFilter = document.getElementById('approve-date-filter');
-        const approveSearch = document.getElementById('approve-search');
-        const approveFilterBtn = document.getElementById('approve-filter-btn');
-        const approveFilterDropdown = document.getElementById('approve-filter-dropdown');
-
-        if (approveStatusFilter) approveStatusFilter.addEventListener('change', filterBorrowings);
-        if (approveDateFilter) approveDateFilter.addEventListener('change', filterBorrowings);
-        if (approveSearch) approveSearch.addEventListener('input', filterBorrowings);
-
-        if (approveFilterBtn && approveFilterDropdown) {
-          approveFilterBtn.addEventListener('click', () => {
-            approveFilterDropdown.classList.toggle('hidden');
+          filteredBorrowings.forEach((row) => {
+            const key = row.createdAt;
+            totals.set(key, (totals.get(key) || 0) + Number(row.amount || 0));
           });
+
+          const labels = Array.from(totals.keys()).sort();
+          const values = labels.map((label) => totals.get(label));
+
+          return labels.length > 0
+            ? { labels, values }
+            : { labels: ['No data'], values: [0] };
         }
 
-        // Returns filters
-        const returnsStatusFilter = document.getElementById('returns-status-filter');
-        const returnsSearch = document.getElementById('returns-search');
-        const returnsFilterBtn = document.getElementById('returns-filter-btn');
-        const returnsFilterDropdown = document.getElementById('returns-filter-dropdown');
+        function buildCategorySeries(filteredBorrowings) {
+          const counts = new Map();
 
-        if (returnsStatusFilter) returnsStatusFilter.addEventListener('change', filterReturns);
-        if (returnsSearch) returnsSearch.addEventListener('input', filterReturns);
-
-        if (returnsFilterBtn && returnsFilterDropdown) {
-          returnsFilterBtn.addEventListener('click', () => {
-            returnsFilterDropdown.classList.toggle('hidden');
+          filteredBorrowings.forEach((row) => {
+            const key = formatCategory(row.category);
+            counts.set(key, (counts.get(key) || 0) + 1);
           });
+
+          const labels = Array.from(counts.keys());
+          const values = labels.map((label) => counts.get(label));
+
+          return labels.length > 0
+            ? { labels, values }
+            : { labels: ['No data'], values: [1] };
         }
 
-        // Close filter dropdowns when clicking outside
-        document.addEventListener('click', (e) => {
-          if (approveFilterDropdown && !approveFilterBtn.contains(e.target) && !approveFilterDropdown.contains(e.target)) {
-            approveFilterDropdown.classList.add('hidden');
-          }
-          if (returnsFilterDropdown && !returnsFilterBtn.contains(e.target) && !returnsFilterDropdown.contains(e.target)) {
-            returnsFilterDropdown.classList.add('hidden');
-          }
-        });
-      });
+        function buildTopEquipmentSeries(filteredBorrowings) {
+          const counts = new Map();
 
-      // ============================================
-      // REPORTS & ANALYTICS
-      // ============================================
+          filteredBorrowings.forEach((row) => {
+            const key = row.equipment;
+            counts.set(key, (counts.get(key) || 0) + 1);
+          });
 
-      let mainChart = null;
-      let categoryChart = null;
-      let topEquipmentChart = null;
+          const sorted = Array.from(counts.entries()).sort((a, b) => b[1] - a[1]).slice(0, 5);
+          const labels = sorted.map(([label]) => label);
+          const values = sorted.map(([, value]) => value);
 
-      // Sample report data (30 days)
-      const revenueData = <?= $revenue_json ?>;
-
-      const userGrowthData = <?= $user_growth_json ?>;
-
-      const inventoryData = <?= $inventory_json ?>;
-
-      const transactionVolumeData = <?= $transaction_json ?>;
-
-      const topEquipmentData = <?= $top_equipment_json ?>;
-
-      const reportSummaryData = <?= $staff_report_summary_json ?>;
-
-      const reportTableData = <?= $staff_report_tables_json ?>;
-
-      // Generate report based on type and date range
-      function generateReport() {
-        const reportType = document.getElementById('report-type').value;
-        const dateRange = document.getElementById('report-date-range').value;
-        
-        // Update summary stats based on report type
-        updateSummaryStats(reportType);
-        
-        // Update charts
-        updateCharts(reportType);
-        
-        // Update data table
-        updateReportTable(reportType);
-        
-        // Show success notification (could be enhanced with toast)
-        console.log(`Report generated: ${reportType}, Date range: ${dateRange}`);
-      }
-
-      // Update summary statistics
-      function updateSummaryStats(reportType) {
-        const selectedStats = reportSummaryData[reportType] || reportSummaryData.borrowings;
-        const changeClass = selectedStats.change.class.includes('text-red-400') ? 'text-red-400' : (selectedStats.change.class.includes('text-neutral-400') ? 'text-neutral-400' : 'text-green-400');
-        const totalTransactionsLabel = document.getElementById('report-total-transactions')?.previousElementSibling;
-
-        // Update based on report type
-        if (reportType === 'revenue') {
-          if (totalTransactionsLabel) totalTransactionsLabel.textContent = 'Total Requests';
-          document.getElementById('report-total-revenue').textContent = selectedStats.total;
-          document.getElementById('report-total-revenue').nextElementSibling.textContent = selectedStats.change.text;
-          document.getElementById('report-total-revenue').nextElementSibling.className = `text-xs ${changeClass} mt-2`;
-        } else if (reportType === 'borrowings') {
-          if (totalTransactionsLabel) totalTransactionsLabel.textContent = 'Total Requests';
-          document.getElementById('report-total-transactions').textContent = selectedStats.total;
-          document.getElementById('report-total-transactions').nextElementSibling.textContent = selectedStats.change.text;
-          document.getElementById('report-total-transactions').nextElementSibling.className = `text-xs ${changeClass} mt-2`;
-        } else if (reportType === 'returns') {
-          if (totalTransactionsLabel) totalTransactionsLabel.textContent = 'Total Returns';
-          document.getElementById('report-total-transactions').textContent = selectedStats.total;
-          document.getElementById('report-total-transactions').nextElementSibling.textContent = selectedStats.change.text;
-          document.getElementById('report-total-transactions').nextElementSibling.className = `text-xs ${changeClass} mt-2`;
-        } else if (reportType === 'inventory') {
-          if (totalTransactionsLabel) totalTransactionsLabel.textContent = 'Inventory Items';
-          document.getElementById('report-total-transactions').textContent = selectedStats.total;
-          document.getElementById('report-total-transactions').nextElementSibling.textContent = selectedStats.change.text;
-          document.getElementById('report-total-transactions').nextElementSibling.className = `text-xs ${changeClass} mt-2`;
+          return labels.length > 0
+            ? { labels, values }
+            : { labels: ['No data'], values: [0] };
         }
 
-        document.getElementById('report-approval-rate').textContent = '<?= (int) $staff_summary['approval_rate'] ?>%';
-        document.getElementById('report-return-rate').textContent = '<?= (int) $staff_summary['return_rate'] ?>%';
-      }
-
-      // Update charts based on report type
-      function updateCharts(reportType) {
-        // Destroy existing charts if they exist
-        if (mainChart) mainChart.destroy();
-        if (categoryChart) categoryChart.destroy();
-        if (topEquipmentChart) topEquipmentChart.destroy();
-
-        // Main chart (line chart)
-        const mainCtx = document.getElementById('mainChart');
-        if (mainCtx) {
-          let mainData, mainLabel;
-
-          switch(reportType) {
-            case 'revenue':
-              mainData = revenueData.values;
-              mainLabel = 'Revenue ($)';
-              break;
-            case 'returns':
-              mainData = userGrowthData.values;
-              mainLabel = 'Returns';
-              break;
-            case 'borrowings':
-              mainData = transactionVolumeData.values;
-              mainLabel = 'Requests';
-              break;
-            case 'inventory':
-              mainData = inventoryData.values;
-              mainLabel = 'Items';
-              break;
-            default:
-              mainData = transactionVolumeData.values;
-              mainLabel = 'Requests';
+        function buildTableRows(primarySection, filteredBorrowings, filteredReturns) {
+          if (primarySection === 'returns') {
+            return filteredReturns.slice(0, 8).map((row) => ({
+              date: row.date || '-',
+              metric: row.equipment || 'Pengembalian',
+              value: row.id || '-',
+              change: statusLabel(row.status),
+              positive: row.status !== 'overdue'
+            }));
           }
 
-          mainChart = new Chart(mainCtx, {
-            type: 'line',
-            data: {
-              labels: reportType === 'inventory'
-                ? inventoryData.labels
-                : (reportType === 'returns'
-                    ? userGrowthData.labels
-                    : (reportType === 'borrowings' ? transactionVolumeData.labels : revenueData.labels)),
-              datasets: [{
-                label: mainLabel,
-                data: mainData,
-                borderColor: '#ffffff',
-                backgroundColor: 'rgba(255, 255, 255, 0.1)',
-                fill: true,
-                tension: 0.4,
-                pointBackgroundColor: '#ffffff',
-                pointBorderColor: '#000000',
-                pointBorderWidth: 2,
-                pointRadius: 4,
-                pointHoverRadius: 6
-              }]
-            },
-            options: {
-              responsive: true,
-              maintainAspectRatio: false,
-              plugins: {
-                legend: {
-                  display: false
-                }
-              },
-              scales: {
-                x: {
-                  grid: {
-                    color: 'rgba(255, 255, 255, 0.1)'
-                  },
-                  ticks: {
-                    color: '#9ca3af'
-                  }
-                },
-                y: {
-                  grid: {
-                    color: 'rgba(255, 255, 255, 0.1)'
-                  },
-                  ticks: {
-                    color: '#9ca3af'
-                  }
-                }
-              }
-            }
-          });
+          if (primarySection === 'stock') {
+            return reportInventory.slice(0, 8).map((row) => ({
+              date: 'Live',
+              metric: row.name || 'Produk',
+              value: `${row.available || 0}/${row.total || 0} unit`,
+              change: formatCategory(row.category),
+              positive: true
+            }));
+          }
+
+          return filteredBorrowings.slice(0, 8).map((row) => ({
+            date: row.createdAt || '-',
+            metric: row.equipment || 'Peminjaman',
+            value: row.id || '-',
+            change: statusLabel(row.status),
+            positive: row.status === 'approved'
+          }));
         }
 
-        // Category distribution chart (doughnut)
-        const categoryCtx = document.getElementById('categoryChart');
-        if (categoryCtx) {
-          categoryChart = new Chart(categoryCtx, {
-            type: 'doughnut',
-            data: {
-              labels: inventoryData.labels,
-              datasets: [{
-                data: inventoryData.values,
-                backgroundColor: [
-                  'rgba(59, 130, 246, 0.8)',   // blue
-                  'rgba(34, 197, 94, 0.8)',    // green
-                  'rgba(168, 85, 247, 0.8)',   // purple
-                  'rgba(251, 191, 36, 0.8)',   // yellow
-                  'rgba(239, 68, 68, 0.8)',    // red
-                  'rgba(99, 102, 241, 0.8)',   // indigo
-                  'rgba(249, 115, 22, 0.8)',   // orange
-                  'rgba(20, 184, 166, 0.8)'    // teal
-                ],
-                borderColor: '#000000',
-                borderWidth: 2
-              }]
-            },
-            options: {
-              responsive: true,
-              maintainAspectRatio: false,
-              plugins: {
-                legend: {
-                  position: 'right',
-                  labels: {
-                    color: '#9ca3af',
-                    padding: 15,
-                    font: {
-                      size: 11
-                    }
-                  }
-                }
-              }
-            }
-          });
+        function renderSummary(summary) {
+          document.getElementById('report-total-requests').textContent = String(summary.totalRequests);
+          document.getElementById('report-total-approved').textContent = String(summary.approvedRequests);
+          document.getElementById('report-total-pending').textContent = String(summary.pendingRequests);
+          document.getElementById('report-total-revenue').textContent = formatCurrency(summary.totalRevenue);
         }
 
-        // Top equipment chart (horizontal bar)
-        const topEquipmentCtx = document.getElementById('topEquipmentChart');
-        if (topEquipmentCtx) {
-          topEquipmentChart = new Chart(topEquipmentCtx, {
-            type: 'bar',
-            data: {
-              labels: topEquipmentData.labels,
-              datasets: [{
-                label: 'Rentals',
-                data: topEquipmentData.values,
-                backgroundColor: 'rgba(59, 130, 246, 0.8)',
-                borderColor: 'rgba(59, 130, 246, 1)',
-                borderWidth: 1
-              }]
-            },
-            options: {
-              responsive: true,
-              maintainAspectRatio: false,
-              indexAxis: 'y',
-              plugins: {
-                legend: {
-                  display: false
-                }
-              },
-              scales: {
-                x: {
-                  grid: {
-                    color: 'rgba(255, 255, 255, 0.1)'
-                  },
-                  ticks: {
-                    color: '#9ca3af'
-                  }
-                },
-                y: {
-                  grid: {
-                    display: false
-                  },
-                  ticks: {
-                    color: '#9ca3af'
-                  }
-                }
-              }
-            }
-          });
-        }
-      }
+        function renderTable(rows) {
+          if (!reportTableBody) {
+            return;
+          }
 
-      // Update report data table
-      function updateReportTable(reportType) {
-        const tbody = document.getElementById('report-table-body');
-        if (!tbody) return;
-        
-        const tableData = reportTableData[reportType] || reportTableData.revenue || [];
-
-        tbody.innerHTML = tableData.map(row => `
-          <tr class="table-row-hover transition-colors">
-            <td class="px-6 py-4 text-sm text-neutral-300">${row.date}</td>
-            <td class="px-6 py-4 text-sm text-neutral-300">${row.metric}</td>
-            <td class="px-6 py-4 text-sm font-semibold text-white">${row.value}</td>
-            <td class="px-6 py-4">
-              <span class="text-sm ${row.positive ? 'text-green-400' : 'text-red-400'}">
-                ${row.change}
-              </span>
-            </td>
-          </tr>
-        `).join('');
-      }
-
-      // Export report functionality
-      function exportReport(format) {
-        const reportType = document.getElementById('report-type').value;
-        const dateRange = document.getElementById('report-date-range').value || 'all';
-
-        if (format === 'csv') {
-          const rows = [
-            ['Report Type', reportType],
-            ['Date Range', dateRange],
-            [],
-            ['Borrowing ID', 'Customer', 'Equipment', 'Status', 'Start Date', 'End Date'],
-            ...borrowings.map(item => [item.id, item.customer, item.equipment, item.status, item.startDate, item.endDate]),
-            [],
-            ['Return ID', 'Customer', 'Equipment', 'Status', 'Return Date'],
-            ...returns.map(item => [item.id, item.customer, item.equipment, item.status, item.returnDate])
-          ];
-          const csvContent = 'data:text/csv;charset=utf-8,' + rows.map(row => row.map(value => `"${String(value ?? '').replace(/"/g, '""')}"`).join(',')).join('\n');
-          const encodedUri = encodeURI(csvContent);
-          const link = document.createElement("a");
-          link.setAttribute("href", encodedUri);
-          link.setAttribute("download", `report-${reportType}-${new Date().toISOString().split('T')[0]}.csv`);
-          document.body.appendChild(link);
-          link.click();
-          document.body.removeChild(link);
-          return;
-        }
-
-        const printWindow = window.open('', '_blank', 'width=960,height=720');
-        if (!printWindow) return;
-        printWindow.document.write(`
-          <html>
-            <head><title>LensCraft Staff Report</title></head>
-            <body style="font-family: Inter, Arial, sans-serif; padding: 24px;">
-              <h1>LensCraft Staff Report</h1>
-              <p><strong>Type:</strong> ${reportType}</p>
-              <p><strong>Date Range:</strong> ${dateRange}</p>
-              <h2>Borrowings</h2>
-              <pre>${borrowings.map(item => `${item.id} | ${item.customer} | ${item.equipment} | ${item.status}`).join('\n')}</pre>
-              <h2>Returns</h2>
-              <pre>${returns.map(item => `${item.id} | ${item.customer} | ${item.equipment} | ${item.status}`).join('\n')}</pre>
-            </body>
-          </html>
-        `);
-        printWindow.document.close();
-        printWindow.focus();
-        printWindow.print();
-      }
-
-      // Toggle custom date range visibility
-      document.getElementById('report-date-range').addEventListener('change', function() {
-        const customRange = document.getElementById('custom-date-range');
-        if (this.value === 'custom') {
-          customRange.classList.remove('hidden');
-          customRange.classList.add('flex');
-        } else {
-          customRange.classList.add('hidden');
-          customRange.classList.remove('flex');
-        }
-      });
-
-    </script>
-  <script>
-      function staffDetailRows(rows) {
-        return `
-          <div class="modal-detail-list">
-            ${rows.map((row) => `
-              <div class="modal-detail-row">
-                <div class="modal-detail-label">${row.label}</div>
-                <div class="modal-detail-value">${row.value}</div>
-              </div>
-            `).join('')}
-          </div>
-        `;
-      }
-
-                  function openStaffDetailModal(config) {
-        const badges = (config.badges || []).map((badge) => `<span class="badge badge-info flex-shrink-0 text-xs">${badge}</span>`).join('');
-        const noteHtml = config.note ? `
-          <div class="bg-neutral-800/50 border border-neutral-700 rounded-xl p-3 sm:p-4">
-            <h5 class="text-xs sm:text-sm font-semibold text-neutral-300 mb-2 sm:mb-3">Catatan</h5>
-            <p class="text-xs sm:text-sm text-neutral-400 leading-relaxed">${config.note}</p>
-          </div>
-        ` : '';
-        document.getElementById('staff-detail-modal-title').textContent = config.dialogTitle || 'Detail';
-        document.getElementById('staff-detail-modal-subtitle').textContent = config.kicker || '';
-        document.getElementById('staff-detail-modal-body').innerHTML = `
-          <div class="space-y-4">
-            <div class="flex gap-4">
-              <div class="w-20 h-20 sm:w-24 sm:h-24 bg-neutral-800 rounded-lg overflow-hidden border border-neutral-700 flex-shrink-0">
-                <img src="${config.image || '../images/gear-placeholder.svg'}" alt="${config.title || 'Detail'}" class="w-full h-full object-cover" onerror="this.src='../images/gear-placeholder.svg'">
-              </div>
-              <div class="flex-1 min-w-0">
-                <div class="flex items-start justify-between gap-2 mb-1">
-                  <div>
-                    <h4 class="text-base sm:text-lg font-semibold text-white mb-1">${config.title || 'Item'}</h4>
-                    ${config.subtitle ? `<p class="text-xs sm:text-sm text-neutral-400">${config.subtitle}</p>` : ''}
+          if (rows.length === 0) {
+            reportTableBody.innerHTML = `
+              <tr>
+                <td colspan="4" class="px-6 py-10">
+                  <div class="flex flex-col items-center justify-center gap-4 rounded-2xl border border-dashed border-neutral-700 bg-neutral-950/60 px-6 py-10 text-center">
+                    <div class="flex h-14 w-14 items-center justify-center rounded-2xl border border-neutral-700 bg-neutral-900 text-neutral-300">
+                      <svg class="h-7 w-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M4 7h16m-2 0v10a2 2 0 01-2 2H8a2 2 0 01-2-2V7m3-3h6a2 2 0 012 2v1H7V6a2 2 0 012-2z" />
+                      </svg>
+                    </div>
+                    <div class="space-y-2">
+                      <p class="text-base font-semibold text-white">Belum ada data laporan</p>
+                      <p class="mx-auto max-w-md text-sm leading-6 text-neutral-400">Coba ubah filter laporan atau pilih rentang tanggal lain.</p>
+                    </div>
                   </div>
-                  ${badges ? `<div class="flex flex-wrap justify-end gap-2">${badges}</div>` : ''}
-                </div>
-              </div>
-            </div>
-            <div class="bg-neutral-800/50 border border-neutral-700 rounded-xl p-3 sm:p-4">
-              <div class="space-y-2 text-xs sm:text-sm">
-                ${(config.rows || []).map((row) => `
-                  <div class="flex justify-between gap-4">
-                    <span class="text-neutral-400">${row.label}</span>
-                    <span class="text-white text-right">${row.value}</span>
-                  </div>
-                `).join('')}
-              </div>
-            </div>
-            ${noteHtml}
-          </div>
-        `;
-        const modal = document.getElementById('staff-detail-modal');
-        const modalContent = document.getElementById('staff-detail-modal-content');
-        modal.classList.remove('hidden');
-        void modal.offsetWidth;
-        modal.classList.remove('opacity-0');
-        modalContent.classList.remove('opacity-0', 'scale-95');
-        modalContent.classList.add('scale-100');
-      }
+                </td>
+              </tr>
+            `;
+            return;
+          }
 
-      function closeStaffDetailModal() {
-        const modal = document.getElementById('staff-detail-modal');
-        const modalContent = document.getElementById('staff-detail-modal-content');
-        modal.classList.add('opacity-0');
-        modalContent.classList.remove('scale-100');
-        modalContent.classList.add('scale-95', 'opacity-0');
-        setTimeout(() => {
-          modal.classList.add('hidden');
-        }, 200);
-      }
-
-
-
-      function openStaffActionModal(title, message, onConfirm) {
-        const confirmBtn = document.getElementById('staff-action-confirm-btn');
-        const iconWrap = document.getElementById('staff-action-modal-icon');
-        const eyebrow = document.querySelector('.action-sheet-eyebrow');
-        document.getElementById('staff-action-modal-title').textContent = title;
-        document.getElementById('staff-action-modal-message').textContent = message;
-        if (/tolak|rusak/i.test(title)) {
-          if (eyebrow) eyebrow.textContent = 'High impact action';
-          confirmBtn.textContent = 'Ya, lanjutkan';
-          confirmBtn.className = 'flex-1 px-4 py-3 bg-red-500 text-white font-semibold rounded-lg hover:bg-red-400 transition-colors';
-          iconWrap.innerHTML = `<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-7.938 4h15.876c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>`;
-        } else {
-          if (eyebrow) eyebrow.textContent = 'Action confirmation';
-          confirmBtn.textContent = 'Konfirmasi';
-          confirmBtn.className = 'flex-1 px-4 py-3 bg-white text-black font-semibold rounded-lg hover:bg-neutral-200 transition-colors';
-          iconWrap.innerHTML = `<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>`;
+          reportTableBody.innerHTML = rows.map((row) => `
+            <tr class="table-row-hover transition-colors">
+              <td class="px-6 py-4 text-sm text-neutral-300">${escapeHtml(row.date)}</td>
+              <td class="px-6 py-4 text-sm text-neutral-300">${escapeHtml(row.metric)}</td>
+              <td class="px-6 py-4 text-sm font-semibold text-white">${escapeHtml(row.value)}</td>
+              <td class="px-6 py-4">
+                <span class="text-sm ${row.positive ? 'text-green-400' : 'text-red-400'}">
+                  ${escapeHtml(row.change)}
+                </span>
+              </td>
+            </tr>
+          `).join('');
         }
-        confirmBtn.onclick = function () {
-          closeStaffActionModal();
-          onConfirm();
-        };
-        document.getElementById('staff-action-modal').classList.remove('hidden');
-      }
 
-      function closeStaffActionModal() {
-        document.getElementById('staff-action-modal').classList.add('hidden');
-      }
+        function destroyCharts() {
+          if (mainChart) mainChart.destroy();
+          if (categoryChart) categoryChart.destroy();
+          if (topEquipmentChart) topEquipmentChart.destroy();
+        }
 
-      function viewBorrowing(id) {
-        const borrowing = borrowings.find((entry) => entry.id === id);
-        if (!borrowing) return;
+        function renderCharts(filteredBorrowings) {
+          destroyCharts();
 
-        openStaffDetailModal({
-          dialogTitle: 'Detail Peminjaman',
-          kicker: 'Peminjaman',
-          title: escapeHtml(borrowing.equipment),
-          subtitle: `${escapeHtml(borrowing.brand || 'LensCraft')} • ${escapeHtml(capitalizeFirst(borrowing.category || 'equipment'))}`,
-          image: borrowing.image,
-          badges: [
-            `Status: ${capitalizeFirst(borrowing.status)}`,
-            `ID: ${escapeHtml(borrowing.id)}`
-          ],
-          rows: [
-            { label: 'Customer', value: escapeHtml(borrowing.customer) },
-            { label: 'Mulai', value: escapeHtml(formatDate(borrowing.startDate)) },
-            { label: 'Selesai', value: escapeHtml(formatDate(borrowing.endDate)) },
-            { label: 'Durasi', value: `${borrowing.days || 0} hari` },
-            { label: 'Total', value: `$${borrowing.amount}` }
-          ]
+          const revenueSeries = buildRevenueSeries(filteredBorrowings);
+          const categorySeries = buildCategorySeries(filteredBorrowings);
+          const topEquipmentSeries = buildTopEquipmentSeries(filteredBorrowings);
+
+          const mainCtx = document.getElementById('mainChart');
+          if (mainCtx) {
+            mainChart = new Chart(mainCtx, {
+              type: 'line',
+              data: {
+                labels: revenueSeries.labels,
+                datasets: [{
+                  label: 'Pendapatan (Rp)',
+                  data: revenueSeries.values,
+                  borderColor: '#ffffff',
+                  backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                  fill: true,
+                  tension: 0.35,
+                  pointBackgroundColor: '#ffffff',
+                  pointBorderColor: '#000000',
+                  pointBorderWidth: 2,
+                  pointRadius: 4,
+                  pointHoverRadius: 6
+                }]
+              },
+              options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: {
+                  x: { grid: { color: 'rgba(255,255,255,0.08)' }, ticks: { color: '#9ca3af' } },
+                  y: { grid: { color: 'rgba(255,255,255,0.08)' }, ticks: { color: '#9ca3af' } }
+                }
+              }
+            });
+          }
+
+          const categoryCtx = document.getElementById('categoryChart');
+          if (categoryCtx) {
+            categoryChart = new Chart(categoryCtx, {
+              type: 'doughnut',
+              data: {
+                labels: categorySeries.labels,
+                datasets: [{
+                  data: categorySeries.values,
+                  backgroundColor: [
+                    'rgba(59, 130, 246, 0.8)',
+                    'rgba(34, 197, 94, 0.8)',
+                    'rgba(168, 85, 247, 0.8)',
+                    'rgba(251, 191, 36, 0.8)',
+                    'rgba(239, 68, 68, 0.8)'
+                  ],
+                  borderColor: '#000000',
+                  borderWidth: 2
+                }]
+              },
+              options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                  legend: {
+                    position: 'right',
+                    labels: { color: '#9ca3af', padding: 14, font: { size: 11 } }
+                  }
+                }
+              }
+            });
+          }
+
+          const topEquipmentCtx = document.getElementById('topEquipmentChart');
+          if (topEquipmentCtx) {
+            topEquipmentChart = new Chart(topEquipmentCtx, {
+              type: 'bar',
+              data: {
+                labels: topEquipmentSeries.labels,
+                datasets: [{
+                  label: 'Rental',
+                  data: topEquipmentSeries.values,
+                  backgroundColor: 'rgba(59, 130, 246, 0.8)',
+                  borderColor: 'rgba(59, 130, 246, 1)',
+                  borderWidth: 1
+                }]
+              },
+              options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                indexAxis: 'y',
+                plugins: { legend: { display: false } },
+                scales: {
+                  x: { grid: { color: 'rgba(255,255,255,0.08)' }, ticks: { color: '#9ca3af' } },
+                  y: { grid: { display: false }, ticks: { color: '#9ca3af' } }
+                }
+              }
+            });
+          }
+        }
+
+        function renderReport() {
+          const bounds = resolveDateBounds();
+          const filteredBorrowings = getFilteredBorrowings(bounds);
+          const filteredReturns = getFilteredReturns(bounds);
+          const primarySection = getSelectedSections()[0] || 'stock';
+
+          renderSummary(buildSummary(filteredBorrowings));
+          renderCharts(filteredBorrowings);
+          renderTable(buildTableRows(primarySection, filteredBorrowings, filteredReturns));
+        }
+
+        dateRangeSelect.addEventListener('change', function () {
+          syncCustomDateRange();
+          syncCustomDateConstraints();
+          renderReport();
         });
-      }
 
-      function viewReturn(id) {
-        const returnItem = returns.find((entry) => entry.id === id);
-        if (!returnItem) return;
-
-        openStaffDetailModal({
-          dialogTitle: 'Detail Pengembalian',
-          kicker: 'Pengembalian',
-          title: escapeHtml(returnItem.equipment),
-          subtitle: `${escapeHtml(returnItem.brand || 'LensCraft')} • ${escapeHtml(capitalizeFirst(returnItem.category || 'equipment'))}`,
-          image: returnItem.image,
-          badges: [
-            `Status: ${capitalizeFirst(returnItem.status)}`,
-            `ID: ${escapeHtml(returnItem.id)}`
-          ],
-          rows: [
-            { label: 'Customer', value: escapeHtml(returnItem.customer) },
-            { label: 'Tanggal', value: escapeHtml(formatDate(returnItem.returnDate)) }
-          ],
-          note: escapeHtml(returnItem.notes || 'Tidak ada catatan tambahan.')
-        });
-      }
-
-      function approveBorrowing(id) {
-        openStaffActionModal('Setujui Peminjaman', `Setujui peminjaman ${id}?`, function () {
-          postStaffAction('../process/staff-peminjaman-approve.php', { rental_code: id });
-        });
-      }
-
-      function rejectBorrowing(id) {
-        openStaffActionModal('Tolak Peminjaman', `Tolak peminjaman ${id}?`, function () {
-          postStaffAction('../process/staff-peminjaman-reject.php', { rental_code: id });
-        });
-      }
-
-      function markReturned(id) {
-        openStaffActionModal('Konfirmasi Pengembalian', `Tandai pengembalian ${id} sebagai selesai?`, function () {
-          postStaffAction('../process/staff-pengembalian-konfirmasi.php', { return_code: id, status: 'completed' });
-        });
-      }
-      function postStaffAction(action, payload) {
-        const form = document.createElement('form');
-        form.method = 'POST';
-        form.action = action;
-        payload.csrf_token = <?= json_encode(csrf_token()) ?>;
-
-        Object.keys(payload).forEach(function (key) {
-          const input = document.createElement('input');
-          input.type = 'hidden';
-          input.name = key;
-          input.value = payload[key];
-          form.appendChild(input);
+        reportSectionInputs.forEach((input) => {
+          input.addEventListener('change', function () {
+            if (getSelectedSections().length === 0) {
+              this.checked = true;
+              return;
+            }
+            renderReport();
+          });
         });
 
-        document.body.appendChild(form);
-        form.submit();
-      }
+        customDateFrom.addEventListener('change', function () {
+          syncCustomDateConstraints();
+          renderReport();
+        });
+        customDateFrom.addEventListener('input', syncCustomDateConstraints);
+        customDateTo.addEventListener('change', function () {
+          syncCustomDateConstraints();
+          renderReport();
+        });
 
+        syncCustomDateRange();
+        syncCustomDateConstraints();
+        renderReport();
+      })();
     </script>
-    <script>
-document.addEventListener('DOMContentLoaded', function () {
-  if (typeof showSection === 'function') {
-    showSection('reports');
-  }
-  document.querySelectorAll('a.nav-item[href]').forEach(function (link) {
-    const active = link.getAttribute('href') === 'reports.php';
-    link.classList.toggle('nav-item-active', active);
-    link.classList.toggle('text-neutral-400', !active);
-    link.classList.toggle('text-white', active);
-  });
-});
-</script>
     <?= page_runtime_bundle($flash_script) ?>
   </body>
 </html>

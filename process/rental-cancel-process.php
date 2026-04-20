@@ -13,14 +13,14 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST' || !verify_csrf_request()) {
 
 $rental_code = (string) ($_POST['rental_code'] ?? '');
 $rental = find_rental_by_code_for_user($rental_code, (int) current_user()['id']);
-if (!$rental || !in_array((string) ($rental['status'] ?? ''), ['pending', 'upcoming', 'active'], true)) {
+if (!$rental || !in_array((string) ($rental['status'] ?? ''), ['menunggu', 'mendatang', 'aktif'], true)) {
     echo json_encode(['success' => false, 'message' => 'Rental tidak dapat dibatalkan.']);
     exit;
 }
 
-$saved = update_rental_status($rental_code, 'cancelled', [
+$saved = update_rental_status($rental_code, 'dibatalkan', [
     'cancelled_at' => date('Y-m-d H:i:s'),
-    'cancel_reason' => 'Cancelled by customer',
+    'cancel_reason' => 'Dibatalkan oleh pelanggan',
 ]);
 
 if (!$saved) {

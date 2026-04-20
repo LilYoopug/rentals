@@ -11,12 +11,12 @@ $saved = false;
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && verify_csrf_request() && $return_code !== '') {
     $saved = update_return_record($return_code, [
         'notes' => $_POST['notes'] ?? '',
-        'status' => ($_POST['status'] ?? 'completed') === 'pending' ? 'pending' : 'completed',
+        'status' => ($_POST['status'] ?? 'selesai') === 'menunggu' ? 'menunggu' : 'selesai',
         'processed_by' => current_user()['id'] ?? null,
     ]);
 } elseif ($_SERVER['REQUEST_METHOD'] === 'POST' && verify_csrf_request() && $rental_code !== '') {
     $saved = create_return_for_rental($rental_code, (int) (current_user()['id'] ?? 0), [
-        'status' => ($_POST['status'] ?? 'completed') === 'pending' ? 'pending' : 'completed',
+        'status' => ($_POST['status'] ?? 'selesai') === 'menunggu' ? 'menunggu' : 'selesai',
         'notes' => $_POST['notes'] ?? 'Returned through admin flow.',
     ]);
 }

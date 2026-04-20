@@ -20,7 +20,7 @@ curl -sS \
   -D "${headers_file}" \
   -o /dev/null \
   -X POST \
-  -d 'username=user&password=user123' \
+  -d 'username=pelanggan&password=user123' \
   "${TEST_BASE_URL}/process/login-process.php"
 
 location="$(awk 'tolower($1) == "location:" {print $2}' "${headers_file}" | tr -d '\r')"

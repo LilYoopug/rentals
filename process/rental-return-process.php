@@ -18,7 +18,11 @@ if ($rental_code === '') {
     exit;
 }
 
-if (!create_return_for_rental($rental_code, (int) current_user()['id'], ['expected_user_id' => (int) current_user()['id']])) {
+if (!create_return_for_rental($rental_code, (int) current_user()['id'], [
+    'expected_user_id' => (int) current_user()['id'],
+    'status' => 'menunggu',
+    'notes' => 'Pengembalian diajukan dan menunggu persetujuan petugas.',
+])) {
     echo json_encode(['success' => false, 'message' => 'Gagal memproses pengembalian.']);
     exit;
 }

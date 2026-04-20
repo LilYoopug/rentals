@@ -36,8 +36,8 @@ function create_user_record($data)
             trim((string) ($data['email'] ?? '')),
             trim((string) ($data['username'] ?? '')),
             (string) ($data['password'] ?? password_hash('user123', PASSWORD_DEFAULT)),
-            trim((string) ($data['role'] ?? 'user')),
-            trim((string) ($data['status'] ?? 'active')),
+            normalize_role_value((string) ($data['role'] ?? 'pelanggan')),
+            normalize_user_status_value((string) ($data['status'] ?? 'aktif')),
             trim((string) ($data['avatar_path'] ?? '')),
         ]
     );
@@ -55,8 +55,8 @@ function update_user_record($id, $data)
             trim((string) ($data['fullname'] ?? '')),
             trim((string) ($data['email'] ?? '')),
             trim((string) ($data['username'] ?? '')),
-            trim((string) ($data['role'] ?? 'user')),
-            trim((string) ($data['status'] ?? 'active')),
+            normalize_role_value((string) ($data['role'] ?? 'pelanggan')),
+            normalize_user_status_value((string) ($data['status'] ?? 'aktif')),
             trim((string) ($data['avatar_path'] ?? '')),
             (int) $id,
         ]

@@ -1,12 +1,15 @@
 <?php
 require_once __DIR__ . '/includes/flash.php';
+require_once __DIR__ . '/data/products-data.php';
+
+$popular_products = array_slice(get_all_products(), 0, 3);
 ?>
 <!doctype html>
-<html lang="en">
+<html lang="id">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>LensCraft - Premium Camera Rentals</title>
+    <title>LensCraft - Rental Kamera Profesional</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link
       href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:wght@700&display=swap"
@@ -316,24 +319,27 @@ require_once __DIR__ . '/includes/flash.php';
           </p>
         </div>
         <div class="grid md:grid-cols-3 gap-8">
+          <?php foreach ($popular_products as $product): ?>
           <div
             class="bg-neutral-900 border border-neutral-800 rounded-2xl overflow-hidden card-hover"
           >
             <img
-                  src="images/gear-placeholder.svg"
+              src="<?= e((string) ($product['image'] ?? 'images/gear-placeholder.svg')) ?>"
+              alt="<?= e((string) ($product['name'] ?? 'Popular gear')) ?>"
               class="w-full h-48 object-cover"
+              onerror="this.src='images/gear-placeholder.svg'"
             />
             <div class="p-6">
               <div class="text-xs font-medium text-neutral-500 mb-1">
-                Mirrorless
+                <?= e(ucfirst((string) ($product['category'] ?? 'gear'))) ?>
               </div>
-              <h3 class="text-lg font-semibold mb-2">Sony Alpha A7 IV</h3>
+              <h3 class="text-lg font-semibold mb-2"><?= e((string) ($product['name'] ?? 'LensCraft Gear')) ?></h3>
               <div class="flex justify-between items-center">
                 <span class="text-xl"
-                  >$99<span class="text-sm text-neutral-500">/day</span></span
+                  ><?= e(format_currency((float) ($product['price'] ?? 0))) ?><span class="text-sm text-neutral-500">/day</span></span
                 >
                 <a
-                  href="products.php"
+                  href="product-detail.php?id=<?= e((string) ($product['id'] ?? 0)) ?>"
                   class="px-4 py-2 bg-neutral-800 text-sm rounded hover:bg-neutral-700 inline-block"
                 >
                   Lihat
@@ -341,56 +347,7 @@ require_once __DIR__ . '/includes/flash.php';
               </div>
             </div>
           </div>
-          <div
-            class="bg-neutral-900 border border-neutral-800 rounded-2xl overflow-hidden card-hover"
-          >
-            <img
-                  src="images/gear-placeholder.svg"
-              class="w-full h-48 object-cover"
-            />
-            <div class="p-6">
-              <div class="text-xs font-medium text-neutral-500 mb-1">
-                Mirrorless
-              </div>
-              <h3 class="text-lg font-semibold mb-2">Canon EOS R5</h3>
-              <div class="flex justify-between items-center">
-                <span class="text-xl"
-                  >$129<span class="text-sm text-neutral-500">/day</span></span
-                >
-                <a
-                  href="products.php"
-                  class="px-4 py-2 bg-neutral-800 text-sm rounded hover:bg-neutral-700 inline-block"
-                >
-                  Lihat
-                </a>
-              </div>
-            </div>
-          </div>
-          <div
-            class="bg-neutral-900 border border-neutral-800 rounded-2xl overflow-hidden card-hover"
-          >
-            <img
-                  src="images/gear-placeholder.svg"
-              class="w-full h-48 object-cover"
-            />
-            <div class="p-6">
-              <div class="text-xs font-medium text-neutral-500 mb-1">
-                Mirrorless
-              </div>
-              <h3 class="text-lg font-semibold mb-2">Fujifilm X-T5</h3>
-              <div class="flex justify-between items-center">
-                <span class="text-xl"
-                  >$79<span class="text-sm text-neutral-500">/day</span></span
-                >
-                <a
-                  href="products.php"
-                  class="px-4 py-2 bg-neutral-800 text-sm rounded hover:bg-neutral-700 inline-block"
-                >
-                  Lihat
-                </a>
-              </div>
-            </div>
-          </div>
+          <?php endforeach; ?>
         </div>
       </div>
     </section>
@@ -457,33 +414,35 @@ require_once __DIR__ . '/includes/flash.php';
       <div class="max-w-7xl mx-auto">
         <div class="text-center mb-12">
           <h2 class="text-3xl font-serif mb-3">
-            What <span class="text-neutral-300">Photographers Say</span>
+            Apa Kata <span class="text-neutral-300">Penyewa Kami</span>
           </h2>
         </div>
         <div class="grid md:grid-cols-3 gap-8">
           <div class="bg-neutral-900 border border-neutral-800 p-8 rounded-2xl">
             <p class="text-neutral-300 italic mb-4">
-              "LensCraft saved my wedding shoot when my camera died. Next-day
-              delivery and flawless gear."
+              "LensCraft menyelamatkan sesi wedding saya saat kamera utama
+              mendadak bermasalah. Pengirimannya cepat dan alatnya benar-benar
+              siap pakai."
             </p>
             <div class="font-semibold">Sarah K.</div>
-            <div class="text-sm text-neutral-500">Event Photographer</div>
+            <div class="text-sm text-neutral-500">Fotografer Acara</div>
           </div>
           <div class="bg-neutral-900 border border-neutral-800 p-8 rounded-2xl">
             <p class="text-neutral-300 italic mb-4">
-              "Best rental service I've used. The insurance gave me total peace
-              of mind."
+              "Layanan rental terbaik yang pernah saya pakai. Prosesnya rapi,
+              alatnya terawat, dan saya jadi jauh lebih tenang saat produksi."
             </p>
             <div class="font-semibold">Mike R.</div>
-            <div class="text-sm text-neutral-500">Commercial Shooter</div>
+            <div class="text-sm text-neutral-500">Videografer Komersial</div>
           </div>
           <div class="bg-neutral-900 border border-neutral-800 p-8 rounded-2xl">
             <p class="text-neutral-300 italic mb-4">
-              "Affordable, reliable, and amazing gear selection. My go-to for
-              any project."
+              "Harganya masuk akal, pilihannya lengkap, dan selalu bisa
+              diandalkan. Jadi tempat pertama yang saya cek untuk setiap
+              proyek."
             </p>
             <div class="font-semibold">Jenna L.</div>
-            <div class="text-sm text-neutral-500">Content Creator</div>
+            <div class="text-sm text-neutral-500">Kreator Konten</div>
           </div>
         </div>
       </div>

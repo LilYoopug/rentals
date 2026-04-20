@@ -9,7 +9,7 @@ trap 'rm -f "$cookie_file" "$body_file"' EXIT
 curl -sS \
   -c "$cookie_file" \
   -X POST \
-  -d 'username=user&password=user123' \
+  -d 'username=pelanggan&password=user123' \
   "$base_url/process/login-process.php" \
   -o /dev/null
 
@@ -23,7 +23,7 @@ if ! grep -q 'title="Logout"' "$body_file"; then
   exit 1
 fi
 
-if ! grep -q 'Logged in' "$body_file"; then
+if ! grep -q 'Sudah masuk' "$body_file"; then
   echo 'Expected shared product detail page to show logged-in account state'
   exit 1
 fi

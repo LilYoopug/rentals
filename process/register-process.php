@@ -29,7 +29,7 @@ if (find_user_by_email($email) || find_user_by_login($username)) {
 }
 
 if (create_customer_user($_POST)) {
-    add_activity_log(null, $fullname, 'user', 'registration', 'Membuat akun customer baru.');
+    add_activity_log(null, $fullname, 'pelanggan', 'registration', 'Membuat akun pelanggan baru.');
     set_flash('success', 'Akun berhasil dibuat dan menunggu persetujuan admin.');
     redirect_to('login.php');
 }

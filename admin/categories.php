@@ -8,6 +8,13 @@ require_once __DIR__ . '/../data/returns-data.php';
 require_once __DIR__ . '/../data/activity-data.php';
 require_once __DIR__ . '/../includes/flash.php';
 
+$admin_active_section = 'categories';
+$admin_active_href = 'categories.php';
+$admin_active_section_selector = preg_replace('/[^a-z0-9_-]/i', '', $admin_active_section) ?: 'overview';
+
+$admin_session_user = current_user();
+$admin_avatar_url = !empty($admin_session_user['avatar_path']) ? admin_media_path((string) $admin_session_user['avatar_path']) : '';
+
 function dashboard_percent_change($current, $previous)
 {
     if ($previous <= 0) {
@@ -89,13 +96,15 @@ function admin_media_path($path)
 
 function dashboard_transaction_badge($status)
 {
+    $status = normalize_rental_status_value($status);
+
     $map = [
-        'pending' => ['label' => 'Menunggu', 'class' => 'badge-warning', 'amountClass' => 'text-white'],
-        'upcoming' => ['label' => 'Menunggu', 'class' => 'badge-warning', 'amountClass' => 'text-white'],
-        'active' => ['label' => 'Aktif', 'class' => 'badge-info', 'amountClass' => 'text-blue-400'],
-        'completed' => ['label' => 'Selesai', 'class' => 'badge-success', 'amountClass' => 'text-green-400'],
-        'rejected' => ['label' => 'Ditolak', 'class' => 'badge-danger', 'amountClass' => 'text-red-400'],
-        'cancelled' => ['label' => 'Dibatalkan', 'class' => 'badge-danger', 'amountClass' => 'text-red-400'],
+        'menunggu' => ['label' => 'Menunggu', 'class' => 'badge-warning', 'amountClass' => 'text-white'],
+        'mendatang' => ['label' => 'Menunggu', 'class' => 'badge-warning', 'amountClass' => 'text-white'],
+        'aktif' => ['label' => 'Aktif', 'class' => 'badge-info', 'amountClass' => 'text-blue-400'],
+        'selesai' => ['label' => 'Selesai', 'class' => 'badge-success', 'amountClass' => 'text-green-400'],
+        'ditolak' => ['label' => 'Ditolak', 'class' => 'badge-danger', 'amountClass' => 'text-red-400'],
+        'dibatalkan' => ['label' => 'Dibatalkan', 'class' => 'badge-danger', 'amountClass' => 'text-red-400'],
     ];
 
     return $map[$status] ?? ['label' => ucfirst((string) $status), 'class' => 'badge-info', 'amountClass' => 'text-white'];
@@ -114,10 +123,10 @@ foreach ($admin_user_rows as $row) {
         'id' => (int) ($row['id'] ?? 0),
         'name' => (string) ($row['fullname'] ?? ''),
         'email' => (string) ($row['email'] ?? ''),
-        'role' => (string) ($row['role'] ?? 'user'),
-        'status' => (string) ($row['status'] ?? 'active'),
+        'role' => (string) ($row['role'] ?? 'pelanggan'),
+        'status' => (string) ($row['status'] ?? 'aktif'),
         'joined' => !empty($row['created_at']) ? date('Y-m-d', strtotime((string) $row['created_at'])) : '',
-        'lastActive' => !empty($row['last_active']) ? date('Y-m-d H:i', strtotime((string) $row['last_active'])) : 'Never',
+        'lastAktif' => !empty($row['last_active']) ? date('Y-m-d H:i', strtotime((string) $row['last_active'])) : 'Never',
     ];
 }
 
@@ -136,7 +145,7 @@ foreach ($admin_category_rows as $row) {
         'description' => (string) ($row['description'] ?? ''),
         'icon' => (string) ($row['icon'] ?? 'camera'),
         'color' => (string) ($row['color'] ?? 'blue'),
-        'status' => (string) ($row['status'] ?? 'active'),
+        'status' => (string) ($row['status'] ?? 'aktif'),
         'slug' => $slug,
         'itemCount' => (int) ($category_counts[$slug] ?? 0),
     ];
@@ -148,7 +157,7 @@ foreach ($admin_product_rows as $row) {
     $status = 'available';
     if ($available <= 0) {
         $status = 'rented';
-    } elseif (($row['status'] ?? 'active') !== 'active') {
+    } elseif (($row['status'] ?? 'aktif') !== 'aktif') {
         $status = 'maintenance';
     }
 
@@ -167,20 +176,12 @@ foreach ($admin_product_rows as $row) {
     ];
 }
 
-$status_map = [
-    'pending' => 'pending',
-    'upcoming' => 'pending',
-    'active' => 'approved',
-    'completed' => 'approved',
-    'cancelled' => 'rejected',
-    'rejected' => 'rejected',
-];
-
 $admin_borrowings = [];
 foreach ($admin_borrowing_rows as $row) {
+    $raw_status = normalize_rental_status_value((string) ($row['status'] ?? 'menunggu'));
     $admin_borrowings[] = [
         'id' => (string) ($row['rental_code'] ?? ''),
-        'rawStatus' => (string) ($row['status'] ?? 'pending'),
+        'rawStatus' => $raw_status,
         'customer' => (string) ($row['fullname'] ?? ''),
         'equipment' => (string) ($row['product_name'] ?? ''),
         'image' => admin_media_path((string) ($row['image_path'] ?? '')),
@@ -189,13 +190,13 @@ foreach ($admin_borrowing_rows as $row) {
         'endDate' => (string) ($row['end_date'] ?? ''),
         'days' => (int) ($row['total_days'] ?? 0),
         'amount' => (float) ($row['total_price'] ?? 0),
-        'status' => (string) ($status_map[$row['status'] ?? 'pending'] ?? 'pending'),
+        'status' => present_borrowing_workflow_status($raw_status),
     ];
 }
 
 $return_status_map = [
-    'completed' => 'returned',
-    'pending' => 'pending',
+    'selesai' => 'returned',
+    'menunggu' => 'menunggu',
     'overdue' => 'overdue',
 ];
 
@@ -207,18 +208,35 @@ foreach ($admin_return_rows as $row) {
         'equipment' => (string) ($row['productName'] ?? ''),
         'image' => (string) ($row['image'] ?? '../images/gear-placeholder.svg'),
         'returnDate' => (string) ($row['returnedAt'] ?? $row['createdAt'] ?? ''),
-        'status' => (string) ($return_status_map[$row['status'] ?? 'pending'] ?? 'pending'),
+        'status' => (string) ($return_status_map[$row['status'] ?? 'menunggu'] ?? 'menunggu'),
         'notes' => (string) ($row['notes'] ?? ''),
     ];
 }
 
+$admin_activity_type_map = [
+    'system' => 'system',
+    'rental' => 'transaction',
+    'return' => 'transaction',
+    'payment' => 'transaction',
+    'inventory' => 'inventory',
+    'product' => 'inventory',
+    'category' => 'inventory',
+    'profile' => 'pelanggan',
+    'user' => 'pelanggan',
+    'auth' => 'security',
+    'security' => 'security',
+];
+
 $admin_activities = [];
 foreach ($admin_activity_log_rows as $row) {
+    $activity_type = (string) ($row['activity_type'] ?? 'system');
     $admin_activities[] = [
         'id' => (int) ($row['id'] ?? 0),
-        'type' => (string) ($row['activity_type'] ?? 'system'),
-        'user' => (string) ($row['actor_name'] ?? 'System'),
-        'action' => ucfirst(str_replace('-', ' ', (string) ($row['activity_type'] ?? 'activity'))),
+        'type' => (string) ($admin_activity_type_map[$activity_type] ?? 'system'),
+        'rawType' => $activity_type,
+        'actorName' => (string) ($row['actor_name'] ?? 'System'),
+        'actorRole' => (string) ($row['actor_role'] ?? 'system'),
+        'action' => ucfirst(str_replace('-', ' ', $activity_type)),
         'target' => 'LensCraft',
         'details' => (string) ($row['message'] ?? ''),
         'timestamp' => (string) ($row['created_at'] ?? date('Y-m-d H:i:s')),
@@ -241,7 +259,7 @@ foreach ($admin_user_rows as $row) {
     if ($created_month === $previous_month) {
         $previous_month_users++;
     }
-    if (($row['status'] ?? '') === 'active') {
+    if (($row['status'] ?? '') === 'aktif') {
         $active_users++;
     }
 }
@@ -279,7 +297,7 @@ foreach ($admin_borrowing_rows as $row) {
         $previous_month_transactions++;
         $previous_month_revenue += $amount;
     }
-    if (in_array((string) ($row['status'] ?? ''), ['pending', 'upcoming'], true)) {
+    if (in_array((string) ($row['status'] ?? ''), ['menunggu', 'mendatang'], true)) {
         $pending_approvals++;
     }
 }
@@ -309,7 +327,7 @@ $admin_summary = [
 
 $admin_recent_transactions = [];
 foreach ($recent_transaction_rows as $row) {
-    $badge = dashboard_transaction_badge((string) ($row['status'] ?? 'pending'));
+    $badge = dashboard_transaction_badge((string) ($row['status'] ?? 'menunggu'));
     $admin_recent_transactions[] = [
         'code' => (string) ($row['rental_code'] ?? '-'),
         'product_name' => (string) ($row['product_name'] ?? 'Peralatan'),
@@ -335,7 +353,7 @@ $admin_activities_json = json_encode($admin_activities, JSON_UNESCAPED_SLASHES |
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>LensCraft - Dashboard Admin</title>
+    <title>LensCraft - Kategori</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link
       href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:wght@700&display=swap"
@@ -426,16 +444,34 @@ $admin_activities_json = json_encode($admin_activities, JSON_UNESCAPED_SLASHES |
         background-color: #444;
       }
 
-      /* Active nav item */
+      /* Aktif nav item */
       .nav-item-active {
         background-color: var(--accent-brass-soft);
         border-left: 3px solid var(--accent-brass);
         color: #fff;
       }
+      .content-section {
+        display: none;
+      }
+      #<?= e($admin_active_section_selector) ?>.content-section {
+        display: block;
+      }
 
       /* Table styles */
       .table-row-hover:hover {
         background-color: rgba(255, 255, 255, 0.03);
+      }
+      @media (max-width: 639px) {
+        .mobile-name-ellipsis {
+          display: block;
+          max-width: 100%;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+        }
+        .mobile-card-title-ellipsis {
+          max-width: min(13rem, 100%);
+        }
       }
 
       /* Status badges */
@@ -710,18 +746,21 @@ $admin_activities_json = json_encode($admin_activities, JSON_UNESCAPED_SLASHES |
             </svg>
           </button>
           <a href="index.php" class="text-2xl font-bold font-serif text-white tracking-tight">LensCraft</a>
-          <span class="hidden md:inline-block text-sm text-neutral-500 border-l border-neutral-800 pl-4">Dashboard Admin</span>
+          <span class="hidden md:inline-block text-sm text-neutral-500 border-l border-neutral-800 pl-4">Kategori</span>
         </div>
 
         <!-- Right Side Actions -->
         <div class="flex items-center gap-4">
           <div class="flex items-center gap-3 border-l border-neutral-800 pl-4">
             <div class="text-right hidden sm:block">
-              <div class="text-sm font-medium text-white">Admin User</div>
+              <div class="text-sm font-medium text-white"><?= e((string) ($admin_session_user['fullname'] ?? 'Admin User')) ?></div>
               <div class="text-xs text-neutral-500">Super Admin</div>
             </div>
-            <div class="w-10 h-10 bg-neutral-800 rounded-full flex items-center justify-center border border-neutral-700">
-              <svg class="w-5 h-5 text-neutral-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <div class="w-10 h-10 bg-neutral-800 rounded-full flex items-center justify-center border border-neutral-700 overflow-hidden">
+              <?php if ($admin_avatar_url !== ''): ?>
+                <img src="<?= e($admin_avatar_url) ?>" alt="Admin avatar" class="w-full h-full object-cover" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
+              <?php endif; ?>
+              <svg class="w-5 h-5 text-neutral-400" style="<?= $admin_avatar_url !== '' ? 'display:none;' : '' ?>" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
               </svg>
             </div>
@@ -820,55 +859,6 @@ $admin_activities_json = json_encode($admin_activities, JSON_UNESCAPED_SLASHES |
         <div id="content-area">
           
           <!-- User Modal -->
-          <div id="user-modal" class="fixed inset-0 z-50 hidden flex items-center justify-center p-4 modal-overlay">
-            <div class="modal-panel rounded-3xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
-              <div class="modal-header p-6 border-b border-neutral-800 flex items-center justify-between">
-                <h3 class="text-xl font-semibold text-white" id="user-modal-title">Add User</h3>
-                <button onclick="closeUserModal()" class="modal-close text-neutral-400 hover:text-white transition-colors">
-                  <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </button>
-              </div>
-              <form id="user-form" class="p-6 space-y-4 modal-body-shell">
-                <input type="hidden" id="user-id">
-                <div>
-                  <label class="block text-sm font-medium text-neutral-400 mb-2">Full Name</label>
-                  <input type="text" id="user-name" required class="w-full px-4 py-3 bg-neutral-800 border border-neutral-700 rounded-lg text-neutral-100 focus:outline-none focus:ring-2 focus:ring-neutral-700">
-                </div>
-                <div>
-                  <label class="block text-sm font-medium text-neutral-400 mb-2">Email Address</label>
-                  <input type="email" id="user-email" required class="w-full px-4 py-3 bg-neutral-800 border border-neutral-700 rounded-lg text-neutral-100 focus:outline-none focus:ring-2 focus:ring-neutral-700">
-                </div>
-                <div>
-                  <label class="block text-sm font-medium text-neutral-400 mb-2">Role</label>
-                  <select id="user-role" required class="w-full px-4 py-3 bg-neutral-800 border border-neutral-700 rounded-lg text-neutral-100 focus:outline-none focus:ring-2 focus:ring-neutral-700">
-                    <option value="user">User</option>
-                    <option value="staff">Staff</option>
-                    <option value="admin">Admin</option>
-                  </select>
-                </div>
-                <div>
-                  <label class="block text-sm font-medium text-neutral-400 mb-2">Status</label>
-                  <select id="user-status" required class="w-full px-4 py-3 bg-neutral-800 border border-neutral-700 rounded-lg text-neutral-100 focus:outline-none focus:ring-2 focus:ring-neutral-700">
-                    <option value="active">Active</option>
-                    <option value="inactive">Inactive</option>
-                    <option value="pending">Menunggu</option>
-                  </select>
-                </div>
-                <div class="modal-actions">
-                  <button type="button" onclick="closeUserModal()" class="flex-1 px-4 py-3 bg-neutral-800 border border-neutral-700 rounded-lg text-neutral-300 hover:bg-neutral-700 transition-colors">
-                    Cancel
-                  </button>
-                  <button type="submit" class="flex-1 px-4 py-3 bg-white text-black font-semibold rounded-lg hover:bg-neutral-200 transition-colors">
-                    Save User
-                  </button>
-                </div>
-              </form>
-            </div>
-          </div>
-
-          <!-- Category Modal -->
           <div id="category-modal" class="fixed inset-0 z-50 hidden flex items-center justify-center p-4 modal-overlay">
             <div class="modal-panel rounded-3xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
               <div class="modal-header p-6 border-b border-neutral-800 flex items-center justify-between">
@@ -893,7 +883,7 @@ $admin_activities_json = json_encode($admin_activities, JSON_UNESCAPED_SLASHES |
                   <label class="block text-sm font-medium text-neutral-400 mb-2">Icon</label>
                   <select id="category-icon" class="w-full px-4 py-3 bg-neutral-800 border border-neutral-700 rounded-lg text-neutral-100 focus:outline-none focus:ring-2 focus:ring-neutral-700">
                     <option value="camera">Camera</option>
-                    <option value="lens">Lens</option>
+                    <option value="lensa">Lens</option>
                     <option value="video">Video</option>
                     <option value="audio">Audio</option>
                     <option value="tripod">Tripod</option>
@@ -917,13 +907,13 @@ $admin_activities_json = json_encode($admin_activities, JSON_UNESCAPED_SLASHES |
                 <div>
                   <label class="block text-sm font-medium text-neutral-400 mb-2">Status</label>
                   <select id="category-status" required class="w-full px-4 py-3 bg-neutral-800 border border-neutral-700 rounded-lg text-neutral-100 focus:outline-none focus:ring-2 focus:ring-neutral-700">
-                    <option value="active">Active</option>
-                    <option value="inactive">Inactive</option>
+                    <option value="aktif">Aktif</option>
+                    <option value="nonaktif">Nonaktif</option>
                   </select>
                 </div>
                 <div class="modal-actions">
                   <button type="button" onclick="closeCategoryModal()" class="flex-1 px-4 py-3 bg-neutral-800 border border-neutral-700 rounded-lg text-neutral-300 hover:bg-neutral-700 transition-colors">
-                    Cancel
+                    Batal
                   </button>
                   <button type="submit" class="flex-1 px-4 py-3 bg-white text-black font-semibold rounded-lg hover:bg-neutral-200 transition-colors">
                     Save Category
@@ -934,396 +924,10 @@ $admin_activities_json = json_encode($admin_activities, JSON_UNESCAPED_SLASHES |
           </div>
 
           <!-- Inventaris Modal -->
-          <div id="inventory-modal" class="fixed inset-0 z-50 hidden flex items-center justify-center p-4 modal-overlay">
-            <div class="modal-panel rounded-3xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
-              <div class="modal-header p-6 border-b border-neutral-800 flex items-center justify-between">
-                <h3 class="text-xl font-semibold text-white" id="inventory-modal-title">Add Equipment</h3>
-                <button onclick="closeInventarisModal()" class="modal-close text-neutral-400 hover:text-white transition-colors">
-                  <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </button>
-              </div>
-              <form id="inventory-form" class="p-6 modal-body-shell inventory-editor" method="POST" enctype="multipart/form-data">
-                <?= csrf_input() ?>
-                <input type="hidden" id="inventory-id" name="id">
-                <input type="hidden" id="inventory-existing-image" name="existing_image_path" value="../images/gear-placeholder.svg">
-                <div class="inventory-preview-card">
-                  <div class="inventory-preview-frame">
-                    <img id="inventory-preview-image" src="../images/gear-placeholder.svg" alt="Equipment preview" class="inventory-preview-image" onerror="this.src='../images/gear-placeholder.svg'">
-                  </div>
-                  <div class="space-y-3">
-                    <label for="inventory-image-file" class="inventory-upload-label">
-                      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
-                      </svg>
-                      <span>Upload Product Image</span>
-                    </label>
-                    <input type="file" id="inventory-image-file" name="image_file" accept="image/*" class="hidden">
-                    <p class="inventory-upload-meta">Upload JPG, PNG, WebP, or GIF. The preview updates instantly before saving.</p>
-                  </div>
-                </div>
-                <div class="inventory-form-shell">
-                  <div>
-                    <label class="block mb-2">Equipment Name</label>
-                    <input type="text" id="inventory-name" name="name" required class="w-full px-4 py-3 bg-neutral-800 border border-neutral-700 rounded-lg text-neutral-100 focus:outline-none focus:ring-2 focus:ring-neutral-700">
-                  </div>
-                  <div>
-                    <label class="block mb-2">Brand</label>
-                    <input type="text" id="inventory-brand" name="brand" required class="w-full px-4 py-3 bg-neutral-800 border border-neutral-700 rounded-lg text-neutral-100 focus:outline-none focus:ring-2 focus:ring-neutral-700">
-                  </div>
-                  <div>
-                    <label class="block mb-2">Description</label>
-                    <textarea id="inventory-description" name="description" rows="4" class="w-full px-4 py-3 bg-neutral-800 border border-neutral-700 rounded-lg text-neutral-100 focus:outline-none focus:ring-2 focus:ring-neutral-700 resize-none" placeholder="Short product description for the catalog and modal."></textarea>
-                  </div>
-                  <div class="grid grid-cols-2 gap-4">
-                    <div>
-                      <label class="block mb-2">Category</label>
-                      <select id="inventory-category" name="category_slug" required class="w-full px-4 py-3 bg-neutral-800 border border-neutral-700 rounded-lg text-neutral-100 focus:outline-none focus:ring-2 focus:ring-neutral-700">
-                        <option value="mirrorless">Mirrorless</option>
-                        <option value="lens">Lens</option>
-                        <option value="video">Video</option>
-                        <option value="audio">Audio</option>
-                        <option value="accessory">Accessory</option>
-                      </select>
-                    </div>
-                    <div>
-                      <label class="block mb-2">Status</label>
-                      <select id="inventory-status" name="status" required class="w-full px-4 py-3 bg-neutral-800 border border-neutral-700 rounded-lg text-neutral-100 focus:outline-none focus:ring-2 focus:ring-neutral-700">
-                        <option value="active">Active</option>
-                        <option value="inactive">Inactive</option>
-                      </select>
-                    </div>
-                  </div>
-                  <div class="grid grid-cols-2 gap-4">
-                    <div>
-                      <label class="block mb-2">Daily Rate ($)</label>
-                      <input type="number" id="inventory-price" name="price" required min="0" step="0.01" class="w-full px-4 py-3 bg-neutral-800 border border-neutral-700 rounded-lg text-neutral-100 focus:outline-none focus:ring-2 focus:ring-neutral-700">
-                    </div>
-                    <div>
-                      <label class="block mb-2">Discount (%)</label>
-                      <input type="number" id="inventory-discount" name="discount" min="0" max="100" value="0" class="w-full px-4 py-3 bg-neutral-800 border border-neutral-700 rounded-lg text-neutral-100 focus:outline-none focus:ring-2 focus:ring-neutral-700">
-                    </div>
-                  </div>
-                  <div class="grid grid-cols-2 gap-4">
-                    <div>
-                      <label class="block mb-2">Total Stock</label>
-                      <input type="number" id="inventory-total-stock" name="stock_total" required min="0" class="w-full px-4 py-3 bg-neutral-800 border border-neutral-700 rounded-lg text-neutral-100 focus:outline-none focus:ring-2 focus:ring-neutral-700">
-                    </div>
-                    <div>
-                      <label class="block mb-2">Current Stock</label>
-                      <input type="number" id="inventory-stock" name="stock" required min="0" class="w-full px-4 py-3 bg-neutral-800 border border-neutral-700 rounded-lg text-neutral-100 focus:outline-none focus:ring-2 focus:ring-neutral-700">
-                    </div>
-                  </div>
-                  <div class="modal-actions">
-                    <button type="button" onclick="closeInventarisModal()" class="flex-1 px-4 py-3 bg-neutral-800 border border-neutral-700 rounded-lg text-neutral-300 hover:bg-neutral-700 transition-colors">
-                      Cancel
-                    </button>
-                    <button type="submit" class="flex-1 px-4 py-3 bg-white text-black font-semibold rounded-lg hover:bg-neutral-200 transition-colors">
-                      Save Equipment
-                    </button>
-                  </div>
-                </div>
-              </form>
-            </div>
-          </div>
-
-          <!-- Peminjaman Modal -->
-          <div id="transaction-modal" class="fixed inset-0 z-50 hidden flex items-center justify-center p-4 modal-overlay">
-            <div class="modal-panel rounded-3xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
-              <div class="modal-header p-6 border-b border-neutral-800 flex items-center justify-between">
-                <h3 class="text-xl font-semibold text-white" id="transaction-modal-title">Add Peminjaman</h3>
-                <button onclick="closeTransactionModal()" class="modal-close text-neutral-400 hover:text-white transition-colors">
-                  <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </button>
-              </div>
-              <form id="transaction-form" class="p-6 space-y-4 modal-body-shell">
-                <input type="hidden" id="transaction-id">
-                <div>
-                  <label class="block text-sm font-medium text-neutral-400 mb-2">Customer Name</label>
-                  <input type="text" id="transaction-customer" required class="w-full px-4 py-3 bg-neutral-800 border border-neutral-700 rounded-lg text-neutral-100 focus:outline-none focus:ring-2 focus:ring-neutral-700">
-                </div>
-                <div>
-                  <label class="block text-sm font-medium text-neutral-400 mb-2">Equipment</label>
-                  <select id="transaction-equipment" required class="w-full px-4 py-3 bg-neutral-800 border border-neutral-700 rounded-lg text-neutral-100 focus:outline-none focus:ring-2 focus:ring-neutral-700">
-                    <!-- Options populated by JS -->
-                  </select>
-                </div>
-                <div class="grid grid-cols-2 gap-4">
-                  <div>
-                    <label class="block text-sm font-medium text-neutral-400 mb-2">Start Date</label>
-                    <input type="date" id="transaction-start-date" required class="w-full px-4 py-3 bg-neutral-800 border border-neutral-700 rounded-lg text-neutral-100 focus:outline-none focus:ring-2 focus:ring-neutral-700">
-                  </div>
-                  <div>
-                    <label class="block text-sm font-medium text-neutral-400 mb-2">End Date</label>
-                    <input type="date" id="transaction-end-date" required class="w-full px-4 py-3 bg-neutral-800 border border-neutral-700 rounded-lg text-neutral-100 focus:outline-none focus:ring-2 focus:ring-neutral-700">
-                  </div>
-                </div>
-                <div>
-                  <div>
-                    <label class="block text-sm font-medium text-neutral-400 mb-2">Status</label>
-                    <select id="transaction-status" required class="w-full px-4 py-3 bg-neutral-800 border border-neutral-700 rounded-lg text-neutral-100 focus:outline-none focus:ring-2 focus:ring-neutral-700">
-                      <option value="pending">Menunggu</option>
-                      <option value="upcoming">Upcoming</option>
-                      <option value="active">Aktif</option>
-                      <option value="completed">Selesai</option>
-                      <option value="cancelled">Dibatalkan</option>
-                      <option value="rejected">Ditolak</option>
-                    </select>
-                  </div>
-                  <button type="button" onclick="closeTransactionModal()" class="flex-1 px-4 py-3 bg-neutral-800 border border-neutral-700 rounded-lg text-neutral-300 hover:bg-neutral-700 transition-colors">
-                    Cancel
-                  </button>
-                  <button type="submit" class="flex-1 px-4 py-3 bg-white text-black font-semibold rounded-lg hover:bg-neutral-200 transition-colors">
-                    Save Peminjaman
-                  </button>
-                </div>
-              </form>
-            </div>
-          </div>
 
           <!-- Content Sections -->
           <!-- Ringkasan Section -->
-          <section id="overview" class="content-section animate-fade-in">
-            <div class="mb-8">
-              <h1 class="text-3xl md:text-4xl font-serif text-white mb-2">Ringkasan Dashboard</h1>
-              <p class="text-neutral-400">Pantau aktivitas utama admin dan ringkasan operasional hari ini.</p>
-            </div>
-
-            <!-- Stats Cards -->
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-              <!-- Card 1 -->
-              <div class="bg-neutral-900 border border-neutral-800 rounded-2xl p-6 card-hover">
-                <div class="flex items-center justify-between mb-4">
-                  <div class="w-12 h-12 bg-amber-900/30 rounded-xl flex items-center justify-center border border-amber-800/50">
-                    <svg class="w-6 h-6 text-amber-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
-                    </svg>
-                  </div>
-                  <span class="text-xs font-medium px-2 py-1 rounded-full <?= e($admin_summary['users_change']['class']) ?>"><?= e($admin_summary['users_change']['text']) ?></span>
-                </div>
-                <div class="text-3xl font-bold text-white mb-1"><?= e($admin_summary['total_users']) ?></div>
-                <div class="text-sm text-neutral-400">Total Pengguna</div>
-              </div>
-
-              <!-- Card 2 -->
-              <div class="bg-neutral-900 border border-neutral-800 rounded-2xl p-6 card-hover">
-                <div class="flex items-center justify-between mb-4">
-                  <div class="w-12 h-12 bg-green-900/30 rounded-xl flex items-center justify-center border border-green-800/50">
-                    <svg class="w-6 h-6 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
-                    </svg>
-                  </div>
-                  <span class="text-xs font-medium px-2 py-1 rounded-full <?= e($admin_summary['equipment_change']['class']) ?>"><?= e($admin_summary['equipment_change']['text']) ?></span>
-                </div>
-                <div class="text-3xl font-bold text-white mb-1"><?= e($admin_summary['total_equipment']) ?></div>
-                <div class="text-sm text-neutral-400">Total Peralatan</div>
-              </div>
-
-              <!-- Card 3 -->
-              <div class="bg-neutral-900 border border-neutral-800 rounded-2xl p-6 card-hover">
-                <div class="flex items-center justify-between mb-4">
-                  <div class="w-12 h-12 bg-yellow-900/30 rounded-xl flex items-center justify-center border border-yellow-800/50">
-                    <svg class="w-6 h-6 text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                    </svg>
-                  </div>
-                  <span class="text-xs font-medium px-2 py-1 rounded-full <?= e($admin_summary['transactions_change']['class']) ?>"><?= e($admin_summary['transactions_change']['text']) ?></span>
-                </div>
-                <div class="text-3xl font-bold text-white mb-1"><?= e($admin_summary['total_transactions']) ?></div>
-                <div class="text-sm text-neutral-400">Total Transaksi</div>
-              </div>
-
-              <!-- Card 4 -->
-              <div class="bg-neutral-900 border border-neutral-800 rounded-2xl p-6 card-hover">
-                <div class="flex items-center justify-between mb-4">
-                  <div class="w-12 h-12 bg-purple-900/30 rounded-xl flex items-center justify-center border border-purple-800/50">
-                    <svg class="w-6 h-6 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                  </div>
-                  <span class="text-xs font-medium px-2 py-1 rounded-full <?= e($admin_summary['revenue_change']['class']) ?>"><?= e($admin_summary['revenue_change']['text']) ?></span>
-                </div>
-                <div class="text-3xl font-bold text-white mb-1"><?= e($admin_summary['revenue_mtd']) ?></div>
-                <div class="text-sm text-neutral-400">Revenue (MTD)</div>
-              </div>
-            </div>
-
-            <!-- Recent Activity & Statistik Singkat -->
-            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              <!-- Transaksi Terbaru -->
-              <div class="lg:col-span-2 bg-neutral-900 border border-neutral-800 rounded-2xl p-6">
-                <div class="flex items-center justify-between mb-6">
-                  <h2 class="text-xl font-semibold text-white">Transaksi Terbaru</h2>
-                  <a href="#peminjaman" class="text-sm text-neutral-400 hover:text-white transition-colors">Lihat Semua</a>
-                </div>
-                <div class="space-y-4">
-                  <?php if (empty($admin_recent_transactions)): ?>
-                    <div class="py-6 text-sm text-neutral-500">Belum ada transaksi terbaru.</div>
-                  <?php else: ?>
-                    <?php foreach ($admin_recent_transactions as $transaction): ?>
-                      <div class="flex items-center justify-between py-3 border-b border-neutral-800">
-                        <div class="flex items-center gap-3">
-                          <div class="w-10 h-10 bg-neutral-800 rounded-lg overflow-hidden border border-neutral-700 flex-shrink-0">
-                            <img src="<?= e($transaction['image']) ?>" alt="<?= e($transaction['product_name']) ?>" class="w-full h-full object-cover" onerror="this.src='../images/gear-placeholder.svg'">
-                          </div>
-                          <div>
-                            <p class="text-xs text-neutral-500"><?= e($transaction['code']) ?></p>
-                            <p class="text-sm font-medium text-white"><?= e($transaction['product_name']) ?></p>
-                            <p class="text-xs text-neutral-500"><?= e($transaction['customer']) ?> • <?= e($transaction['time_ago']) ?></p>
-                          </div>
-                        </div>
-                        <div class="text-right">
-                          <p class="text-sm font-semibold <?= e($transaction['amount_class']) ?>"><?= e($transaction['amount']) ?></p>
-                          <span class="badge <?= e($transaction['status_class']) ?> text-xs"><?= e($transaction['status_label']) ?></span>
-                        </div>
-                      </div>
-                    <?php endforeach; ?>
-                  <?php endif; ?>
-                </div>
-              </div>
-
-              <!-- Statistik Singkat -->
-              <div class="bg-neutral-900 border border-neutral-800 rounded-2xl p-6">
-                <h2 class="text-xl font-semibold text-white mb-6">Statistik Singkat</h2>
-                <div class="space-y-6">
-                  <div>
-                    <div class="flex items-center justify-between mb-2">
-                      <span class="text-sm text-neutral-400">Utilisasi Peralatan</span>
-                      <span class="text-sm font-medium text-white"><?= e((string) $admin_summary['utilization_percent']) ?>%</span>
-                    </div>
-                    <div class="w-full bg-neutral-800 rounded-full h-2">
-                      <div class="bg-amber-400 h-2 rounded-full" style="width: <?= e((string) $admin_summary['utilization_percent']) ?>%"></div>
-                    </div>
-                  </div>
-                  <div>
-                    <div class="flex items-center justify-between mb-2">
-                      <span class="text-sm text-neutral-400">Persetujuan Menunggu</span>
-                      <span class="text-sm font-medium text-white"><?= e((string) $admin_summary['pending_approvals']) ?></span>
-                    </div>
-                    <div class="w-full bg-neutral-800 rounded-full h-2">
-                      <div class="bg-yellow-500 h-2 rounded-full" style="width: <?= e((string) $admin_summary['pending_width']) ?>%"></div>
-                    </div>
-                  </div>
-                  <div>
-                    <div class="flex items-center justify-between mb-2">
-                      <span class="text-sm text-neutral-400">User Aktif</span>
-                      <span class="text-sm font-medium text-white"><?= e((string) $admin_summary['active_users']) ?></span>
-                    </div>
-                    <div class="w-full bg-neutral-800 rounded-full h-2">
-                      <div class="bg-green-500 h-2 rounded-full" style="width: <?= e((string) $admin_summary['active_users_percent']) ?>%"></div>
-                    </div>
-                  </div>
-                  <div>
-                    <div class="flex items-center justify-between mb-2">
-                      <span class="text-sm text-neutral-400">Stok Tersedia</span>
-                      <span class="text-sm font-medium text-white"><?= e((string) $admin_summary['available_stock']) ?></span>
-                    </div>
-                    <div class="w-full bg-neutral-800 rounded-full h-2">
-                      <div class="bg-purple-500 h-2 rounded-full" style="width: <?= e((string) $admin_summary['available_stock_percent']) ?>%"></div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </section>
-
-          <!-- Pengguna Section -->
-          <section id="users" class="content-section hidden">
-            <div class="mb-8">
-              <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-                <div>
-                  <h1 class="text-3xl md:text-4xl font-serif text-white mb-2">User Management</h1>
-                  <p class="text-neutral-400">Manage system users, roles, and permissions.</p>
-                </div>
-                <button onclick="openUserModal()" class="px-6 py-3 bg-white text-black font-semibold rounded-lg hover:bg-neutral-200 transition-all transform hover:scale-105 flex items-center gap-2 w-fit">
-                  <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-                  </svg>
-                  Add User
-                </button>
-              </div>
-            </div>
-
-            <!-- Filters & Search -->
-            <div class="bg-neutral-900 border border-neutral-800 rounded-2xl p-6 mb-6">
-              <div class="flex flex-col md:flex-row gap-4 md:items-center">
-                <!-- Filter Dropdown -->
-                <div class="relative md:flex-shrink-0">
-                  <button id="user-filter-btn" class="flex items-center justify-center w-10 h-10 bg-neutral-800 border border-neutral-700 rounded-lg text-neutral-400 hover:bg-neutral-700 hover:text-white transition-colors" aria-label="Toggle filters">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" /></svg>
-                  </button>
-                  <div id="user-filter-dropdown" class="absolute left-0 top-full mt-2 w-80 bg-neutral-900 border border-neutral-800 rounded-xl shadow-xl z-20 hidden p-4">
-                    <div class="space-y-4">
-                      <div>
-                        <label class="block text-xs font-medium text-neutral-300 mb-2">Role</label>
-                        <select id="role-filter" class="w-full px-3 py-2 bg-neutral-800 border border-neutral-700 rounded-lg text-neutral-100 text-sm focus:outline-none focus:ring-2 focus:ring-neutral-700">
-                          <option value="">All Roles</option>
-                          <option value="admin">Admin</option>
-                          <option value="staff">Staff</option>
-                          <option value="user">User</option>
-                        </select>
-                      </div>
-                      <div>
-                        <label class="block text-xs font-medium text-neutral-300 mb-2">Status</label>
-                        <select id="status-filter" class="w-full px-3 py-2 bg-neutral-800 border border-neutral-700 rounded-lg text-neutral-100 text-sm focus:outline-none focus:ring-2 focus:ring-neutral-700">
-                          <option value="">All Status</option>
-                          <option value="active">Active</option>
-                          <option value="inactive">Inactive</option>
-                          <option value="pending">Menunggu</option>
-                        </select>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                <!-- Search Bar -->
-                <div class="flex-1 relative">
-                  <input type="text" id="user-search" placeholder="Search users by name or email..." class="w-full pl-4 pr-12 py-3 bg-neutral-800 border border-neutral-700 rounded-lg text-neutral-100 placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-neutral-700 focus:border-neutral-600 transition-all" />
-                  <button type="button" class="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-white transition-colors" aria-label="Search">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            <!-- Pengguna Table -->
-            <div class="bg-neutral-900 border border-neutral-800 rounded-2xl overflow-hidden">
-              <div class="overflow-x-auto">
-                <table class="w-full">
-                  <thead class="hidden sm:table-header-group">
-                    <tr class="border-b border-neutral-800 bg-neutral-800/30">
-                      <th class="px-6 py-4 text-left text-xs font-semibold text-neutral-400 uppercase tracking-wider">User</th>
-                      <th class="px-6 py-4 text-left text-xs font-semibold text-neutral-400 uppercase tracking-wider">Role</th>
-                      <th class="px-6 py-4 text-left text-xs font-semibold text-neutral-400 uppercase tracking-wider">Joined</th>
-                      <th class="px-6 py-4 text-left text-xs font-semibold text-neutral-400 uppercase tracking-wider">Last Active</th>
-                      <th class="px-6 py-4 text-right text-xs font-semibold text-neutral-400 uppercase tracking-wider">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody id="users-table-body" class="divide-y divide-neutral-800">
-                    <!-- Pengguna will be populated by JavaScript -->
-                  </tbody>
-                </table>
-              </div>
-
-              <!-- Pagination -->
-              <div class="flex flex-col sm:flex-row items-center justify-between gap-4 p-6 border-t border-neutral-800">
-                <div class="text-sm text-neutral-400">
-                  Showing <span id="users-shown" class="font-medium text-white">0</span> of <span id="users-total" class="font-medium text-white">0</span> users
-                </div>
-                <div class="flex items-center gap-2">
-                  <button id="users-prev" class="px-4 py-2 text-sm font-medium bg-neutral-800 border border-neutral-700 rounded-lg text-neutral-300 hover:bg-neutral-700 transition-colors disabled:opacity-50" disabled>Sebelumnya</button>
-                  <div id="users-page-numbers" class="flex items-center gap-1"></div>
-                  <button id="users-next" class="px-4 py-2 text-sm font-medium bg-neutral-800 border border-neutral-700 rounded-lg text-neutral-300 hover:bg-neutral-700 transition-colors">Berikutnya</button>
-                </div>
-              </div>
-            </div>
-          </section>
-
-          <!-- Kategori Section -->
-          <section id="categories" class="content-section hidden">
+          <section id="categories" class="content-section">
             <div class="mb-8">
               <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
                 <div>
@@ -1344,434 +948,20 @@ $admin_activities_json = json_encode($admin_activities, JSON_UNESCAPED_SLASHES |
               <!-- Kategori will be populated by JavaScript -->
             </div>
           </section>
-
-          <!-- Peralatan & Stok Section -->
-          <section id="tools-stock" class="content-section hidden">
-            <div class="mb-8">
-              <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-                <div>
-                  <h1 class="text-3xl md:text-4xl font-serif text-white mb-2">Peralatan & Stok</h1>
-                  <p class="text-neutral-400">Manage inventory and stock levels.</p>
-                </div>
-                <button onclick="openInventarisModal()" class="px-6 py-3 bg-white text-black font-semibold rounded-lg hover:bg-neutral-200 transition-all transform hover:scale-105 flex items-center gap-2 w-fit">
-                  <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-                  </svg>
-                  Add Equipment
-                </button>
-              </div>
-            </div>
-
-            <!-- Filters & Search -->
-            <div class="bg-neutral-900 border border-neutral-800 rounded-2xl p-6 mb-6">
-              <div class="flex flex-col md:flex-row gap-4 md:items-center">
-                <!-- Filter Dropdown -->
-                <div class="relative md:flex-shrink-0">
-                  <button id="inventory-filter-btn" class="flex items-center justify-center w-10 h-10 bg-neutral-800 border border-neutral-700 rounded-lg text-neutral-400 hover:bg-neutral-700 hover:text-white transition-colors" aria-label="Toggle filters">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" /></svg>
-                  </button>
-                  <div id="inventory-filter-dropdown" class="absolute left-0 top-full mt-2 w-80 bg-neutral-900 border border-neutral-800 rounded-xl shadow-xl z-20 hidden p-4">
-                    <div class="space-y-4">
-                      <div>
-                        <label class="block text-xs font-medium text-neutral-300 mb-2">Category</label>
-                        <select id="category-filter" class="w-full px-3 py-2 bg-neutral-800 border border-neutral-700 rounded-lg text-neutral-100 text-sm focus:outline-none focus:ring-2 focus:ring-neutral-700">
-                          <option value="">All Kategori</option>
-                          <option value="mirrorless">Mirrorless</option>
-                          <option value="dslr">DSLR</option>
-                          <option value="lens">Lenses</option>
-                          <option value="video">Video</option>
-                          <option value="audio">Audio</option>
-                          <option value="accessory">Accessories</option>
-                        </select>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                <!-- Search Bar -->
-                <div class="flex-1 relative">
-                  <input type="text" id="inventory-search" placeholder="Search equipment by name or brand..." class="w-full pl-4 pr-12 py-3 bg-neutral-800 border border-neutral-700 rounded-lg text-neutral-100 placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-neutral-700 focus:border-neutral-600 transition-all" />
-                  <button type="button" class="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-white transition-colors" aria-label="Search">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            <!-- Inventaris Table -->
-            <div class="bg-neutral-900 border border-neutral-800 rounded-2xl overflow-hidden">
-              <div class="overflow-x-auto">
-                <table class="w-full">
-                  <thead class="hidden sm:table-header-group">
-                    <tr class="border-b border-neutral-800 bg-neutral-800/30">
-                      <th class="px-6 py-4 text-left text-xs font-semibold text-neutral-400 uppercase tracking-wider">Equipment</th>
-                      <th class="px-6 py-4 text-left text-xs font-semibold text-neutral-400 uppercase tracking-wider">Category</th>
-                      <th class="px-6 py-4 text-left text-xs font-semibold text-neutral-400 uppercase tracking-wider">Daily Rate</th>
-                      <th class="px-6 py-4 text-left text-xs font-semibold text-neutral-400 uppercase tracking-wider">Stock</th>
-                      <th class="px-6 py-4 text-right text-xs font-semibold text-neutral-400 uppercase tracking-wider">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody id="inventory-table-body" class="divide-y divide-neutral-800">
-                    <!-- Inventaris items will be populated by JavaScript -->
-                  </tbody>
-                </table>
-              </div>
-
-              <!-- Pagination -->
-              <div class="flex flex-col sm:flex-row items-center justify-between gap-4 p-6 border-t border-neutral-800">
-                <div class="text-sm text-neutral-400">
-                  Showing <span id="inventory-shown" class="font-medium text-white">0</span> of <span id="inventory-total" class="font-medium text-white">0</span> items
-                </div>
-                <div class="flex items-center gap-2">
-                  <button id="inventory-prev" class="px-4 py-2 text-sm font-medium bg-neutral-800 border border-neutral-700 rounded-lg text-neutral-300 hover:bg-neutral-700 transition-colors disabled:opacity-50" disabled>Sebelumnya</button>
-                  <div id="inventory-page-numbers" class="flex items-center gap-1"></div>
-                  <button id="inventory-next" class="px-4 py-2 text-sm font-medium bg-neutral-800 border border-neutral-700 rounded-lg text-neutral-300 hover:bg-neutral-700 transition-colors">Berikutnya</button>
-                </div>
-              </div>
-            </div>
-          </section>
-
-          <!-- Peminjaman Section -->
-          <section id="borrowings" class="content-section hidden">
-            <div class="mb-8">
-              <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-                <div>
-                  <h1 class="text-3xl md:text-4xl font-serif text-white mb-2">Peminjaman</h1>
-                  <p class="text-neutral-400">Manage equipment borrowing requests and rentals.</p>
-                </div>
-                <div class="flex gap-3">
-                  <button onclick="openTransactionModal()" class="px-6 py-3 bg-white text-black font-semibold rounded-lg hover:bg-neutral-200 transition-all transform hover:scale-105 flex items-center gap-2">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-                    </svg>
-                    Add Borrowing
-                  </button>
-                  <button class="px-4 py-2 bg-neutral-800 border border-neutral-700 rounded-lg text-sm font-medium text-neutral-300 hover:bg-neutral-700 transition-colors flex items-center gap-2">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                    </svg>
-                    Ekspor
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            <!-- Filters & Search -->
-            <div class="bg-neutral-900 border border-neutral-800 rounded-2xl p-6 mb-6">
-              <div class="flex flex-col md:flex-row gap-4 md:items-center">
-                <!-- Filter Dropdown -->
-                <div class="relative md:flex-shrink-0">
-                  <button id="borrowings-filter-btn" class="flex items-center justify-center w-10 h-10 bg-neutral-800 border border-neutral-700 rounded-lg text-neutral-400 hover:bg-neutral-700 hover:text-white transition-colors" aria-label="Toggle filters">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" /></svg>
-                  </button>
-                  <div id="borrowings-filter-dropdown" class="absolute left-0 top-full mt-2 w-80 bg-neutral-900 border border-neutral-800 rounded-xl shadow-xl z-20 hidden p-4">
-                    <div class="space-y-4">
-                      <div>
-                        <label class="block text-xs font-medium text-neutral-300 mb-2">Status</label>
-                        <select id="borrowings-status-filter" class="w-full px-3 py-2 bg-neutral-800 border border-neutral-700 rounded-lg text-neutral-100 text-sm focus:outline-none focus:ring-2 focus:ring-neutral-700">
-                          <option value="">All Status</option>
-                          <option value="pending">Menunggu</option>
-                          <option value="approved">Approved</option>
-                          <option value="rejected">Rejected</option>
-                        </select>
-                      </div>
-                      <div>
-                        <label class="block text-xs font-medium text-neutral-300 mb-2">Date</label>
-                        <select id="borrowings-date-filter" class="w-full px-3 py-2 bg-neutral-800 border border-neutral-700 rounded-lg text-neutral-100 text-sm focus:outline-none focus:ring-2 focus:ring-neutral-700">
-                          <option value="">All Time</option>
-                          <option value="today">Today</option>
-                          <option value="week">This Week</option>
-                          <option value="month">This Month</option>
-                        </select>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                <!-- Search Bar -->
-                <div class="flex-1 relative">
-                  <input type="text" id="borrowings-search" placeholder="Search by request ID, customer name, or equipment..." class="w-full pl-4 pr-12 py-3 bg-neutral-800 border border-neutral-700 rounded-lg text-neutral-100 placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-neutral-700 focus:border-neutral-600 transition-all" />
-                  <button type="button" class="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-white transition-colors" aria-label="Search">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            <!-- Peminjaman Table -->
-            <div class="bg-neutral-900 border border-neutral-800 rounded-2xl overflow-hidden">
-              <div class="overflow-x-auto">
-                <table class="w-full">
-                  <thead class="hidden sm:table-header-group">
-                    <tr class="border-b border-neutral-800 bg-neutral-800/30">
-                      <th class="px-6 py-4 text-left text-xs font-semibold text-neutral-400 uppercase tracking-wider">Request ID</th>
-                      <th class="px-6 py-4 text-left text-xs font-semibold text-neutral-400 uppercase tracking-wider">Customer</th>
-                      <th class="px-6 py-4 text-left text-xs font-semibold text-neutral-400 uppercase tracking-wider">Equipment</th>
-                      <th class="px-6 py-4 text-left text-xs font-semibold text-neutral-400 uppercase tracking-wider">Borrowing Period</th>
-                      <th class="px-6 py-4 text-left text-xs font-semibold text-neutral-400 uppercase tracking-wider">Amount</th>
-                      <th class="px-6 py-4 text-left text-xs font-semibold text-neutral-400 uppercase tracking-wider">Status</th>
-                      <th class="px-6 py-4 text-right text-xs font-semibold text-neutral-400 uppercase tracking-wider">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody id="borrowings-table-body" class="divide-y divide-neutral-800">
-                    <!-- Peminjaman requests will be populated by JavaScript -->
-                  </tbody>
-                </table>
-              </div>
-
-              <!-- Pagination -->
-              <div class="flex flex-col sm:flex-row items-center justify-between gap-4 p-6 border-t border-neutral-800">
-                <div class="text-sm text-neutral-400">
-                  Showing <span id="borrowings-shown" class="font-medium text-white">0</span> of <span id="borrowings-total" class="font-medium text-white">0</span> requests
-                </div>
-                <div class="flex items-center gap-2">
-                  <button id="borrowings-prev" class="px-4 py-2 text-sm font-medium bg-neutral-800 border border-neutral-700 rounded-lg text-neutral-300 hover:bg-neutral-700 transition-colors disabled:opacity-50" disabled>Sebelumnya</button>
-                  <div id="borrowings-page-numbers" class="flex items-center gap-1"></div>
-                  <button id="borrowings-next" class="px-4 py-2 text-sm font-medium bg-neutral-800 border border-neutral-700 rounded-lg text-neutral-300 hover:bg-neutral-700 transition-colors">Berikutnya</button>
-                </div>
-              </div>
-            </div>
-          </section>
-
-          <!-- Pengembalian Section -->
-          <section id="returns" class="content-section hidden">
-            <div class="mb-8">
-              <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-                <div>
-                  <h1 class="text-3xl md:text-4xl font-serif text-white mb-2">Pengembalian</h1>
-                  <p class="text-neutral-400">Manage equipment returns and return records.</p>
-                </div>
-                <div class="flex gap-3">
-                  <button class="px-4 py-2 bg-neutral-800 border border-neutral-700 rounded-lg text-sm font-medium text-neutral-300 hover:bg-neutral-700 transition-colors flex items-center gap-2">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                    </svg>
-                    Ekspor
-                  </button>
-                  <button class="px-4 py-2 bg-neutral-800 border border-neutral-700 rounded-lg text-sm font-medium text-neutral-300 hover:bg-neutral-700 transition-colors flex items-center gap-2">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
-                    </svg>
-                    Filter
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            <!-- Filters & Search -->
-            <div class="bg-neutral-900 border border-neutral-800 rounded-2xl p-6 mb-6">
-              <div class="flex flex-col md:flex-row gap-4 md:items-center">
-                <!-- Filter Dropdown -->
-                <div class="relative md:flex-shrink-0">
-                  <button id="returns-filter-btn" class="flex items-center justify-center w-10 h-10 bg-neutral-800 border border-neutral-700 rounded-lg text-neutral-400 hover:bg-neutral-700 hover:text-white transition-colors" aria-label="Toggle filters">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" /></svg>
-                  </button>
-                  <div id="returns-filter-dropdown" class="absolute left-0 top-full mt-2 w-80 bg-neutral-900 border border-neutral-800 rounded-xl shadow-xl z-20 hidden p-4">
-                    <div class="space-y-4">
-                      <div>
-                        <label class="block text-xs font-medium text-neutral-300 mb-2">Return Status</label>
-                        <select id="returns-status-filter" class="w-full px-3 py-2 bg-neutral-800 border border-neutral-700 rounded-lg text-neutral-100 text-sm focus:outline-none focus:ring-2 focus:ring-neutral-700">
-                          <option value="">All Status</option>
-                          <option value="pending">Menunggu Return</option>
-                          <option value="returned">Returned</option>
-                          <option value="overdue">Overdue</option>
-                        </select>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                <!-- Search Bar -->
-                <div class="flex-1 relative">
-                  <input type="text" id="returns-search" placeholder="Search by return ID, customer name, or equipment..." class="w-full pl-4 pr-12 py-3 bg-neutral-800 border border-neutral-700 rounded-lg text-neutral-100 placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-neutral-700 focus:border-neutral-600 transition-all" />
-                  <button type="button" class="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-white transition-colors" aria-label="Search">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            <!-- Pengembalian Table -->
-            <div class="bg-neutral-900 border border-neutral-800 rounded-2xl overflow-hidden">
-              <div class="overflow-x-auto">
-                <table class="w-full">
-                  <thead class="hidden sm:table-header-group">
-                    <tr class="border-b border-neutral-800 bg-neutral-800/30">
-                      <th class="px-6 py-4 text-left text-xs font-semibold text-neutral-400 uppercase tracking-wider">Return ID</th>
-                      <th class="px-6 py-4 text-left text-xs font-semibold text-neutral-400 uppercase tracking-wider">Customer</th>
-                      <th class="px-6 py-4 text-left text-xs font-semibold text-neutral-400 uppercase tracking-wider">Equipment</th>
-                      <th class="px-6 py-4 text-left text-xs font-semibold text-neutral-400 uppercase tracking-wider">Return Date</th>
-                      <th class="px-6 py-4 text-left text-xs font-semibold text-neutral-400 uppercase tracking-wider">Status</th>
-                      <th class="px-6 py-4 text-right text-xs font-semibold text-neutral-400 uppercase tracking-wider">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody id="returns-table-body" class="divide-y divide-neutral-800">
-                    <!-- Pengembalian will be populated by JavaScript -->
-                  </tbody>
-                </table>
-              </div>
-
-              <!-- Pagination -->
-              <div class="flex flex-col sm:flex-row items-center justify-between gap-4 p-6 border-t border-neutral-800">
-                <div class="text-sm text-neutral-400">
-                  Showing <span id="returns-shown" class="font-medium text-white">0</span> of <span id="returns-total" class="font-medium text-white">0</span> returns
-                </div>
-                <div class="flex items-center gap-2">
-                  <button id="returns-prev" class="px-4 py-2 text-sm font-medium bg-neutral-800 border border-neutral-700 rounded-lg text-neutral-300 hover:bg-neutral-700 transition-colors disabled:opacity-50" disabled>Sebelumnya</button>
-                  <div id="returns-page-numbers" class="flex items-center gap-1"></div>
-                  <button id="returns-next" class="px-4 py-2 text-sm font-medium bg-neutral-800 border border-neutral-700 rounded-lg text-neutral-300 hover:bg-neutral-700 transition-colors">Berikutnya</button>
-                </div>
-              </div>
-            </div>
-          </section>
-
-          <!-- Aktivitas Section -->
-          <section id="activity-log" class="content-section hidden">
-            <div class="mb-8">
-              <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-                <div>
-                  <h1 class="text-3xl md:text-4xl font-serif text-white mb-2">Aktivitas</h1>
-                  <p class="text-neutral-400">Track system activities and user actions.</p>
-                </div>
-                <button class="px-4 py-2 bg-neutral-800 border border-neutral-700 rounded-lg text-sm font-medium text-neutral-300 hover:bg-neutral-700 transition-colors flex items-center gap-2">
-                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                  </svg>
-                  Ekspor Log
-                </button>
-              </div>
-            </div>
-
-            <!-- Filters -->
-            <div class="bg-neutral-900 border border-neutral-800 rounded-2xl p-6 mb-6">
-              <div class="flex flex-col md:flex-row gap-4 md:items-center">
-                <!-- Filter Dropdown -->
-                <div class="relative md:flex-shrink-0">
-                  <button id="activity-filter-btn" class="flex items-center justify-center w-10 h-10 bg-neutral-800 border border-neutral-700 rounded-lg text-neutral-400 hover:bg-neutral-700 hover:text-white transition-colors" aria-label="Toggle filters">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" /></svg>
-                  </button>
-                  <div id="activity-filter-dropdown" class="absolute left-0 top-full mt-2 w-80 bg-neutral-900 border border-neutral-800 rounded-xl shadow-xl z-20 hidden p-4">
-                    <div class="space-y-4">
-                      <div>
-                        <label class="block text-xs font-medium text-neutral-300 mb-2">Type</label>
-                        <select id="activity-type-filter" class="w-full px-3 py-2 bg-neutral-800 border border-neutral-700 rounded-lg text-neutral-100 text-sm focus:outline-none focus:ring-2 focus:ring-neutral-700">
-                          <option value="">All Types</option>
-                          <option value="user">User</option>
-                          <option value="transaction">Transaction</option>
-                          <option value="inventory">Inventaris</option>
-                          <option value="system">System</option>
-                          <option value="security">Security</option>
-                        </select>
-                      </div>
-                      <div>
-                        <label class="block text-xs font-medium text-neutral-300 mb-2">Date</label>
-                        <select id="activity-date-filter" class="w-full px-3 py-2 bg-neutral-800 border border-neutral-700 rounded-lg text-neutral-100 text-sm focus:outline-none focus:ring-2 focus:ring-neutral-700">
-                          <option value="">All Time</option>
-                          <option value="today">Today</option>
-                          <option value="week">This Week</option>
-                          <option value="month">This Month</option>
-                        </select>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                <!-- Search Bar -->
-                <div class="flex-1 relative">
-                  <input type="text" id="activity-search" placeholder="Search activities..." class="w-full pl-4 pr-12 py-3 bg-neutral-800 border border-neutral-700 rounded-lg text-neutral-100 placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-neutral-700 focus:border-neutral-600 transition-all" />
-                  <button type="button" class="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-white transition-colors" aria-label="Search">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            <!-- Activity Timeline -->
-            <div class="bg-neutral-900 border border-neutral-800 rounded-2xl p-6" id="activity-timeline">
-              <!-- Activities will be populated by JavaScript -->
-            </div>
-
-            <!-- Pagination -->
-            <div class="flex flex-col sm:flex-row items-center justify-between gap-4 mt-6 pt-6 border-t border-neutral-800">
-              <div class="text-sm text-neutral-400">
-                Showing <span id="activity-shown" class="font-medium text-white">0</span> of <span id="activity-total" class="font-medium text-white">0</span> activities
-              </div>
-              <div class="flex items-center gap-2">
-                <button id="activity-prev" class="px-4 py-2 text-sm font-medium bg-neutral-800 border border-neutral-700 rounded-lg text-neutral-300 hover:bg-neutral-700 transition-colors disabled:opacity-50" disabled>Sebelumnya</button>
-                <div id="activity-page-numbers" class="flex items-center gap-1"></div>
-                <button id="activity-next" class="px-4 py-2 text-sm font-medium bg-neutral-800 border border-neutral-700 rounded-lg text-neutral-300 hover:bg-neutral-700 transition-colors">Berikutnya</button>
-              </div>
-            </div>
-          </section>
-
-        </div>
-      </div>
     </main>
-
-            <div id="admin-detail-modal" class="fixed inset-0 z-50 flex items-center justify-center hidden opacity-0 transition-opacity duration-200">
-      <div class="absolute inset-0 bg-neutral-950/80 backdrop-blur-sm" onclick="closeAdminDetailModal()"></div>
-      <div class="relative bg-neutral-900 border border-neutral-800 rounded-2xl shadow-2xl max-w-2xl w-full mx-4 overflow-hidden transform scale-95 opacity-0 transition-all duration-200" id="admin-detail-modal-content">
-        <div class="p-8">
-          <div class="flex items-start justify-between mb-6">
-            <div>
-              <h3 class="text-2xl font-serif text-white mb-1" id="admin-detail-modal-title">Detail</h3>
-              <p class="text-sm text-neutral-400" id="admin-detail-modal-subtitle"></p>
-            </div>
-            <button onclick="closeAdminDetailModal()" class="text-neutral-400 hover:text-white transition-colors">
-              <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
-          </div>
-          <div id="admin-detail-modal-body"></div>
-          <div class="mt-6 pt-4 border-t border-neutral-800 flex justify-end gap-3">
-            <button onclick="closeAdminDetailModal()" class="px-6 py-2.5 bg-neutral-800 border border-neutral-700 hover:bg-neutral-700 text-white text-sm font-medium rounded-xl transition-colors">
-              Tutup
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
-
-
-
-    <div id="admin-return-modal" class="fixed inset-0 z-50 hidden flex items-center justify-center p-4 modal-overlay">
-      <div class="modal-panel rounded-3xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
-        <div class="modal-header p-6 border-b border-neutral-800 flex items-center justify-between">
-          <h3 class="text-xl font-semibold text-white" id="admin-return-modal-title">Edit Pengembalian</h3>
-          <button type="button" onclick="closeAdminReturnModal()" class="modal-close text-neutral-400 hover:text-white transition-colors">
-            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
-        </div>
-        <form id="admin-return-form" class="p-6 space-y-4 modal-body-shell">
-          <input type="hidden" id="admin-return-code">
-          <input type="hidden" id="admin-return-rental-code">
-          <div>
-            <label class="block text-sm font-medium text-neutral-400 mb-2">Status</label>
-            <select id="admin-return-status" class="w-full px-4 py-3 bg-neutral-800 border border-neutral-700 rounded-lg text-neutral-100 focus:outline-none focus:ring-2 focus:ring-neutral-700">
-              <option value="completed">Completed</option>
-              <option value="pending">Pending</option>
-            </select>
-          </div>
-          <div>
-            <label class="block text-sm font-medium text-neutral-400 mb-2">Notes</label>
-            <textarea id="admin-return-notes" rows="4" class="w-full px-4 py-3 bg-neutral-800 border border-neutral-700 rounded-lg text-neutral-100 focus:outline-none focus:ring-2 focus:ring-neutral-700"></textarea>
-          </div>
-          <div class="modal-actions">
-            <button type="button" onclick="closeAdminReturnModal()" class="flex-1 px-4 py-3 bg-neutral-800 border border-neutral-700 rounded-lg text-neutral-300 hover:bg-neutral-700 transition-colors">Cancel</button>
-            <button type="submit" class="flex-1 px-4 py-3 bg-white text-black font-semibold rounded-lg hover:bg-neutral-200 transition-colors">Save Return</button>
-          </div>
-        </form>
-      </div>
-    </div>
 
     <script>
       // Sidebar toggle for mobile
       const sidebar = document.getElementById('sidebar');
       const sidebarToggle = document.getElementById('sidebar-toggle');
       const sidebarOverlay = document.getElementById('sidebar-overlay');
+      const bindById = (id, event, handler) => {
+        const element = document.getElementById(id);
+        if (element) {
+          element.addEventListener(event, handler);
+        }
+        return element;
+      };
 
       function toggleSidebar() {
         const isClosed = sidebar.classList.contains('-translate-x-full');
@@ -1784,74 +974,44 @@ $admin_activities_json = json_encode($admin_activities, JSON_UNESCAPED_SLASHES |
         }
       }
 
-      sidebarToggle.addEventListener('click', toggleSidebar);
-      sidebarOverlay.addEventListener('click', toggleSidebar);
-
-      // Navigation handling
-      const navItems = document.querySelectorAll('.legacy-tab-nav');
-      const sections = document.querySelectorAll('.content-section');
+      if (sidebarToggle && sidebarOverlay) {
+        sidebarToggle.addEventListener('click', toggleSidebar);
+        sidebarOverlay.addEventListener('click', toggleSidebar);
+      }
 
       function showSection(sectionId) {
-        // Update nav items
-        navItems.forEach(item => {
-          if (item.dataset.section === sectionId) {
-            item.classList.add('nav-item-active');
-            item.classList.remove('text-neutral-400', 'hover:text-white');
-          } else {
-            item.classList.remove('nav-item-active');
-            item.classList.add('text-neutral-400', 'hover:text-white');
-          }
-        });
-
-        // Show selected section, hide others
-        sections.forEach(section => {
-          if (section.id === sectionId) {
-            section.classList.remove('hidden');
-            // Re-trigger animation
-            section.style.opacity = '0';
-            section.style.transform = 'translateY(30px)';
-            setTimeout(() => {
-              section.style.opacity = '1';
-              section.style.transform = 'translateY(0)';
-            }, 50);
-          } else {
-            section.classList.add('hidden');
-          }
-        });
-
-        // Close mobile sidebar after selection
-        if (window.innerWidth < 1024 && !sidebar.classList.contains('-translate-x-full')) {
-          toggleSidebar();
-        }
+        return sectionId;
       }
 
-      // Add click listeners to nav items
-      navItems.forEach(item => {
-        item.addEventListener('click', (e) => {
-          e.preventDefault();
-          const sectionId = item.dataset.section;
-          showSection(sectionId);
+      function renderTableEmptyState(tbody, columnCount, options = {}) {
+        const {
+          title = 'Belum ada data',
+          emptyMessage = 'Coba ubah filter atau tambah data baru.',
+          filteredTitle = 'Data tidak ditemukan',
+          filteredMessage = 'Coba ubah kata kunci pencarian atau reset filter.',
+          isFiltered = false
+        } = options;
+        const heading = isFiltered ? filteredTitle : title;
+        const copy = isFiltered ? filteredMessage : emptyMessage;
 
-          // Update URL hash without scrolling
-          history.pushState(null, null, `#${sectionId}`);
-        });
-      });
-
-      // Handle initial hash or default to overview
-      function initializeSection() {
-        const hash = window.location.hash.substring(1);
-        if (hash && document.getElementById(hash)) {
-          showSection(hash);
-        } else {
-          showSection('overview');
-        }
+        tbody.innerHTML = `
+          <tr>
+            <td colspan="${columnCount}" class="px-6 py-10">
+              <div class="flex flex-col items-center justify-center gap-4 rounded-2xl border border-dashed border-neutral-700 bg-neutral-950/60 px-6 py-10 text-center">
+                <div class="flex h-14 w-14 items-center justify-center rounded-2xl border border-neutral-700 bg-neutral-900 text-neutral-300">
+                  <svg class="h-7 w-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M4 7h16m-2 0v10a2 2 0 01-2 2H8a2 2 0 01-2-2V7m3-3h6a2 2 0 012 2v1H7V6a2 2 0 012-2z" />
+                  </svg>
+                </div>
+                <div class="space-y-2">
+                  <p class="text-base font-semibold text-white">${heading}</p>
+                  <p class="mx-auto max-w-md text-sm leading-6 text-neutral-400">${copy}</p>
+                </div>
+              </div>
+            </td>
+          </tr>
+        `;
       }
-
-      // Handle browser back/forward
-      window.addEventListener('popstate', initializeSection);
-
-      // Initialize on load
-      document.addEventListener('DOMContentLoaded', initializeSection);
 
       // ============================================
       // USERS MANAGEMENT
@@ -1871,6 +1031,19 @@ $admin_activities_json = json_encode($admin_activities, JSON_UNESCAPED_SLASHES |
         const end = start + usersPerPage;
         const pagePengguna = filteredPengguna.slice(start, end);
 
+        if (pagePengguna.length === 0) {
+          renderTableEmptyState(tbody, 5, {
+            title: 'Belum ada pengguna',
+            filteredTitle: 'Pengguna tidak ditemukan',
+            filteredMessage: 'Coba ubah kata kunci pencarian atau reset filter pengguna.',
+            isFiltered: users.length > 0
+          });
+          document.getElementById('users-shown').textContent = '0';
+          document.getElementById('users-total').textContent = filteredPengguna.length;
+          renderPenggunaPagination();
+          return;
+        }
+
         tbody.innerHTML = pagePengguna.map(user => {
           const roleBadge = `<span class="badge ${getRoleBadgeClass(user.role)}">${capitalizeFirst(user.role)}</span>`;
           const actionButtons = `
@@ -1879,7 +1052,7 @@ $admin_activities_json = json_encode($admin_activities, JSON_UNESCAPED_SLASHES |
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
               </svg>
             </button>
-            <button onclick="deleteUser(${user.id})" class="p-2 text-neutral-400 hover:text-red-400 hover:bg-neutral-800 rounded transition-colors" title="Delete">
+            <button onclick="deleteUser(${user.id})" class="p-2 text-neutral-400 hover:text-red-400 hover:bg-neutral-800 rounded transition-colors" title="Hapus">
               <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
               </svg>
@@ -1896,7 +1069,7 @@ $admin_activities_json = json_encode($admin_activities, JSON_UNESCAPED_SLASHES |
                         <span class="text-sm font-medium text-neutral-300">${escapeHtml(user.name.charAt(0))}</span>
                       </div>
                       <div class="min-w-0">
-                        <h4 class="text-sm font-semibold text-white truncate">${escapeHtml(user.name)}</h4>
+                        <h4 class="text-sm font-semibold text-white truncate mobile-name-ellipsis mobile-card-title-ellipsis">${escapeHtml(user.name)}</h4>
                         <p class="text-xs text-neutral-400 truncate">${escapeHtml(user.email)}</p>
                       </div>
                     </div>
@@ -1909,8 +1082,8 @@ $admin_activities_json = json_encode($admin_activities, JSON_UNESCAPED_SLASHES |
                       <span class="text-neutral-200 text-right">${formatDate(user.joined)}</span>
                     </div>
                     <div class="flex justify-between gap-3">
-                      <span class="text-neutral-500">Last Active</span>
-                      <span class="text-neutral-200 text-right">${user.lastActive === 'Never' ? 'Never' : formatDateTime(user.lastActive)}</span>
+                      <span class="text-neutral-500">Last Aktif</span>
+                      <span class="text-neutral-200 text-right">${user.lastAktif === 'Never' ? 'Never' : formatDateTime(user.lastAktif)}</span>
                     </div>
                   </div>
 
@@ -1936,7 +1109,7 @@ $admin_activities_json = json_encode($admin_activities, JSON_UNESCAPED_SLASHES |
                 ${roleBadge}
               </td>
               <td class="px-6 py-4 text-sm text-neutral-400">${formatDate(user.joined)}</td>
-              <td class="px-6 py-4 text-sm text-neutral-400">${user.lastActive === 'Never' ? 'Never' : formatDateTime(user.lastActive)}</td>
+              <td class="px-6 py-4 text-sm text-neutral-400">${user.lastAktif === 'Never' ? 'Never' : formatDateTime(user.lastAktif)}</td>
               <td class="px-6 py-4 text-right">
                 <div class="flex items-center justify-end gap-2">
                   ${actionButtons}
@@ -1957,8 +1130,8 @@ $admin_activities_json = json_encode($admin_activities, JSON_UNESCAPED_SLASHES |
       function getRoleBadgeClass(role) {
         switch(role) {
           case 'admin': return 'badge-danger';
-          case 'staff': return 'badge-info';
-          case 'user': return 'badge-success';
+          case 'petugas': return 'badge-info';
+          case 'pelanggan': return 'badge-success';
           default: return 'badge-info';
         }
       }
@@ -1966,9 +1139,9 @@ $admin_activities_json = json_encode($admin_activities, JSON_UNESCAPED_SLASHES |
       // Get status badge class
       function getStatusBadgeClass(status) {
         switch(status) {
-          case 'active': return 'badge-success';
-          case 'inactive': return 'badge-danger';
-          case 'pending': return 'badge-warning';
+          case 'aktif': return 'badge-success';
+          case 'nonaktif': return 'badge-danger';
+          case 'menunggu': return 'badge-warning';
           default: return 'badge-info';
         }
       }
@@ -2036,13 +1209,11 @@ $admin_activities_json = json_encode($admin_activities, JSON_UNESCAPED_SLASHES |
       function filterPengguna() {
         const searchTerm = document.getElementById('user-search').value.toLowerCase();
         const roleFilter = document.getElementById('role-filter').value;
-        const statusFilter = document.getElementById('status-filter').value;
 
         filteredPengguna = users.filter(user => {
-          const matchesSearch = user.name.toLowerCase().includes(searchTerm) || user.email.toLowerCase().includes(searchTerm);
+          const matchesCari = user.name.toLowerCase().includes(searchTerm) || user.email.toLowerCase().includes(searchTerm);
           const matchesRole = roleFilter === '' || user.role === roleFilter;
-          const matchesStatus = statusFilter === '' || user.status === statusFilter;
-          return matchesSearch && matchesRole && matchesStatus;
+          return matchesCari && matchesRole;
         });
 
         usersCurrentPage = 1;
@@ -2050,17 +1221,16 @@ $admin_activities_json = json_encode($admin_activities, JSON_UNESCAPED_SLASHES |
       }
 
       // Event listeners for filters
-      document.getElementById('user-search').addEventListener('input', filterPengguna);
-      document.getElementById('role-filter').addEventListener('change', filterPengguna);
-      document.getElementById('status-filter').addEventListener('change', filterPengguna);
+      bindById('user-search', 'input', filterPengguna);
+      bindById('role-filter', 'change', filterPengguna);
 
-      document.getElementById('users-prev').addEventListener('click', () => goToPenggunaPage(usersCurrentPage - 1));
-      document.getElementById('users-next').addEventListener('click', () => goToPenggunaPage(usersCurrentPage + 1));
+      bindById('users-prev', 'click', () => goToPenggunaPage(usersCurrentPage - 1));
+      bindById('users-next', 'click', () => goToPenggunaPage(usersCurrentPage + 1));
 
       // User modal (placeholder)
       function openUserModal(userId = null) {
         if (userId) {
-          alert('Edit user functionality would open here (not implemented in demo)');
+          alert('Fitur edit pengguna akan dibuka di sini (belum diterapkan pada demo)');
         } else {
           alert('Add user functionality would open here (not implemented in demo)');
         }
@@ -2071,7 +1241,7 @@ $admin_activities_json = json_encode($admin_activities, JSON_UNESCAPED_SLASHES |
       }
 
       function deleteUser(userId) {
-        if (confirm('Are you sure you want to delete this user?')) {
+        if (confirm('Yakin ingin menghapus pengguna ini?')) {
           alert(`User ${userId} would be deleted (not implemented in demo)`);
         }
       }
@@ -2130,7 +1300,7 @@ $admin_activities_json = json_encode($admin_activities, JSON_UNESCAPED_SLASHES |
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                   </svg>
                 </button>
-                <button onclick="deleteCategory(${cat.id})" class="p-2 text-neutral-400 hover:text-red-400 hover:bg-neutral-800 rounded transition-colors" title="Delete">
+                <button onclick="deleteCategory(${cat.id})" class="p-2 text-neutral-400 hover:text-red-400 hover:bg-neutral-800 rounded transition-colors" title="Hapus">
                   <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                   </svg>
@@ -2144,7 +1314,7 @@ $admin_activities_json = json_encode($admin_activities, JSON_UNESCAPED_SLASHES |
                 <span class="text-neutral-500">Items: </span>
                 <span class="font-medium text-white">${cat.itemCount}</span>
               </div>
-              <span class="badge ${cat.status === 'active' ? 'badge-success' : 'badge-danger'}">${capitalizeFirst(cat.status)}</span>
+              <span class="badge ${cat.status === 'aktif' ? 'badge-success' : 'badge-danger'}">${capitalizeFirst(cat.status)}</span>
             </div>
           </div>
         `).join('');
@@ -2152,7 +1322,7 @@ $admin_activities_json = json_encode($admin_activities, JSON_UNESCAPED_SLASHES |
 
       function openCategoryModal(categoryId = null) {
         if (categoryId) {
-          alert(`Edit category ${categoryId} would open here (not implemented in demo)`);
+          alert(`Edit kategori ${categoryId} would open here (not implemented in demo)`);
         } else {
           alert('Add category functionality would open here (not implemented in demo)');
         }
@@ -2198,6 +1368,19 @@ $admin_activities_json = json_encode($admin_activities, JSON_UNESCAPED_SLASHES |
         const end = start + inventoryPerPage;
         const pageItems = filteredInventaris.slice(start, end);
 
+        if (pageItems.length === 0) {
+          renderTableEmptyState(tbody, 5, {
+            title: 'Belum ada produk',
+            filteredTitle: 'Produk tidak ditemukan',
+            filteredMessage: 'Coba ubah kata kunci pencarian atau reset filter produk.',
+            isFiltered: inventory.length > 0
+          });
+          document.getElementById('inventory-shown').textContent = '0';
+          document.getElementById('inventory-total').textContent = filteredInventaris.length;
+          renderInventarisPagination();
+          return;
+        }
+
         tbody.innerHTML = pageItems.map(item => {
           const stockPercent = item.totalStock > 0 ? (item.stock / item.totalStock) * 100 : 0;
           const stockBarClass = item.stock === 0 ? 'bg-red-500' : item.stock <= item.totalStock * 0.3 ? 'bg-yellow-500' : 'bg-green-500';
@@ -2225,8 +1408,8 @@ $admin_activities_json = json_encode($admin_activities, JSON_UNESCAPED_SLASHES |
                       <div class="w-12 h-12 bg-neutral-800 rounded-lg overflow-hidden border border-neutral-700 flex-shrink-0">
                         <img src="${escapeHtml(item.image)}" alt="${escapeHtml(item.name)}" class="w-full h-full object-cover" onerror="this.src='../images/gear-placeholder.svg'">
                       </div>
-                      <div class="min-w-0">
-                        <h4 class="text-sm font-semibold text-white truncate">${escapeHtml(item.name)}</h4>
+                      <div class="min-w-0 flex-1">
+                        <h4 class="text-sm font-semibold text-white truncate mobile-name-ellipsis mobile-card-title-ellipsis">${escapeHtml(item.name)}</h4>
                         <p class="text-xs text-neutral-400">${escapeHtml(item.brand)}</p>
                       </div>
                     </div>
@@ -2240,7 +1423,7 @@ $admin_activities_json = json_encode($admin_activities, JSON_UNESCAPED_SLASHES |
                     </div>
                     <div class="flex justify-between gap-3">
                       <span class="text-neutral-500">Daily Rate</span>
-                      <span class="text-white font-semibold text-right">$${Number(item.price).toFixed(2)}/day</span>
+                      <span class="text-white font-semibold text-right">${window.formatCurrencyIDR(item.price)}/hari</span>
                     </div>
                     <div class="flex justify-between gap-3">
                       <span class="text-neutral-500">Stock</span>
@@ -2272,7 +1455,7 @@ $admin_activities_json = json_encode($admin_activities, JSON_UNESCAPED_SLASHES |
               <td class="px-6 py-4">
                 ${categoryBadge}
               </td>
-              <td class="px-6 py-4 text-sm font-medium text-white">$${Number(item.price).toFixed(2)}<span class="text-xs text-neutral-500">/day</span></td>
+              <td class="px-6 py-4 text-sm font-medium text-white">${window.formatCurrencyIDR(item.price)}<span class="text-xs text-neutral-500">/hari</span></td>
               <td class="px-6 py-4">
                 <div class="flex items-center gap-2">
                   <div class="text-sm text-right w-16">
@@ -2334,9 +1517,9 @@ $admin_activities_json = json_encode($admin_activities, JSON_UNESCAPED_SLASHES |
         const searchTerm = document.getElementById('inventory-search').value.toLowerCase();
         const categoryFilter = document.getElementById('category-filter').value;
         filteredInventaris = inventory.filter(item => {
-          const matchesSearch = item.name.toLowerCase().includes(searchTerm) || item.brand.toLowerCase().includes(searchTerm);
+          const matchesCari = item.name.toLowerCase().includes(searchTerm) || item.brand.toLowerCase().includes(searchTerm);
           const matchesCategory = categoryFilter === '' || item.category === categoryFilter;
-          return matchesSearch && matchesCategory;
+          return matchesCari && matchesCategory;
         });
 
         inventoryCurrentPage = 1;
@@ -2344,11 +1527,11 @@ $admin_activities_json = json_encode($admin_activities, JSON_UNESCAPED_SLASHES |
       }
 
       // Event listeners for filters
-      document.getElementById('inventory-search').addEventListener('input', filterInventaris);
-      document.getElementById('category-filter').addEventListener('change', filterInventaris);
+      bindById('inventory-search', 'input', filterInventaris);
+      bindById('category-filter', 'change', filterInventaris);
 
-      document.getElementById('inventory-prev').addEventListener('click', () => goToInventarisPage(inventoryCurrentPage - 1));
-      document.getElementById('inventory-next').addEventListener('click', () => goToInventarisPage(inventoryCurrentPage + 1));
+      bindById('inventory-prev', 'click', () => goToInventarisPage(inventoryCurrentPage - 1));
+      bindById('inventory-next', 'click', () => goToInventarisPage(inventoryCurrentPage + 1));
 
       // Inventaris modal functions (placeholder)
       function openInventarisModal() {
@@ -2356,7 +1539,7 @@ $admin_activities_json = json_encode($admin_activities, JSON_UNESCAPED_SLASHES |
       }
 
       function editInventaris(itemId) {
-        alert(`Edit equipment ${itemId} would open here (not implemented in demo)`);
+        alert(`Edit peralatan ${itemId} would open here (not implemented in demo)`);
       }
 
       function viewInventaris(itemId) {
@@ -2390,6 +1573,19 @@ $admin_activities_json = json_encode($admin_activities, JSON_UNESCAPED_SLASHES |
         const end = start + borrowingsPerPage;
         const pageItems = filteredPeminjaman.slice(start, end);
 
+        if (pageItems.length === 0) {
+          renderTableEmptyState(tbody, 7, {
+            title: 'Belum ada peminjaman',
+            filteredTitle: 'Peminjaman tidak ditemukan',
+            filteredMessage: 'Coba ubah kata kunci pencarian atau reset filter peminjaman.',
+            isFiltered: borrowingsData.length > 0
+          });
+          document.getElementById('borrowings-shown').textContent = '0';
+          document.getElementById('borrowings-total').textContent = filteredPeminjaman.length;
+          renderPeminjamanPagination();
+          return;
+        }
+
         tbody.innerHTML = pageItems.map(trx => {
           const statusBadge = `<span class="badge ${getPeminjamanStatusBadgeClass(trx.status)}">${capitalizeFirst(trx.status)}</span>`;
           const actionButtons = `
@@ -2418,11 +1614,11 @@ $admin_activities_json = json_encode($admin_activities, JSON_UNESCAPED_SLASHES |
                   <div class="flex items-start justify-between gap-3 mb-3">
                     <div class="flex items-center gap-3 min-w-0 flex-1">
                       <div class="w-12 h-12 bg-neutral-800 rounded-lg overflow-hidden flex-shrink-0">
-                        <img src="../images/gear-placeholder.svg" alt="${escapeHtml(trx.equipment)}" class="w-full h-full object-cover">
+                        <img src="${escapeHtml(trx.image || '../images/gear-placeholder.svg')}" alt="${escapeHtml(trx.equipment)}" class="w-full h-full object-cover">
                       </div>
                       <div class="min-w-0">
-                        <h4 class="text-sm font-semibold text-white truncate">${escapeHtml(trx.equipment)}</h4>
-                        <p class="text-xs text-neutral-400">${escapeHtml(trx.customer)}</p>
+                        <h4 class="text-sm font-semibold text-white truncate mobile-name-ellipsis mobile-card-title-ellipsis">${escapeHtml(trx.equipment)}</h4>
+                        <p class="text-xs text-neutral-400 mobile-name-ellipsis">${escapeHtml(trx.customer)}</p>
                         <p class="text-xs text-neutral-500 mt-0.5">${trx.id}</p>
                       </div>
                     </div>
@@ -2432,7 +1628,7 @@ $admin_activities_json = json_encode($admin_activities, JSON_UNESCAPED_SLASHES |
                   <div class="space-y-2 text-xs mb-3">
                     <div class="flex justify-between gap-3">
                       <span class="text-neutral-500">Customer</span>
-                      <span class="text-neutral-200 text-right">${escapeHtml(trx.customer)}</span>
+                      <span class="text-neutral-200 text-right mobile-name-ellipsis">${escapeHtml(trx.customer)}</span>
                     </div>
                     <div class="flex justify-between gap-3">
                       <span class="text-neutral-500">Periode</span>
@@ -2444,7 +1640,7 @@ $admin_activities_json = json_encode($admin_activities, JSON_UNESCAPED_SLASHES |
                     </div>
                     <div class="flex justify-between gap-3">
                       <span class="text-neutral-500">Total</span>
-                      <span class="text-white font-semibold text-right">$${Number(trx.amount).toFixed(2)}</span>
+                      <span class="text-white font-semibold text-right">${window.formatCurrencyIDR(trx.amount)}</span>
                     </div>
                   </div>
 
@@ -2466,7 +1662,7 @@ $admin_activities_json = json_encode($admin_activities, JSON_UNESCAPED_SLASHES |
               <td class="px-6 py-4">
                 <div class="flex items-center gap-2">
                   <div class="w-10 h-10 bg-neutral-800 rounded overflow-hidden flex-shrink-0">
-                    <img src="../images/gear-placeholder.svg" alt="${escapeHtml(trx.equipment)}" class="w-full h-full object-cover">
+                    <img src="${escapeHtml(trx.image || '../images/gear-placeholder.svg')}" alt="${escapeHtml(trx.equipment)}" class="w-full h-full object-cover">
                   </div>
                   <span class="text-sm text-neutral-300 truncate max-w-[150px]">${escapeHtml(trx.equipment)}</span>
                 </div>
@@ -2477,7 +1673,7 @@ $admin_activities_json = json_encode($admin_activities, JSON_UNESCAPED_SLASHES |
                   <p class="text-xs text-neutral-500">${trx.days} day${trx.days > 1 ? 's' : ''}</p>
                 </div>
               </td>
-              <td class="px-6 py-4 text-sm font-semibold text-white">$${Number(trx.amount).toFixed(2)}</td>
+              <td class="px-6 py-4 text-sm font-semibold text-white">${window.formatCurrencyIDR(trx.amount)}</td>
               <td class="px-6 py-4">
                 ${statusBadge}
               </td>
@@ -2501,8 +1697,8 @@ $admin_activities_json = json_encode($admin_activities, JSON_UNESCAPED_SLASHES |
       function getPeminjamanStatusBadgeClass(status) {
         switch(status) {
           case 'approved': return 'badge-success';
-          case 'pending': return 'badge-warning';
-          case 'rejected': return 'badge-danger';
+          case 'menunggu': return 'badge-warning';
+          case 'ditolak': return 'badge-danger';
           default: return 'badge-info';
         }
       }
@@ -2539,37 +1735,13 @@ $admin_activities_json = json_encode($admin_activities, JSON_UNESCAPED_SLASHES |
       // Filter borrowings
       function filterPeminjaman() {
         const searchTerm = document.getElementById('borrowings-search').value.toLowerCase();
-        const statusFilter = document.getElementById('borrowings-status-filter').value;
-        const dateFilter = document.getElementById('borrowings-date-filter').value;
 
         filteredPeminjaman = borrowingsData.filter(trx => {
-          const matchesSearch = trx.id.toLowerCase().includes(searchTerm) ||
+          const matchesCari = trx.id.toLowerCase().includes(searchTerm) ||
                                trx.customer.toLowerCase().includes(searchTerm) ||
                                trx.equipment.toLowerCase().includes(searchTerm);
-          const matchesStatus = statusFilter === '' || trx.status === statusFilter;
-          
-          // Date filtering
-          let matchesDate = true;
-          if (dateFilter) {
-            const trxDate = new Date(trx.startDate);
-            const now = new Date();
-            const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-            
-            switch(dateFilter) {
-              case 'today':
-                matchesDate = trxDate >= today && trxDate < new Date(today.getTime() + 24 * 60 * 60 * 1000);
-                break;
-              case 'week':
-                const weekFromNow = new Date(today.getTime() + 7 * 24 * 60 * 60 * 1000);
-                matchesDate = trxDate >= today && trxDate < weekFromNow;
-                break;
-              case 'month':
-                matchesDate = trxDate.getMonth() === now.getMonth() && trxDate.getFullYear() === now.getFullYear();
-                break;
-            }
-          }
-          
-          return matchesSearch && matchesStatus && matchesDate;
+
+          return matchesCari;
         });
 
         borrowingsCurrentPage = 1;
@@ -2577,18 +1749,16 @@ $admin_activities_json = json_encode($admin_activities, JSON_UNESCAPED_SLASHES |
       }
 
       // Event listeners for borrowings filters
-      document.getElementById('borrowings-search').addEventListener('input', filterPeminjaman);
-      document.getElementById('borrowings-status-filter').addEventListener('change', filterPeminjaman);
-      document.getElementById('borrowings-date-filter').addEventListener('change', filterPeminjaman);
+      bindById('borrowings-search', 'input', filterPeminjaman);
 
-      document.getElementById('borrowings-prev').addEventListener('click', () => goToPeminjamanPage(borrowingsCurrentPage - 1));
-      document.getElementById('borrowings-next').addEventListener('click', () => goToPeminjamanPage(borrowingsCurrentPage + 1));
+      bindById('borrowings-prev', 'click', () => goToPeminjamanPage(borrowingsCurrentPage - 1));
+      bindById('borrowings-next', 'click', () => goToPeminjamanPage(borrowingsCurrentPage + 1));
 
       // Peminjaman actions
       function viewPeminjaman(trxId) {
         const trx = borrowingsData.find(t => t.id === trxId);
         if (trx) {
-          alert(`Borrowing Details:\n\nID: ${trx.id}\nCustomer: ${trx.customer}\nEquipment: ${trx.equipment}\nBorrowing Period: ${formatDate(trx.startDate)} - ${formatDate(trx.endDate)}\nDays: ${trx.days}\nAmount: $${trx.amount}\nStatus: ${capitalizeFirst(trx.status)}`);
+          alert(`Borrowing Details:\n\nID: ${trx.id}\nCustomer: ${trx.customer}\nEquipment: ${trx.equipment}\nBorrowing Period: ${formatDate(trx.startDate)} - ${formatDate(trx.endDate)}\nDays: ${trx.days}\nAmount: ${window.formatCurrencyIDR(trx.amount)}\nStatus: ${capitalizeFirst(trx.status)}`);
         }
       }
 
@@ -2622,6 +1792,19 @@ $admin_activities_json = json_encode($admin_activities, JSON_UNESCAPED_SLASHES |
         const end = start + returnsPerPage;
         const pageItems = filteredPengembalian.slice(start, end);
 
+        if (pageItems.length === 0) {
+          renderTableEmptyState(tbody, 6, {
+            title: 'Belum ada pengembalian',
+            filteredTitle: 'Pengembalian tidak ditemukan',
+            filteredMessage: 'Coba ubah kata kunci pencarian atau reset filter pengembalian.',
+            isFiltered: returnsData.length > 0
+          });
+          document.getElementById('returns-shown').textContent = '0';
+          document.getElementById('returns-total').textContent = filteredPengembalian.length;
+          renderPengembalianPagination();
+          return;
+        }
+
         tbody.innerHTML = pageItems.map(trx => {
           const statusBadge = `<span class="badge ${getPengembalianStatusBadgeClass(trx.status)}">${capitalizeFirst(trx.status)}</span>`;
           const actionButtons = `
@@ -2645,11 +1828,11 @@ $admin_activities_json = json_encode($admin_activities, JSON_UNESCAPED_SLASHES |
                   <div class="flex items-start justify-between gap-3 mb-3">
                     <div class="flex items-center gap-3 min-w-0 flex-1">
                       <div class="w-12 h-12 bg-neutral-800 rounded-lg overflow-hidden flex-shrink-0">
-                        <img src="../images/gear-placeholder.svg" alt="${escapeHtml(trx.equipment)}" class="w-full h-full object-cover">
+                        <img src="${escapeHtml(trx.image || '../images/gear-placeholder.svg')}" alt="${escapeHtml(trx.equipment)}" class="w-full h-full object-cover">
                       </div>
                       <div class="min-w-0">
-                        <h4 class="text-sm font-semibold text-white truncate">${escapeHtml(trx.equipment)}</h4>
-                        <p class="text-xs text-neutral-400">${escapeHtml(trx.customer)}</p>
+                        <h4 class="text-sm font-semibold text-white truncate mobile-name-ellipsis mobile-card-title-ellipsis">${escapeHtml(trx.equipment)}</h4>
+                        <p class="text-xs text-neutral-400 mobile-name-ellipsis">${escapeHtml(trx.customer)}</p>
                         <p class="text-xs text-neutral-500 mt-0.5">${trx.id}</p>
                       </div>
                     </div>
@@ -2659,7 +1842,7 @@ $admin_activities_json = json_encode($admin_activities, JSON_UNESCAPED_SLASHES |
                   <div class="space-y-2 text-xs mb-3">
                     <div class="flex justify-between gap-3">
                       <span class="text-neutral-500">Customer</span>
-                      <span class="text-neutral-200 text-right">${escapeHtml(trx.customer)}</span>
+                      <span class="text-neutral-200 text-right mobile-name-ellipsis">${escapeHtml(trx.customer)}</span>
                     </div>
                     <div class="flex justify-between gap-3">
                       <span class="text-neutral-500">Tanggal Return</span>
@@ -2667,7 +1850,7 @@ $admin_activities_json = json_encode($admin_activities, JSON_UNESCAPED_SLASHES |
                     </div>
                     <div class="flex justify-between gap-3">
                       <span class="text-neutral-500">Equipment</span>
-                      <span class="text-neutral-200 text-right">${escapeHtml(trx.equipment)}</span>
+                      <span class="text-neutral-200 text-right mobile-name-ellipsis">${escapeHtml(trx.equipment)}</span>
                     </div>
                   </div>
 
@@ -2689,7 +1872,7 @@ $admin_activities_json = json_encode($admin_activities, JSON_UNESCAPED_SLASHES |
               <td class="px-6 py-4">
                 <div class="flex items-center gap-2">
                   <div class="w-10 h-10 bg-neutral-800 rounded overflow-hidden flex-shrink-0">
-                    <img src="../images/gear-placeholder.svg" alt="${escapeHtml(trx.equipment)}" class="w-full h-full object-cover">
+                    <img src="${escapeHtml(trx.image || '../images/gear-placeholder.svg')}" alt="${escapeHtml(trx.equipment)}" class="w-full h-full object-cover">
                   </div>
                   <span class="text-sm text-neutral-300 truncate max-w-[150px]">${escapeHtml(trx.equipment)}</span>
                 </div>
@@ -2718,7 +1901,7 @@ $admin_activities_json = json_encode($admin_activities, JSON_UNESCAPED_SLASHES |
       function getPengembalianStatusBadgeClass(status) {
         switch(status) {
           case 'returned': return 'badge-success';
-          case 'pending': return 'badge-warning';
+          case 'menunggu': return 'badge-warning';
           case 'overdue': return 'badge-danger';
           default: return 'badge-info';
         }
@@ -2759,11 +1942,11 @@ $admin_activities_json = json_encode($admin_activities, JSON_UNESCAPED_SLASHES |
         const statusFilter = document.getElementById('returns-status-filter').value;
 
         filteredPengembalian = returnsData.filter(trx => {
-          const matchesSearch = trx.id.toLowerCase().includes(searchTerm) ||
+          const matchesCari = trx.id.toLowerCase().includes(searchTerm) ||
                                trx.customer.toLowerCase().includes(searchTerm) ||
                                trx.equipment.toLowerCase().includes(searchTerm);
           const matchesStatus = statusFilter === '' || trx.status === statusFilter;
-          return matchesSearch && matchesStatus;
+          return matchesCari && matchesStatus;
         });
 
         returnsCurrentPage = 1;
@@ -2771,11 +1954,11 @@ $admin_activities_json = json_encode($admin_activities, JSON_UNESCAPED_SLASHES |
       }
 
       // Event listeners for returns filters
-      document.getElementById('returns-search').addEventListener('input', filterPengembalian);
-      document.getElementById('returns-status-filter').addEventListener('change', filterPengembalian);
+      bindById('returns-search', 'input', filterPengembalian);
+      bindById('returns-status-filter', 'change', filterPengembalian);
 
-      document.getElementById('returns-prev').addEventListener('click', () => goToPengembalianPage(returnsCurrentPage - 1));
-      document.getElementById('returns-next').addEventListener('click', () => goToPengembalianPage(returnsCurrentPage + 1));
+      bindById('returns-prev', 'click', () => goToPengembalianPage(returnsCurrentPage - 1));
+      bindById('returns-next', 'click', () => goToPengembalianPage(returnsCurrentPage + 1));
 
       // Pengembalian actions
       function viewPengembalian(trxId) {
@@ -2786,7 +1969,7 @@ $admin_activities_json = json_encode($admin_activities, JSON_UNESCAPED_SLASHES |
       }
 
       function editPengembalian(trxId) {
-        alert(`Edit return ${trxId} would open here (not implemented in demo)`);
+        alert(`Edit pengembalian ${trxId} would open here (not implemented in demo)`);
       }
 
       // Initialize borrowings and returns when sections become visible
@@ -2819,7 +2002,7 @@ $admin_activities_json = json_encode($admin_activities, JSON_UNESCAPED_SLASHES |
         'check-circle': '<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>',
         'shield': '<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" /></svg>',
         'wrench': '<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>',
-        'user': '<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>',
+        'pelanggan': '<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>',
         'x-circle': '<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>',
         'database': '<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4" /></svg>',
         'alert': '<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>',
@@ -2859,7 +2042,7 @@ $admin_activities_json = json_encode($admin_activities, JSON_UNESCAPED_SLASHES |
                 <div>
                   <p class="text-sm font-medium text-white">${activity.action}</p>
                   <p class="text-xs text-neutral-500">
-                    by ${activity.user} • ${formatDateTime(activity.timestamp)}
+                    by ${activity.actorName} • ${formatDateTime(activity.timestamp)}
                   </p>
                 </div>
                 <span class="badge badge-info text-xs capitalize">${activity.type}</span>
@@ -2918,8 +2101,8 @@ $admin_activities_json = json_encode($admin_activities, JSON_UNESCAPED_SLASHES |
         const dateFilter = document.getElementById('activity-date-filter').value;
 
         filteredActivities = activities.filter(activity => {
-          const matchesSearch = activity.action.toLowerCase().includes(searchTerm) ||
-                               activity.user.toLowerCase().includes(searchTerm) ||
+          const matchesCari = activity.action.toLowerCase().includes(searchTerm) ||
+                               activity.actorName.toLowerCase().includes(searchTerm) ||
                                activity.target.toLowerCase().includes(searchTerm);
           const matchesType = typeFilter === '' || activity.type === typeFilter;
           
@@ -2935,8 +2118,8 @@ $admin_activities_json = json_encode($admin_activities, JSON_UNESCAPED_SLASHES |
                 matchesDate = activityDate >= today && activityDate < new Date(today.getTime() + 24 * 60 * 60 * 1000);
                 break;
               case 'week':
-                const weekFromNow = new Date(today.getTime() + 7 * 24 * 60 * 60 * 1000);
-                matchesDate = activityDate >= today && activityDate < weekFromNow;
+                const weekAgo = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000);
+                matchesDate = activityDate >= weekAgo && activityDate < new Date(today.getTime() + 24 * 60 * 60 * 1000);
                 break;
               case 'month':
                 matchesDate = activityDate.getMonth() === now.getMonth() && activityDate.getFullYear() === now.getFullYear();
@@ -2944,7 +2127,7 @@ $admin_activities_json = json_encode($admin_activities, JSON_UNESCAPED_SLASHES |
             }
           }
           
-          return matchesSearch && matchesType && matchesDate;
+          return matchesCari && matchesType && matchesDate;
         });
 
         activitiesCurrentPage = 1;
@@ -2952,12 +2135,12 @@ $admin_activities_json = json_encode($admin_activities, JSON_UNESCAPED_SLASHES |
       }
 
       // Event listeners for filters
-      document.getElementById('activity-search').addEventListener('input', filterActivities);
-      document.getElementById('activity-type-filter').addEventListener('change', filterActivities);
-      document.getElementById('activity-date-filter').addEventListener('change', filterActivities);
+      bindById('activity-search', 'input', filterActivities);
+      bindById('activity-type-filter', 'change', filterActivities);
+      bindById('activity-date-filter', 'change', filterActivities);
 
-      document.getElementById('activity-prev').addEventListener('click', () => goToActivityPage(activitiesCurrentPage - 1));
-      document.getElementById('activity-next').addEventListener('click', () => goToActivityPage(activitiesCurrentPage + 1));
+      bindById('activity-prev', 'click', () => goToActivityPage(activitiesCurrentPage - 1));
+      bindById('activity-next', 'click', () => goToActivityPage(activitiesCurrentPage + 1));
 
       // Initialize activity log when section becomes visible
       const originalShowSection6 = showSection;
@@ -2981,14 +2164,14 @@ $admin_activities_json = json_encode($admin_activities, JSON_UNESCAPED_SLASHES |
       function logActivity(type, user, action, target, details) {
         const iconMap = {
           'transaction': 'shopping-cart',
-          'user': 'user',
+          'pelanggan': 'pelanggan',
           'inventory': 'package',
           'system': 'database',
           'security': 'shield'
         };
         const colorMap = {
           'transaction': 'blue',
-          'user': 'purple',
+          'pelanggan': 'purple',
           'inventory': 'green',
           'system': 'indigo',
           'security': 'red'
@@ -3033,7 +2216,7 @@ $admin_activities_json = json_encode($admin_activities, JSON_UNESCAPED_SLASHES |
         if (userId) {
           const user = users.find(u => u.id === userId);
           if (user) {
-            title.textContent = 'Edit User';
+            title.textContent = 'Edit Pengguna';
             document.getElementById('user-id').value = user.id;
             document.getElementById('user-name').value = user.name;
             document.getElementById('user-email').value = user.email;
@@ -3041,7 +2224,7 @@ $admin_activities_json = json_encode($admin_activities, JSON_UNESCAPED_SLASHES |
             document.getElementById('user-status').value = user.status;
           }
         } else {
-          title.textContent = 'Add User';
+          title.textContent = 'Tambah Pengguna';
         }
 
         modal.classList.remove('hidden');
@@ -3053,7 +2236,7 @@ $admin_activities_json = json_encode($admin_activities, JSON_UNESCAPED_SLASHES |
       }
 
       // Save user
-      document.getElementById('user-form').addEventListener('submit', function(e) {
+      bindById('user-form', 'submit', function(e) {
         e.preventDefault();
         
         const id = document.getElementById('user-id').value;
@@ -3070,7 +2253,7 @@ $admin_activities_json = json_encode($admin_activities, JSON_UNESCAPED_SLASHES |
             user.email = email;
             user.role = role;
             user.status = status;
-            logActivity('user', 'Admin', 'Updated user', name, `Role: ${role}, Status: ${status}`);
+            logActivity('pelanggan', 'Admin', 'Pengguna diperbarui', name, `Role: ${role}, Status: ${status}`);
           }
         } else {
           // Add new user
@@ -3081,10 +2264,10 @@ $admin_activities_json = json_encode($admin_activities, JSON_UNESCAPED_SLASHES |
             role: role,
             status: status,
             joined: new Date().toISOString().split('T')[0],
-            lastActive: 'Never'
+            lastAktif: 'Never'
           };
           users.push(newUser);
-          logActivity('user', 'Admin', 'Created user', name, `Role: ${role}, Status: ${status}`);
+          logActivity('pelanggan', 'Admin', 'Pengguna dibuat', name, `Role: ${role}, Status: ${status}`);
         }
 
         closeUserModal();
@@ -3096,13 +2279,13 @@ $admin_activities_json = json_encode($admin_activities, JSON_UNESCAPED_SLASHES |
       }
 
       function deleteUser(userId) {
-        if (confirm('Are you sure you want to delete this user?')) {
+        if (confirm('Yakin ingin menghapus pengguna ini?')) {
           const user = users.find(u => u.id === userId);
           if (user) {
             const userIndex = users.findIndex(u => u.id === userId);
             if (userIndex !== -1) {
               users.splice(userIndex, 1);
-              logActivity('user', 'Admin', 'Deleted user', user.name, 'User removed from system');
+              logActivity('pelanggan', 'Admin', 'Pengguna dihapus', user.name, 'Pengguna dihapus dari sistem');
               renderPenggunaTable();
             }
           }
@@ -3125,7 +2308,7 @@ $admin_activities_json = json_encode($admin_activities, JSON_UNESCAPED_SLASHES |
         if (categoryId) {
           const category = categories.find(c => c.id === categoryId);
           if (category) {
-            title.textContent = 'Edit Category';
+            title.textContent = 'Edit Kategori';
             document.getElementById('category-id').value = category.id;
             document.getElementById('category-name').value = category.name;
             document.getElementById('category-description').value = category.description;
@@ -3146,7 +2329,7 @@ $admin_activities_json = json_encode($admin_activities, JSON_UNESCAPED_SLASHES |
       }
 
       // Save category
-      document.getElementById('category-form').addEventListener('submit', function(e) {
+      bindById('category-form', 'submit', function(e) {
         e.preventDefault();
         
         const id = document.getElementById('category-id').value;
@@ -3197,7 +2380,7 @@ $admin_activities_json = json_encode($admin_activities, JSON_UNESCAPED_SLASHES |
             const categoryIndex = categories.findIndex(c => c.id === categoryId);
             if (categoryIndex !== -1) {
               categories.splice(categoryIndex, 1);
-              logActivity('inventory', 'Admin', 'Deleted category', category.name, 'Category removed');
+              logActivity('inventory', 'Admin', 'Hapusd category', category.name, 'Kategori dihapus');
               renderKategori();
             }
           }
@@ -3211,7 +2394,8 @@ $admin_activities_json = json_encode($admin_activities, JSON_UNESCAPED_SLASHES |
       // Populate equipment dropdown for peminjaman
       function populateEquipmentDropdown() {
         const select = document.getElementById('transaction-equipment');
-        select.innerHTML = '<option value="">Select Equipment</option>' +
+        if (!select) return;
+        select.innerHTML = '<option value="">Pilih Peralatan</option>' +
           inventory.map(item => `<option value="${item.id}">${item.name} (${item.brand})</option>`).join('');
       }
 
@@ -3233,12 +2417,12 @@ $admin_activities_json = json_encode($admin_activities, JSON_UNESCAPED_SLASHES |
         if (itemId) {
           const item = inventory.find(i => i.id === itemId);
           if (item) {
-            title.textContent = 'Edit Equipment';
+            title.textContent = 'Edit Peralatan';
             document.getElementById('inventory-id').value = item.id;
             document.getElementById('inventory-name').value = item.name;
             document.getElementById('inventory-brand').value = item.brand;
             document.getElementById('inventory-category').value = item.category;
-            document.getElementById('inventory-status').value = item.status === 'maintenance' ? 'inactive' : 'active';
+            document.getElementById('inventory-status').value = item.status === 'maintenance' ? 'nonaktif' : 'aktif';
             document.getElementById('inventory-price').value = item.price;
             document.getElementById('inventory-total-stock').value = item.totalStock;
             document.getElementById('inventory-stock').value = item.stock;
@@ -3284,7 +2468,7 @@ $admin_activities_json = json_encode($admin_activities, JSON_UNESCAPED_SLASHES |
       function viewInventaris(itemId) {
         const item = inventory.find(i => i.id === itemId);
         if (item) {
-          alert(`Equipment Details:\n\nName: ${item.name}\nBrand: ${item.brand}\nCategory: ${capitalizeFirst(item.category)}\nStatus: ${capitalizeFirst(item.status)}\nDaily Rate: $${item.price}\nStock: ${item.stock}/${item.totalStock}`);
+          alert(`Equipment Details:\n\nName: ${item.name}\nBrand: ${item.brand}\nCategory: ${capitalizeFirst(item.category)}\nStatus: ${capitalizeFirst(item.status)}\nDaily Rate: ${window.formatCurrencyIDR(item.price)}\nStock: ${item.stock}/${item.totalStock}`);
         }
       }
 
@@ -3305,13 +2489,13 @@ $admin_activities_json = json_encode($admin_activities, JSON_UNESCAPED_SLASHES |
         if (trxId) {
           const trx = borrowingsData.find(t => t.id === trxId);
           if (trx) {
-            title.textContent = 'Edit Borrowing';
+            title.textContent = 'Edit Peminjaman';
             document.getElementById('transaction-id').value = trx.id;
             document.getElementById('transaction-customer').value = trx.customer;
             document.getElementById('transaction-equipment').value = trx.productId || inventory.find(i => i.name === trx.equipment)?.id || '';
             document.getElementById('transaction-start-date').value = trx.startDate;
             document.getElementById('transaction-end-date').value = trx.endDate;
-            document.getElementById('transaction-status').value = trx.rawStatus || 'pending';
+            document.getElementById('transaction-status').value = trx.rawStatus || 'menunggu';
           }
         } else {
           title.textContent = 'Add Peminjaman';
@@ -3326,7 +2510,7 @@ $admin_activities_json = json_encode($admin_activities, JSON_UNESCAPED_SLASHES |
       }
 
       // Save transaction
-      document.getElementById('transaction-form').addEventListener('submit', function(e) {
+      bindById('transaction-form', 'submit', function(e) {
         e.preventDefault();
         
         const id = document.getElementById('transaction-id').value;
@@ -3375,7 +2559,7 @@ $admin_activities_json = json_encode($admin_activities, JSON_UNESCAPED_SLASHES |
             status: status
           };
           borrowingsData.push(newTrx);
-          logActivity('transaction', 'Admin', 'Created borrowing', newTrx.id, `Customer: ${customer}, Amount: $${amount}`);
+          logActivity('transaction', 'Admin', 'Peminjaman dibuat', newTrx.id, `Customer: ${customer}, Amount: ${window.formatCurrencyIDR(amount)}`);
         }
         closeTransactionModal();
         renderPeminjamanTable();
@@ -3384,7 +2568,7 @@ $admin_activities_json = json_encode($admin_activities, JSON_UNESCAPED_SLASHES |
       function viewTransaction(trxId) {
         const trx = borrowingsData.find(t => t.id === trxId);
         if (trx) {
-          alert(`Borrowing Details:\n\nID: ${trx.id}\nCustomer: ${trx.customer}\nEquipment: ${trx.equipment}\nBorrowing Period: ${formatDate(trx.startDate)} - ${formatDate(trx.endDate)}\nDays: ${trx.days}\nAmount: $${trx.amount}\nStatus: ${capitalizeFirst(trx.status)}`);
+          alert(`Borrowing Details:\n\nID: ${trx.id}\nCustomer: ${trx.customer}\nEquipment: ${trx.equipment}\nBorrowing Period: ${formatDate(trx.startDate)} - ${formatDate(trx.endDate)}\nDays: ${trx.days}\nAmount: ${window.formatCurrencyIDR(trx.amount)}\nStatus: ${capitalizeFirst(trx.status)}`);
         }
       }
 
@@ -3431,21 +2615,6 @@ $admin_activities_json = json_encode($admin_activities, JSON_UNESCAPED_SLASHES |
           }
         });
       }
-      // Peminjaman filter dropdown toggle
-      // Peminjaman filter dropdown toggle
-      const borrowingsFilterBtn = document.getElementById('borrowings-filter-btn');
-      const borrowingsFilterDropdown = document.getElementById('borrowings-filter-dropdown');
-      if (borrowingsFilterBtn && borrowingsFilterDropdown) {
-        borrowingsFilterBtn.addEventListener('click', () => {
-          borrowingsFilterDropdown.classList.toggle('hidden');
-        });
-        document.addEventListener('click', (e) => {
-          if (!borrowingsFilterDropdown.contains(e.target) && !borrowingsFilterBtn.contains(e.target)) {
-            borrowingsFilterDropdown.classList.add('hidden');
-          }
-        });
-      }
-
       // Pengembalian filter dropdown toggle
       const returnsFilterBtn = document.getElementById('returns-filter-btn');
       const returnsFilterDropdown = document.getElementById('returns-filter-dropdown');
@@ -3508,7 +2677,7 @@ $admin_activities_json = json_encode($admin_activities, JSON_UNESCAPED_SLASHES |
               id: id,
               fullname: document.getElementById('user-name').value,
               email: email,
-              username: email.split('@')[0] || 'user',
+              username: email.split('@')[0] || 'pelanggan',
               role: document.getElementById('user-role').value,
               status: document.getElementById('user-status').value
             });
@@ -3561,7 +2730,7 @@ $admin_activities_json = json_encode($admin_activities, JSON_UNESCAPED_SLASHES |
               start_date: startDate,
               end_date: endDate,
               total_days: totalDays > 0 ? totalDays : 1,
-              delivery_method: 'pickup',
+              delivery_method: 'ambil_sendiri',
               status: document.getElementById('transaction-status').value
             };
 
@@ -3667,7 +2836,7 @@ $admin_activities_json = json_encode($admin_activities, JSON_UNESCAPED_SLASHES |
         document.getElementById('admin-return-modal-title').textContent = config.title || 'Edit Pengembalian';
         document.getElementById('admin-return-code').value = config.returnCode || '';
         document.getElementById('admin-return-rental-code').value = config.rentalCode || '';
-        document.getElementById('admin-return-status').value = config.status || 'completed';
+        document.getElementById('admin-return-status').value = config.status || 'selesai';
         document.getElementById('admin-return-notes').value = config.notes || '';
         document.getElementById('admin-return-modal').classList.remove('hidden');
       }
@@ -3691,7 +2860,7 @@ $admin_activities_json = json_encode($admin_activities, JSON_UNESCAPED_SLASHES |
             `Stok ${item.stock}/${item.totalStock}`
           ],
           rows: [
-            { label: 'Harga Harian', value: `$${item.price}` },
+            { label: 'Harga Harian', value: `${window.formatCurrencyIDR(item.price)}` },
             { label: 'Diskon', value: `${item.discount || 0}%` },
             { label: 'Kategori', value: escapeHtml(capitalizeFirst(item.category)) }
           ]
@@ -3716,7 +2885,7 @@ $admin_activities_json = json_encode($admin_activities, JSON_UNESCAPED_SLASHES |
             { label: 'Mulai', value: escapeHtml(formatDate(trx.startDate)) },
             { label: 'Selesai', value: escapeHtml(formatDate(trx.endDate)) },
             { label: 'Durasi', value: `${trx.days} hari` },
-            { label: 'Total', value: `$${trx.amount}` }
+            { label: 'Total', value: `${window.formatCurrencyIDR(trx.amount)}` }
           ]
         });
       }
@@ -3750,7 +2919,7 @@ $admin_activities_json = json_encode($admin_activities, JSON_UNESCAPED_SLASHES |
           title: 'Edit Pengembalian',
           returnCode: trx.id,
           rentalCode: '',
-          status: trx.status === 'returned' ? 'completed' : trx.status,
+          status: trx.status === 'returned' ? 'selesai' : trx.status,
           notes: trx.notes || ''
         });
       }
@@ -3763,7 +2932,7 @@ $admin_activities_json = json_encode($admin_activities, JSON_UNESCAPED_SLASHES |
           title: 'Buat Pengembalian dari Peminjaman',
           returnCode: '',
           rentalCode: trx.id,
-          status: 'completed',
+          status: 'selesai',
           notes: `Generated from borrowing ${trx.id}`
         });
       }
@@ -3783,11 +2952,14 @@ $admin_activities_json = json_encode($admin_activities, JSON_UNESCAPED_SLASHES |
     </script>
     <script>
 document.addEventListener('DOMContentLoaded', function () {
+  if (typeof renderKategori === 'function') {
+    renderKategori();
+  }
   if (typeof showSection === 'function') {
-    showSection('categories');
+    showSection(<?= json_encode($admin_active_section) ?>);
   }
   document.querySelectorAll('a.nav-item[href]').forEach(function (link) {
-    const active = link.getAttribute('href') === 'categories.php';
+    const active = link.getAttribute('href') === <?= json_encode($admin_active_href) ?>;
     link.classList.toggle('nav-item-active', active);
     link.classList.toggle('text-neutral-400', !active);
     link.classList.toggle('text-white', active);

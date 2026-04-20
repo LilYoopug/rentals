@@ -31,7 +31,7 @@ check_login_redirect() {
 }
 
 check_login_redirect admin admin123 /admin/index.php
-check_login_redirect staff staff123 /staff/index.php
-check_login_redirect user user123 /products.php
+check_login_redirect petugas staff123 /staff/index.php
+check_login_redirect pelanggan user123 /products.php
 
 echo "OK: advertised demo credentials log in successfully"

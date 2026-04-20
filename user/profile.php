@@ -10,7 +10,7 @@ $settings_json = json_encode($settings, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_
 $avatar_url = !empty($user['avatar_path']) ? '../' . ltrim((string) $user['avatar_path'], '/') : '';
 ?>
 <!doctype html>
-<html lang="en">
+<html lang="id">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -37,7 +37,7 @@ $avatar_url = !empty($user['avatar_path']) ? '../' . ltrim((string) $user['avata
       .badge-danger { background-color: rgba(239,68,68,0.15); color: #f87171; border-color: rgba(239,68,68,0.3); }
       .input-focus:focus { border-color: #c7a65a; box-shadow: 0 0 0 3px rgba(199,166,90,0.18); }
 
-      /* Light Theme Variables */
+      /* Light Tema Variables */
       :root {
         --light-bg-primary: #ffffff;
         --light-bg-secondary: #f9fafb;
@@ -54,7 +54,7 @@ $avatar_url = !empty($user['avatar_path']) ? '../' . ltrim((string) $user['avata
         --light-card-hover-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
       }
 
-      /* Light Theme Overrides */
+      /* Light Tema Overrides */
       body.light-mode {
         background-color: var(--light-bg-secondary);
         color: var(--light-text-primary);
@@ -502,17 +502,14 @@ body.light-mode .bg-neutral-900 .text-sm.text-neutral-400 {
     <nav class="fixed top-0 left-0 right-0 z-50 nav-blur border-b border-neutral-800 h-16">
       <div class="flex items-center justify-between h-full px-6">
         <div class="flex items-center gap-4">
-          <button id="sidebar-toggle" class="lg:hidden text-neutral-400 hover:text-white transition-colors p-2">
-            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" /></svg>
-          </button>
           <a href="index.php" class="text-2xl font-bold font-serif text-white tracking-tight">LensCraft</a>
           <span class="hidden md:inline-block text-sm text-neutral-500 border-l border-neutral-800 pl-4">Pengaturan</span>
         </div>
         <div class="flex items-center gap-4">
           <div class="flex items-center gap-3 border-l border-neutral-800 pl-4">
             <div class="text-right hidden sm:block">
-              <div class="text-sm font-medium text-white">User Name</div>
-              <div class="text-xs text-neutral-500">Logged in</div>
+              <div class="text-sm font-medium text-white"><?= e((string) ($user['fullname'] ?? 'User Name')) ?></div>
+              <div class="text-xs text-neutral-500">Sudah masuk</div>
             </div>
             <div class="w-10 h-10 bg-neutral-800 rounded-full flex items-center justify-center border border-neutral-700 overflow-hidden">
               <?php if ($avatar_url !== ''): ?>
@@ -531,42 +528,11 @@ body.light-mode .bg-neutral-900 .text-sm.text-neutral-400 {
         </div>
       </div>
     </nav>
-    <div id="sidebar-overlay" class="fixed inset-0 bg-black/50 z-40 hidden lg:hidden"></div>
-    <aside id="sidebar" class="fixed left-0 top-16 bottom-0 w-64 sidebar-blur border-r border-neutral-800 z-40 transform -translate-x-full lg:translate-x-0 transition-transform duration-300 ease-in-out overflow-y-auto sidebar-scroll">
-      <div class="p-4 space-y-2">
-        <a href="profile.php" class="nav-item nav-item-active flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all hover:bg-white/5" data-section="profile">
-          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
-          <span>Profil</span>
-        </a>
-        <a href="security.php" class="nav-item flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium text-neutral-400 transition-all hover:bg-white/5 hover:text-white" data-section="security">
-          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2z" /></svg>
-          <span>Keamanan</span>
-        </a>
-        <a href="appearance.php" class="nav-item flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium text-neutral-400 transition-all hover:bg-white/5 hover:text-white" data-section="appearance">
-          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.586M7 21V7a2 2 0 012-2h.01M7 17l4-4 4 4 4-4" /></svg>
-          <span>Tampilan</span>
-        </a>
-
-        <a href="privacy.php" class="nav-item flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium text-neutral-400 transition-all hover:bg-white/5 hover:text-white" data-section="privacy">
-          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4" /></svg>
-          <span>Data</span>
-        </a>
-
-        <div class="border-t border-neutral-800 my-6"></div>
-        <div class="px-4 py-2">
-          <p class="text-xs font-semibold text-neutral-500 uppercase tracking-wider mb-3">Quick Links</p>
-          <a href="../products.php" class="flex items-center gap-3 px-4 py-2 rounded-lg text-sm text-neutral-400 hover:text-white transition-colors">
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" /></svg>
-            <span>Inventory</span>
-          </a>
-        </div>
-      </div>
-    </aside>
-    <main class="lg:ml-64 pt-16 min-h-screen">
+    <main class="pt-16 min-h-screen">
       <div class="px-6 md:px-8 pt-4 pb-8">
-        <div id="content-area">
-          <section id="profile" class="settings-section animate-fade-in" style="display: block;">
-            <div class="max-w-3xl">
+        <div id="content-area" class="mx-auto w-full max-w-7xl space-y-8">
+          <section id="profile" class="settings-section animate-fade-in">
+            <div class="w-full">
               <h2 class="text-2xl font-bold text-white font-serif mb-2">Profil</h2>
               <p class="text-neutral-400 text-sm mb-8">Kelola informasi pribadi dan foto profil Anda.</p>
               <div class="bg-neutral-900 border border-neutral-800 rounded-2xl p-6 mb-6">
@@ -584,11 +550,11 @@ body.light-mode .bg-neutral-900 .text-sm.text-neutral-400 {
                   </div>
                   <div class="flex-1">
                     <div class="space-y-3">
-                      <label for="profile-avatar-file" class="inline-flex px-4 py-2 bg-neutral-800 border border-neutral-700 rounded-lg text-sm font-medium text-neutral-300 hover:bg-neutral-700 transition-colors cursor-pointer">Upload New Picture</label>
+                      <label for="profile-avatar-file" class="inline-flex px-4 py-2 bg-neutral-800 border border-neutral-700 rounded-lg text-sm font-medium text-neutral-300 hover:bg-neutral-700 transition-colors cursor-pointer">Unggah Foto Baru</label>
                       <input type="file" id="profile-avatar-file" name="avatar_file" accept="image/*" class="hidden">
-                      <button type="button" id="remove-profile-avatar" class="px-4 py-2 bg-transparent border border-neutral-700 rounded-lg text-sm font-medium text-neutral-400 hover:text-white transition-colors">Remove</button>
+                      <button type="button" id="remove-profile-avatar" class="px-4 py-2 bg-transparent border border-neutral-700 rounded-lg text-sm font-medium text-neutral-400 hover:text-white transition-colors">Hapus</button>
                     </div>
-                    <p class="text-xs text-neutral-500 mt-3">Recommended: Square image, at least 200x200px. Max 2MB.</p>
+                    <p class="text-xs text-neutral-500 mt-3">Disarankan: gambar persegi minimal 200x200px. Maksimal 2MB.</p>
                   </div>
                 </div>
 
@@ -596,77 +562,77 @@ body.light-mode .bg-neutral-900 .text-sm.text-neutral-400 {
                 <?= csrf_input() ?>
                 <input type="hidden" name="existing_avatar_path" id="existing-avatar-path" value="<?= e((string) ($user['avatar_path'] ?? '')) ?>">
                 <div class="bg-neutral-900 border border-neutral-800 rounded-2xl p-6">
-                  <h3 class="text-lg font-semibold text-white mb-4">Personal Information</h3>
+                  <h3 class="text-lg font-semibold text-white mb-4">Informasi Pribadi</h3>
                     <div class="grid md:grid-cols-2 gap-5">
                       <div>
-                        <label for="first-name" class="block text-sm font-medium text-neutral-400 mb-2">First Name</label>
+                        <label for="first-name" class="block text-sm font-medium text-neutral-400 mb-2">Nama Depan</label>
                         <input type="text" id="first-name" name="first_name" maxlength="50" required
                           class="w-full px-4 py-3 bg-neutral-800 border border-neutral-700 rounded-lg text-neutral-100 placeholder-neutral-500 input-focus outline-none focus:border-neutral-600"
                           placeholder="Enter your first name">
                       </div>
                       <div>
-                        <label for="last-name" class="block text-sm font-medium text-neutral-400 mb-2">Last Name</label>
+                        <label for="last-name" class="block text-sm font-medium text-neutral-400 mb-2">Nama Belakang</label>
                         <input type="text" id="last-name" name="last_name" maxlength="50" required
                           class="w-full px-4 py-3 bg-neutral-800 border border-neutral-700 rounded-lg text-neutral-100 placeholder-neutral-500 input-focus outline-none focus:border-neutral-600"
                           placeholder="Enter your last name">
                       </div>
                     </div>
                     <div>
-                      <label for="email" class="block text-sm font-medium text-neutral-400 mb-2">Email Address</label>
+                      <label for="email" class="block text-sm font-medium text-neutral-400 mb-2">Alamat Email</label>
                       <input type="email" id="email" name="email" maxlength="100" required
                         class="w-full px-4 py-3 bg-neutral-800 border border-neutral-700 rounded-lg text-neutral-100 placeholder-neutral-500 input-focus outline-none focus:border-neutral-600"
                         placeholder="you@example.com">
                     </div>
                     <div>
-                      <label for="phone" class="block text-sm font-medium text-neutral-400 mb-2">Phone Number</label>
+                      <label for="phone" class="block text-sm font-medium text-neutral-400 mb-2">Nomor Telepon</label>
                       <input type="tel" id="phone" name="phone" maxlength="20" required
                         class="w-full px-4 py-3 bg-neutral-800 border border-neutral-700 rounded-lg text-neutral-100 placeholder-neutral-500 input-focus outline-none focus:border-neutral-600"
                         placeholder="+62 812-3456-7890">
                     </div>
                 </div>
  
-                <!-- Address Section - Separate from Personal Information -->
+                <!-- Address Section - Separate from Informasi Pribadi -->
                 <div class="bg-neutral-900 border border-neutral-800 rounded-2xl p-6 mb-6">
-                  <h3 class="text-lg font-semibold text-white mb-4">Delivery Address</h3>
+                  <h3 class="text-lg font-semibold text-white mb-4">Alamat Pengiriman</h3>
                   <div class="space-y-4">
                     <div>
-                      <label for="address-line1" class="block text-sm font-medium text-neutral-400 mb-2">Address Line 1</label>
+                      <label for="address-line1" class="block text-sm font-medium text-neutral-400 mb-2">Alamat Baris 1</label>
                       <input type="text" id="address-line1" name="address_line1" maxlength="100"
                         class="w-full px-4 py-3 bg-neutral-800 border border-neutral-700 rounded-lg text-neutral-100 placeholder-neutral-500 input-focus outline-none focus:border-neutral-600"
-                        placeholder="Street address, P.O. box">
+                        placeholder="Nama jalan, nomor rumah, atau kotak pos">
                     </div>
                     
                     <div>
-                      <label for="address-line2" class="block text-sm font-medium text-neutral-400 mb-2">Address Line 2 (Optional)</label>
+                      <label for="address-line2" class="block text-sm font-medium text-neutral-400 mb-2">Alamat Baris 2 (Opsional)</label>
                       <input type="text" id="address-line2" name="address_line2" maxlength="100"
                         class="w-full px-4 py-3 bg-neutral-800 border border-neutral-700 rounded-lg text-neutral-100 placeholder-neutral-500 input-focus outline-none focus:border-neutral-600"
-                        placeholder="Apartment, suite, unit, building, floor, etc.">
+                        placeholder="Apartemen, suite, unit, gedung, lantai, dan sebagainya">
                     </div>
                     
                     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                       <div>
-                        <label for="city" class="block text-sm font-medium text-neutral-400 mb-2">City</label>
+                        <label for="city" class="block text-sm font-medium text-neutral-400 mb-2">Kota</label>
                         <input type="text" id="city" name="city" maxlength="50"
                           class="w-full px-4 py-3 bg-neutral-800 border border-neutral-700 rounded-lg text-neutral-100 placeholder-neutral-500 input-focus outline-none focus:border-neutral-600"
-                          placeholder="City">
+                          placeholder="Kota">
                       </div>
                       <div>
-                        <label for="province" class="block text-sm font-medium text-neutral-400 mb-2">Province/State</label>
+                        <label for="province" class="block text-sm font-medium text-neutral-400 mb-2">Provinsi</label>
                         <input type="text" id="province" name="province" maxlength="50"
                           class="w-full px-4 py-3 bg-neutral-800 border border-neutral-700 rounded-lg text-neutral-100 placeholder-neutral-500 input-focus outline-none focus:border-neutral-600"
                           placeholder="Province or state">
                       </div>
                       <div>
-                        <label for="zip-code" class="block text-sm font-medium text-neutral-400 mb-2">Zip/Postal Code</label>
+                        <label for="zip-code" class="block text-sm font-medium text-neutral-400 mb-2">Kode Pos</label>
                         <input type="text" id="zip-code" name="zip_code" maxlength="20"
                           class="w-full px-4 py-3 bg-neutral-800 border border-neutral-700 rounded-lg text-neutral-100 placeholder-neutral-500 input-focus outline-none focus:border-neutral-600"
                           placeholder="12345">
                       </div>
                       <div>
-                        <label for="country" class="block text-sm font-medium text-neutral-400 mb-2">Country</label>
+                        <label for="country" class="block text-sm font-medium text-neutral-400 mb-2">Negara</label>
                         <select id="country" name="country"
                           class="w-full px-4 py-3 bg-neutral-800 border border-neutral-700 rounded-lg text-neutral-100 focus:outline-none focus:border-neutral-600">
-                          <option value="">Select country</option>
+                          <option value="">Pilih negara</option>
                           <option value="ID">Indonesia</option>
                           <option value="US">United States</option>
                           <option value="GB">United Kingdom</option>
@@ -687,40 +653,29 @@ body.light-mode .bg-neutral-900 .text-sm.text-neutral-400 {
                   </div>
                 </div>
  
-                <!-- Bio Section -->
-                <div class="bg-neutral-900 border border-neutral-800 rounded-2xl p-6">
-                  <h3 class="text-lg font-semibold text-white mb-4">About You</h3>
-                  <div>
-                    <label for="bio" class="block text-sm font-medium text-neutral-400 mb-2">Bio (Optional)</label>
-                    <textarea id="bio" name="bio" rows="3" maxlength="250"
-                      class="w-full px-4 py-3 bg-neutral-800 border border-neutral-700 rounded-lg text-neutral-100 placeholder-neutral-500 input-focus outline-none focus:border-neutral-600 resize-none"
-                      placeholder="Tell us a bit about yourself..."></textarea>
-                    <p class="text-xs text-neutral-500 mt-2 text-right"><span id="bio-count">0</span>/250 characters</p>
-                  </div>
-                </div>
                   <div class="flex items-center justify-end gap-3 pt-4 border-t border-neutral-800">
-                    <button type="button" class="px-4 py-2 bg-neutral-800 border border-neutral-700 rounded-lg text-sm font-medium text-neutral-300 hover:bg-neutral-700 transition-colors">Cancel</button>
-                    <button type="submit" class="px-6 py-2 bg-white text-black font-semibold rounded-lg hover:bg-neutral-200 transition-colors">Save Changes</button>
+                    <button type="button" class="px-4 py-2 bg-neutral-800 border border-neutral-700 rounded-lg text-sm font-medium text-neutral-300 hover:bg-neutral-700 transition-colors">Batal</button>
+                    <button type="submit" class="px-6 py-2 bg-white text-black font-semibold rounded-lg hover:bg-neutral-200 transition-colors">Simpan Perubahan</button>
                   </div>
                 </form>
               </div>
             </div>
           </section>
-          <section id="security" class="settings-section" style="display: none;">
-            <div class="max-w-3xl">
+          <section id="security" class="settings-section">
+            <div class="w-full">
               <h2 class="text-2xl font-bold text-white font-serif mb-2">Keamanan</h2>
-              <p class="text-neutral-400 text-sm mb-8">Manage your password, two-factor authentication, and active sessions.</p>
+              <p class="text-neutral-400 text-sm mb-8">Kelola kata sandi, keamanan akun, dan sesi aktif Anda.</p>
 
-              <!-- Change Password -->
+              <!-- Ubah Kata Sandi -->
               <div class="bg-neutral-900 border border-neutral-800 rounded-2xl p-6 mb-6">
                 <div class="flex items-center justify-between mb-4">
-                  <h3 class="text-lg font-semibold text-white">Change Password</h3>
-                  <span class="badge badge-success" id="password-status">Up to date</span>
+                  <h3 class="text-lg font-semibold text-white">Ubah Kata Sandi</h3>
+                  <span class="badge badge-success" id="password-status">Terkini</span>
                 </div>
                 <form id="password-form" class="space-y-5" action="../process/password-update-process.php" method="POST">
                   <?= csrf_input() ?>
                   <div>
-                    <label for="current-password" class="block text-sm font-medium text-neutral-400 mb-2">Current Password</label>
+                    <label for="current-password" class="block text-sm font-medium text-neutral-400 mb-2">Kata Sandi Saat Ini</label>
                     <div class="relative">
                       <input type="password" id="current-password" name="current_password" maxlength="100" required
                         class="w-full px-4 py-3 pr-12 bg-neutral-800 border border-neutral-700 rounded-lg text-neutral-100 placeholder-neutral-500 input-focus outline-none focus:border-neutral-600"
@@ -728,19 +683,19 @@ body.light-mode .bg-neutral-900 .text-sm.text-neutral-400 {
                         aria-describedby="current-password-hint"
                         autocomplete="current-password"
                       >
-                      <button type="button" class="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-500 hover:text-neutral-300 transition-colors toggle-password" tabindex="-1" aria-label="Toggle password visibility">
+                      <button type="button" class="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-500 hover:text-neutral-300 transition-colors toggle-password" tabindex="-1" aria-label="Tampilkan atau sembunyikan kata sandi">
                         <svg class="w-5 h-5 eye-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
                         </svg>
                       </button>
                     </div>
-                    <p id="current-password-hint" class="text-xs text-neutral-500 mt-2">Required to verify your identity.</p>
+                    <p id="current-password-hint" class="text-xs text-neutral-500 mt-2">Wajib diisi untuk memverifikasi identitas Anda.</p>
                   </div>
 
                   <div class="grid md:grid-cols-2 gap-5">
                     <div>
-                      <label for="new-password" class="block text-sm font-medium text-neutral-400 mb-2">New Password</label>
+                      <label for="new-password" class="block text-sm font-medium text-neutral-400 mb-2">Kata Sandi Baru</label>
                       <div class="relative">
                         <input type="password" id="new-password" name="new_password" maxlength="100" required
                           class="w-full px-4 py-3 pr-12 bg-neutral-800 border border-neutral-700 rounded-lg text-neutral-100 placeholder-neutral-500 input-focus outline-none focus:border-neutral-600"
@@ -748,92 +703,92 @@ body.light-mode .bg-neutral-900 .text-sm.text-neutral-400 {
                           autocomplete="new-password"
                           aria-describedby="new-password-hint password-strength"
                         >
-                        <button type="button" class="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-500 hover:text-neutral-300 transition-colors toggle-password" tabindex="-1" aria-label="Toggle password visibility">
+                        <button type="button" class="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-500 hover:text-neutral-300 transition-colors toggle-password" tabindex="-1" aria-label="Tampilkan atau sembunyikan kata sandi">
                           <svg class="w-5 h-5 eye-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
                           </svg>
                         </button>
                       </div>
-                      <p id="new-password-hint" class="text-xs text-neutral-500 mt-2">At least 8 characters, including uppercase, lowercase, number, and symbol.</p>
+                      <p id="new-password-hint" class="text-xs text-neutral-500 mt-2">Minimal 8 karakter, termasuk huruf besar, huruf kecil, angka, dan simbol.</p>
                       <div id="password-strength" class="mt-3 hidden">
                         <div class="flex items-center justify-between mb-2">
-                          <span class="text-xs font-semibold text-neutral-500">Password strength</span>
-                          <span class="text-xs font-semibold" id="strength-label">Weak</span>
+                          <span class="text-xs font-semibold text-neutral-500">Kekuatan kata sandi</span>
+                          <span class="text-xs font-semibold" id="strength-label">Lemah</span>
                         </div>
                         <div class="w-full h-2 bg-neutral-800 rounded-full overflow-hidden">
                           <div id="strength-bar" class="h-full bg-red-500 transition-all duration-300" style="width: 0%"></div>
                         </div>
                         <ul id="strength-criteria" class="mt-2 space-y-1 text-xs text-neutral-500">
-                          <li class="flex items-center gap-2"><span class="w-2 h-2 rounded-full bg-neutral-700" data-criterion="length"></span> At least 8 characters</li>
-                          <li class="flex items-center gap-2"><span class="w-2 h-2 rounded-full bg-neutral-700" data-criterion="uppercase"></span> Contains uppercase letter</li>
-                          <li class="flex items-center gap-2"><span class="w-2 h-2 rounded-full bg-neutral-700" data-criterion="lowercase"></span> Contains lowercase letter</li>
-                          <li class="flex items-center gap-2"><span class="w-2 h-2 rounded-full bg-neutral-700" data-criterion="number"></span> Contains number</li>
-                          <li class="flex items-center gap-2"><span class="w-2 h-2 rounded-full bg-neutral-700" data-criterion="special"></span> Contains special character</li>
+                          <li class="flex items-center gap-2"><span class="w-2 h-2 rounded-full bg-neutral-700" data-criterion="length"></span> Minimal 8 karakter</li>
+                          <li class="flex items-center gap-2"><span class="w-2 h-2 rounded-full bg-neutral-700" data-criterion="uppercase"></span> Mengandung huruf besar</li>
+                          <li class="flex items-center gap-2"><span class="w-2 h-2 rounded-full bg-neutral-700" data-criterion="lowercase"></span> Mengandung huruf kecil</li>
+                          <li class="flex items-center gap-2"><span class="w-2 h-2 rounded-full bg-neutral-700" data-criterion="number"></span> Mengandung angka</li>
+                          <li class="flex items-center gap-2"><span class="w-2 h-2 rounded-full bg-neutral-700" data-criterion="special"></span> Mengandung simbol khusus</li>
                         </ul>
                       </div>
                     </div>
 
                     <div>
-                      <label for="confirm-password" class="block text-sm font-medium text-neutral-400 mb-2">Confirm New Password</label>
+                      <label for="confirm-password" class="block text-sm font-medium text-neutral-400 mb-2">Confirm Kata Sandi Baru</label>
                       <input type="password" id="confirm-password" name="confirm_password" maxlength="100" required
                         class="w-full px-4 py-3 bg-neutral-800 border border-neutral-700 rounded-lg text-neutral-100 placeholder-neutral-500 input-focus outline-none focus:border-neutral-600"
-                        placeholder="Re-enter new password"
+                        placeholder="Masukkan ulang kata sandi baru"
                         autocomplete="new-password"
                         aria-describedby="confirm-password-hint"
                       >
-                      <p id="confirm-password-hint" class="text-xs text-neutral-500 mt-2">Must match the new password above.</p>
+                      <p id="confirm-password-hint" class="text-xs text-neutral-500 mt-2">Harus sama dengan kata sandi baru di atas.</p>
                     </div>
                   </div>
 
                   <div class="flex items-center justify-end gap-3 pt-4 border-t border-neutral-800">
                     <button type="button" class="px-4 py-2 bg-neutral-800 border border-neutral-700 rounded-lg text-sm font-medium text-neutral-300 hover:bg-neutral-700 transition-colors">
-                      Cancel
+                      Batal
                     </button>
                     <button type="submit" class="px-6 py-2 bg-white text-black font-semibold rounded-lg hover:bg-neutral-200 transition-colors">
-                      Update Password
+                      Perbarui Kata Sandi
                     </button>
                   </div>
                 </form>
               </div>
             </div>
           </section>
-          <section id="appearance" class="settings-section" style="display: none;">
-            <div class="max-w-3xl">
+          <section id="appearance" class="settings-section">
+            <div class="w-full">
               <h2 class="text-2xl font-bold text-white font-serif mb-2">Tampilan</h2>
-              <p class="text-neutral-400 text-sm mb-8">Customize how LensCraft looks.</p>
+              <p class="text-neutral-400 text-sm mb-8">Atur tampilan LensCraft sesuai preferensi Anda.</p>
 
-              <!-- Application Preferences (now first) -->
+              <!-- Preferensi Aplikasi (now first) -->
               <div class="bg-neutral-900 border border-neutral-800 rounded-2xl p-6 mb-6">
-                <h3 class="text-lg font-semibold text-white mb-4">Application Preferences</h3>
+                <h3 class="text-lg font-semibold text-white mb-4">Preferensi Aplikasi</h3>
                 <div class="space-y-5">
                   <div>
-                    <label for="language" class="block text-sm font-medium text-neutral-400 mb-2">Language</label>
+                    <label for="language" class="block text-sm font-medium text-neutral-400 mb-2">Bahasa</label>
                     <select id="language"
                       class="w-full px-4 py-3 bg-neutral-800 border border-neutral-700 rounded-lg text-neutral-100 focus:outline-none focus:border-neutral-600 transition-colors">
-                      <option value="en" selected>English</option>
+                      <option value="en" selected>Inggris</option>
                       <option value="id">Bahasa Indonesia</option>
                     </select>
-                    <p class="text-xs text-neutral-500 mt-2">Choose your preferred language for the interface.</p>
+                    <p class="text-xs text-neutral-500 mt-2">Pilih bahasa yang Anda gunakan untuk antarmuka aplikasi.</p>
                   </div>
                   <div>
-                    <label for="timezone" class="block text-sm font-medium text-neutral-400 mb-2">Timezone</label>
+                    <label for="timezone" class="block text-sm font-medium text-neutral-400 mb-2">Zona Waktu</label>
                     <select id="timezone"
                       class="w-full px-4 py-3 bg-neutral-800 border border-neutral-700 rounded-lg text-neutral-100 focus:outline-none focus:border-neutral-600 transition-colons">
                       <option value="Asia/Jakarta" selected>(GMT+7) Asia/Jakarta</option>
                       <option value="Asia/Makassar">(GMT+8) Asia/Makassar</option>
                       <option value="Asia/Jayapura">(GMT+9) Asia/Jayapura</option>
                     </select>
-                    <p class="text-xs text-neutral-500 mt-2">All dates and times will be shown in this timezone.</p>
+                    <p class="text-xs text-neutral-500 mt-2">Semua tanggal dan waktu akan ditampilkan menggunakan zona waktu ini.</p>
                   </div>
                   <div>
-                    <label class="block text-sm font-medium text-neutral-400 mb-2">Theme</label>
+                    <label class="block text-sm font-medium text-neutral-400 mb-2">Tema</label>
                     <label class="relative inline-flex items-center cursor-pointer">
                       <input type="checkbox" id="theme-toggle" class="sr-only peer">
                       <span class="w-11 h-6 bg-neutral-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-neutral-800 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-amber-600"></span>
                       <span class="ml-3 text-sm font-medium text-neutral-300">Mode Terang</span>
                     </label>
-                    <p class="text-xs text-neutral-500 mt-2">Toggle between dark and light mode.</p>
+                    <p class="text-xs text-neutral-500 mt-2">Ganti antara mode gelap dan mode terang.</p>
                   </div>
                 </div>
               </div>
@@ -846,55 +801,33 @@ body.light-mode .bg-neutral-900 .text-sm.text-neutral-400 {
                  </button>
                </div>
              </div>
-           </section>
-
-          <!-- Privacy Section -->
-          <section id="privacy" class="settings-section" style="display: none;">
-            <div class="max-w-3xl">
-              <h2 class="text-2xl font-bold text-white font-serif mb-2">Data</h2>
-              <p class="text-neutral-400 text-sm mb-8">Control your data and connected applications.</p>
-
-              <!-- Data Export -->
-              <div class="bg-neutral-900 border border-neutral-800 rounded-2xl p-6 mb-6">
-                <h3 class="text-lg font-semibold text-white mb-2">Your Data</h3>
-                <p class="text-sm text-neutral-400 mb-4">Download a copy of your personal data, bookings, and rental history.</p>
-                <button type="button" class="px-4 py-2 bg-neutral-800 border border-neutral-700 rounded-lg text-sm font-medium text-neutral-300 hover:bg-neutral-700 transition-colors"
-                  onclick="requestDataExport()">
-                  <svg class="w-4 h-4 inline mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                  </svg>
-                  Ekspor Data Saya
-                </button>
-              </div>
-
-              <!-- Save Button -->
-              <div class="flex justify-end">
-                <button type="button" class="px-6 py-2 bg-white text-black font-semibold rounded-lg hover:bg-neutral-200 transition-colors"
-                  onclick="submitPrivacySettings()">
-                  Simpan Pengaturan Privasi
-                </button>
-              </div>
-            </div>
           </section>
 
         </div>
       </div>
     </main>
 
+    <footer class="border-t border-neutral-800 py-12 bg-neutral-900/50">
+      <div class="px-6 md:px-8 text-center text-sm text-neutral-500">
+        <p>© 2026 LensCraft. Sistem Rental Kamera.</p>
+        <p class="mt-1">Semua rental memerlukan registrasi akun dan persetujuan admin.</p>
+      </div>
+    </footer>
+
     <!-- Floating Middle Navigation -->
     <!-- Floating Middle Navigation -->
     <nav class="floating-nav" role="navigation" aria-label="Quick navigation">
-      <button class="floating-nav-btn" data-nav="home" aria-label="Home">
+      <button class="floating-nav-btn" data-nav="home" aria-label="Beranda">
         <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
         </svg>
-        <span>Home</span>
+        <span>Beranda</span>
       </button>
-      <button class="floating-nav-btn" data-nav="rentals" aria-label="My Rentals">
+      <button class="floating-nav-btn" data-nav="rentals" aria-label="My Rental">
         <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
         </svg>
-        <span>Rentals</span>
+        <span>Rental</span>
       </button>
       <button class="floating-nav-btn active" data-nav="settings" aria-label="Pengaturan">
         <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -905,36 +838,6 @@ body.light-mode .bg-neutral-900 .text-sm.text-neutral-400 {
       </button>
     </nav>
     <script>
-      const sidebarToggle = document.getElementById('sidebar-toggle');
-      const sidebar = document.getElementById('sidebar');
-      const sidebarOverlay = document.getElementById('sidebar-overlay');
-      function toggleSidebar() {
-        const isOpen = !sidebar.classList.contains('-translate-x-full');
-        sidebar.classList.toggle('-translate-x-full');
-        sidebarOverlay.classList.toggle('hidden');
-      }
-      sidebarToggle.addEventListener('click', toggleSidebar);
-      sidebarOverlay.addEventListener('click', toggleSidebar);
-      const navItems = document.querySelectorAll('.legacy-tab-nav');
-      const sections = document.querySelectorAll('.settings-section');
-      navItems.forEach(item => {
-        item.addEventListener('click', function(e) {
-          e.preventDefault();
-          const sectionId = this.getAttribute('data-section');
-          navItems.forEach(nav => { nav.classList.remove('nav-item-active'); nav.classList.add('text-neutral-400'); });
-          this.classList.add('nav-item-active');
-          this.classList.remove('text-neutral-400');
-          sections.forEach(section => { section.style.display = 'none'; });
-          const targetSection = document.getElementById(sectionId);
-          if (targetSection) targetSection.style.display = 'block';
-          if (window.innerWidth < 1024 && !sidebar.classList.contains('-translate-x-full')) toggleSidebar();
-        });
-      });
-      const bioTextarea = document.getElementById('bio');
-      const bioCount = document.getElementById('bio-count');
-      if (bioTextarea && bioCount) {
-        bioTextarea.addEventListener('input', function() { bioCount.textContent = this.value.length; });
-      }
        // Password visibility toggles
        document.querySelectorAll('.toggle-password').forEach(button => {
          button.addEventListener('click', function() {
@@ -944,15 +847,15 @@ body.light-mode .bg-neutral-900 .text-sm.text-neutral-400 {
            // Toggle eye icon
            if (type === 'password') {
              this.innerHTML = `<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>`;
-             this.setAttribute('aria-label', 'Show password');
+             this.setAttribute('aria-label', 'Tampilkan kata sandi');
            } else {
              this.innerHTML = `<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.542-7a10.058 10.058 0 013.083-4.082M15 12a3 3 0 11-6 0 3 3 0 016 0zm-4.5 4.5l-1.5-1.5M19.5 12c0 2.755-2.245 5-5 5s-5-2.245-5-5 2.245-5 5-5 5 2.245 5 5z" /></svg>`;
-             this.setAttribute('aria-label', 'Hide password');
+             this.setAttribute('aria-label', 'Sembunyikan kata sandi');
            }
          });
        });
 
-       // Password strength meter
+       // Kekuatan kata sandi meter
        const newPassword = document.getElementById('new-password');
        const passwordStrength = document.getElementById('password-strength');
        const strengthBar = document.getElementById('strength-bar');
@@ -995,19 +898,19 @@ body.light-mode .bg-neutral-900 .text-sm.text-neutral-400 {
            let strength, color, width;
 
            if (score <= 2) {
-             strength = 'Weak';
+             strength = 'Lemah';
              color = '#ef4444'; // red-500
              width = (score / 5) * 100;
            } else if (score === 3) {
-             strength = 'Fair';
+             strength = 'Cukup';
              color = '#f97316'; // orange-500
              width = 60;
            } else if (score === 4) {
-             strength = 'Good';
+             strength = 'Baik';
              color = '#eab308'; // yellow-500
              width = 80;
            } else {
-             strength = 'Strong';
+             strength = 'Kuat';
              color = '#22c55e'; // green-500
              width = 100;
            }
@@ -1030,16 +933,9 @@ body.light-mode .bg-neutral-900 .text-sm.text-neutral-400 {
            }
          });
        }
-      document.addEventListener('keydown', function(e) {
-        if (e.key === 'Escape' && !sidebar.classList.contains('-translate-x-full')) toggleSidebar();
-      });
-       window.addEventListener('resize', function() {
-         if (window.innerWidth >= 1024) { sidebar.classList.remove('-translate-x-full'); sidebarOverlay.classList.add('hidden'); }
-       });
-
-        // Theme management
+        // Tema management
         const themeToggle = document.getElementById('theme-toggle');
-        function setTheme(isLight) {
+        function setTema(isLight) {
           if (isLight) {
             document.body.classList.add('light-mode');
           } else {
@@ -1048,16 +944,16 @@ body.light-mode .bg-neutral-900 .text-sm.text-neutral-400 {
         }
 
         // Load theme from saved user settings
-        const savedTheme = (window.currentSettings && window.currentSettings.theme) || 'dark';
-        setTheme(savedTheme === 'light');
+        const savedTema = (window.currentSettings && window.currentSettings.theme) || 'dark';
+        setTema(savedTema === 'light');
         if (themeToggle) {
-          themeToggle.checked = savedTheme === 'light';
+          themeToggle.checked = savedTema === 'light';
         }
 
         // Listen for theme changes
         if (themeToggle) {
           themeToggle.addEventListener('change', function() {
-            setTheme(this.checked);
+            setTema(this.checked);
           });
         }
 
@@ -1076,7 +972,7 @@ body.light-mode .bg-neutral-900 .text-sm.text-neutral-400 {
        const floatingNavButtons = document.querySelectorAll('.floating-nav-btn');
        floatingNavButtons.forEach(btn => {
          btn.addEventListener('click', function() {
-           // Remove active class from all buttons
+           // Hapus active class from all buttons
            floatingNavButtons.forEach(b => b.classList.remove('active'));
            // Add active class to clicked button
            this.classList.add('active');
@@ -1145,7 +1041,6 @@ body.light-mode .bg-neutral-900 .text-sm.text-neutral-400 {
             Philippines: 'PH'
           };
           setValue('country', countryMap[window.currentUser.country || ''] || window.currentUser.country || 'ID');
-          setValue('bio', window.currentUser.bio || '');
         }
 
         const avatarFileInput = document.getElementById('profile-avatar-file');
@@ -1221,43 +1116,7 @@ body.light-mode .bg-neutral-900 .text-sm.text-neutral-400 {
         });
       }
 
-      function submitPrivacySettings() {
-        postSettingsPayload({
-          settings_only: '1',
-          is_profile_public: '0',
-          allow_marketing: '0',
-          allow_data_export: '1'
-        });
-      }
-
-      function requestDataExport() {
-        postSettingsPayload({
-          settings_only: '1',
-          export_data: '1',
-          allow_data_export: '1'
-        });
-      }
     </script>
-    <script>
-document.addEventListener('DOMContentLoaded', function () {
-  document.querySelectorAll('.settings-section').forEach(function (sectionElement) {
-    sectionElement.style.display = 'none';
-  });
-  const target = document.getElementById('profile');
-  if (target) {
-    target.style.display = 'block';
-  }
-  document.querySelectorAll('a.nav-item[href]').forEach(function (link) {
-    const active = link.getAttribute('href') === 'profile.php';
-    link.classList.toggle('nav-item-active', active);
-    link.classList.toggle('text-neutral-400', !active);
-    link.classList.toggle('text-white', active);
-  });
-  document.querySelectorAll('.floating-nav-btn').forEach(function (button) {
-    button.classList.toggle('active', button.dataset.nav === 'settings');
-  });
-});
-</script>
     <?= page_runtime_bundle($flash_script) ?>
   </body>
 </html>

@@ -5,6 +5,17 @@ source "$(cd "$(dirname "$0")/.." && pwd)/tests/helpers/test-env.sh"
 
 start_test_stack
 
+mysql_test lenscraft <<'SQL'
+UPDATE categories
+SET name = 'Audio Pro',
+    slug = 'audio-pro'
+WHERE slug = 'lensa';
+
+UPDATE products
+SET category_slug = 'audio-pro'
+WHERE category_slug = 'lensa';
+SQL
+
 staff_cookie="$(mktemp)"
 page_body="$(mktemp)"
 update_headers="$(mktemp)"
@@ -13,7 +24,7 @@ trap 'rm -f "${staff_cookie}" "${page_body}" "${update_headers}"' RETURN
 curl -sS \
   -c "${staff_cookie}" \
   -X POST \
-  -d 'username=staff&password=staff123' \
+  -d 'username=petugas&password=staff123' \
   "${TEST_BASE_URL}/process/login-process.php" \
   -o /dev/null
 
@@ -27,8 +38,29 @@ if ! grep -q 'Memantau Pengembalian' "${page_body}"; then
   exit 1
 fi
 
-if ! grep -q '<table class="w-full">' "${page_body}" || ! grep -q 'Edit Mode' "${page_body}" || ! grep -q 'floating-nav' "${page_body}" || ! grep -q 'name="discount_enabled' "${page_body}" || ! grep -q 'data-stock-adjust' "${page_body}" || ! grep -q 'stock-price-page-numbers' "${page_body}" || ! grep -q '© 2026 LensCraft. Sistem Rental Kamera.' "${page_body}"; then
+if ! grep -q 'Mode Edit' "${page_body}" || ! grep -q 'floating-nav' "${page_body}" || ! grep -q 'name="discount_enabled' "${page_body}" || ! grep -q 'data-stock-adjust' "${page_body}" || ! grep -q 'stock-price-page-numbers' "${page_body}" || ! grep -q '© 2026 LensCraft. Sistem Rental Kamera.' "${page_body}"; then
   echo 'Expected staff stock and price page to render edit mode controls, pagination, and footer'
+  exit 1
+fi
+
+if ! grep -q 'id="stock-filter-dropdown"' "${page_body}" || ! grep -q 'id="stock-category-filter"' "${page_body}" || ! grep -q 'id="stock-search"' "${page_body}"; then
+  echo 'Expected staff stock and price page to render working stock filter controls'
+  exit 1
+fi
+
+filter_block="$(sed -n '/<select id="stock-category-filter"/,/<\/select>/p' "${page_body}")"
+if [[ -z "${filter_block}" ]]; then
+  echo 'Expected staff stock and price page to render the stock category filter select'
+  exit 1
+fi
+
+if ! grep -q 'option value="audio-pro"' <<<"${filter_block}"; then
+  echo 'Expected staff stock category filter options to be generated from live category data'
+  exit 1
+fi
+
+if grep -q 'option value="lensa"' <<<"${filter_block}"; then
+  echo 'Expected staff stock category filter options to stop relying on stale hardcoded category slugs'
   exit 1
 fi
 

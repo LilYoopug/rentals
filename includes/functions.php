@@ -137,6 +137,30 @@ function db_execute_count($sql, $params = [])
     return $count;
 }
 
+function db_column_type($table_name, $column_name)
+{
+    static $cache = [];
+
+    $cache_key = $table_name . '.' . $column_name;
+    if (array_key_exists($cache_key, $cache)) {
+        return $cache[$cache_key];
+    }
+
+    if (!db_ready()) {
+        $cache[$cache_key] = '';
+        return $cache[$cache_key];
+    }
+
+    $row = db_one(
+        'SELECT COLUMN_TYPE FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND COLUMN_NAME = ? LIMIT 1',
+        [$table_name, $column_name]
+    );
+
+    $cache[$cache_key] = strtolower((string) ($row['COLUMN_TYPE'] ?? ''));
+
+    return $cache[$cache_key];
+}
+
 function db_begin_transaction()
 {
     ensure_db();
@@ -208,6 +232,24 @@ function root_base_url_path($path = '')
     return $root_prefix . '/' . $suffix;
 }
 
+function public_media_path($path, $fallback = 'images/gear-placeholder.svg')
+{
+    $image_path = trim((string) $path);
+    if ($image_path === '') {
+        $image_path = trim((string) $fallback);
+    }
+
+    if ($image_path === '') {
+        return '';
+    }
+
+    if (preg_match('/^(?:https?:)?\/\//', $image_path) === 1 || strpos($image_path, '/') === 0) {
+        return $image_path;
+    }
+
+    return root_base_url_path(ltrim($image_path, '/'));
+}
+
 function redirect_to($path)
 {
     header('Location: ' . base_url_path($path));
@@ -248,6 +290,325 @@ function flash_alert_script()
     }
 
     return '<script>window.addEventListener("DOMContentLoaded",function(){alert(' . json_encode((string) $flash['message']) . ');});</script>';
+}
+
+function motion_runtime_script()
+{
+    return <<<'HTML'
+<script>
+(function () {
+  if (window.__lenscraftMotionReady) return;
+  window.__lenscraftMotionReady = true;
+
+  const motionMedia = window.matchMedia('(prefers-reduced-motion: reduce)');
+  const EASE_OUT = 'cubic-bezier(0.22, 1, 0.36, 1)';
+  const selectorList = [
+    'body > nav',
+    'body > section',
+    'body > footer',
+    'main > *',
+    '#content-area > section',
+    '#content-area > section > *',
+    '#product-detail-container > *',
+    '.auth-panel',
+    '.helper-panel',
+    '.filter-shell',
+    '.card-hover',
+    '.floating-nav',
+    '#related-grid > *',
+    '[id$="-list"] > *',
+    'tbody > tr'
+  ];
+
+  const style = document.createElement('style');
+  style.setAttribute('data-lenscraft-motion-runtime', 'true');
+  style.textContent = `
+    :root {
+      --lenscraft-motion-ease-out: ${EASE_OUT};
+      --lenscraft-motion-ease-soft: cubic-bezier(0.25, 1, 0.5, 1);
+      --lenscraft-motion-fast: 180ms;
+      --lenscraft-motion-base: 280ms;
+    }
+    html {
+      scroll-behavior: smooth;
+    }
+    body.lenscraft-motion-ready [data-lenscraft-motion] {
+      backface-visibility: hidden;
+      transform-origin: center top;
+    }
+    body.lenscraft-motion-ready .card-hover,
+    body.lenscraft-motion-ready .auth-panel,
+    body.lenscraft-motion-ready .helper-panel,
+    body.lenscraft-motion-ready .filter-shell,
+    body.lenscraft-motion-ready .floating-nav,
+    body.lenscraft-motion-ready .nav-item,
+    body.lenscraft-motion-ready .tab-btn,
+    body.lenscraft-motion-ready .modal-panel,
+    body.lenscraft-motion-ready [id$="-modal-content"] {
+      transition:
+        transform var(--lenscraft-motion-base) var(--lenscraft-motion-ease-soft),
+        box-shadow var(--lenscraft-motion-base) var(--lenscraft-motion-ease-soft),
+        background-color var(--lenscraft-motion-fast) ease,
+        border-color var(--lenscraft-motion-fast) ease,
+        color var(--lenscraft-motion-fast) ease,
+        opacity var(--lenscraft-motion-fast) ease;
+    }
+    body.lenscraft-motion-ready button,
+    body.lenscraft-motion-ready input,
+    body.lenscraft-motion-ready select,
+    body.lenscraft-motion-ready textarea {
+      transition:
+        transform var(--lenscraft-motion-fast) var(--lenscraft-motion-ease-soft),
+        box-shadow var(--lenscraft-motion-base) var(--lenscraft-motion-ease-soft),
+        background-color var(--lenscraft-motion-fast) ease,
+        border-color var(--lenscraft-motion-fast) ease,
+        color var(--lenscraft-motion-fast) ease;
+    }
+    body.lenscraft-motion-ready .card-hover:hover,
+    body.lenscraft-motion-ready .auth-panel:hover,
+    body.lenscraft-motion-ready .helper-panel:hover,
+    body.lenscraft-motion-ready .filter-shell:hover {
+      transform: translate3d(0, -4px, 0);
+      box-shadow: 0 24px 52px rgba(0, 0, 0, 0.22);
+    }
+    body.lenscraft-motion-ready .nav-item:hover,
+    body.lenscraft-motion-ready .tab-btn:hover,
+    body.lenscraft-motion-ready button:hover {
+      transform: translate3d(0, -1px, 0);
+    }
+    body.lenscraft-motion-ready .nav-item:active,
+    body.lenscraft-motion-ready .tab-btn:active,
+    body.lenscraft-motion-ready button:active {
+      transform: translate3d(0, 0, 0) scale(0.985);
+    }
+    body.lenscraft-motion-ready .floating-nav {
+      box-shadow: 0 22px 48px rgba(0, 0, 0, 0.28);
+    }
+    @media (prefers-reduced-motion: reduce) {
+      html {
+        scroll-behavior: auto;
+      }
+      *,
+      *::before,
+      *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+      }
+      [data-lenscraft-motion] {
+        opacity: 1 !important;
+        transform: none !important;
+      }
+    }
+  `;
+  document.head.appendChild(style);
+
+  if (motionMedia.matches) {
+    return;
+  }
+
+  const revealedElements = new WeakSet();
+  const modalAnimationTimestamps = new WeakMap();
+  document.body.classList.add('lenscraft-motion-ready');
+
+  function isElementVisible(element) {
+    if (!(element instanceof HTMLElement)) return false;
+    if (element.classList.contains('hidden')) return false;
+    if (element.closest('.hidden')) return false;
+    const computedStyle = window.getComputedStyle(element);
+    if (computedStyle.display === 'none' || computedStyle.visibility === 'hidden') {
+      return false;
+    }
+    if (Number.parseFloat(computedStyle.opacity) === 0 && !element.matches('.modal-panel, [id$="-modal-content"]')) {
+      return false;
+    }
+    return true;
+  }
+
+  function countVisibleSiblings(element) {
+    let delay = 0;
+    let sibling = element.previousElementSibling;
+    while (sibling && delay < 240) {
+      if (sibling instanceof HTMLElement && isElementVisible(sibling)) {
+        delay += sibling.matches('tbody > tr, [id$="-list"] > *') ? 24 : 48;
+      }
+      sibling = sibling.previousElementSibling;
+    }
+    return delay;
+  }
+
+  function buildAnimationSpec(element) {
+    if (element.matches('tbody > tr, [id$="-list"] > *')) {
+      return { duration: 420, distance: 12, scale: 0.992 };
+    }
+    if (element.matches('.modal-panel, [id$="-modal-content"]')) {
+      return { duration: 340, distance: 20, scale: 0.98 };
+    }
+    if (element.matches('body > nav, .floating-nav')) {
+      return { duration: 520, distance: 10, scale: 0.995 };
+    }
+    return { duration: 640, distance: 18, scale: 0.985 };
+  }
+
+  function playReveal(element, options) {
+    if (!(element instanceof HTMLElement)) return;
+    const animationSpec = options || buildAnimationSpec(element);
+    element.dataset.lenscraftMotion = 'reveal';
+
+    if (typeof element.animate !== 'function') {
+      return;
+    }
+
+    const animation = element.animate(
+      [
+        {
+          opacity: 0.01,
+          transform: `translate3d(0, ${animationSpec.distance}px, 0) scale(${animationSpec.scale})`,
+          filter: 'saturate(0.92)'
+        },
+        {
+          opacity: 1,
+          transform: 'translate3d(0, 0, 0) scale(1)',
+          filter: 'saturate(1)'
+        }
+      ],
+      {
+        duration: animationSpec.duration,
+        delay: animationSpec.delay || 0,
+        easing: EASE_OUT,
+        fill: 'both'
+      }
+    );
+
+    animation.addEventListener('finish', function () {
+      animation.cancel();
+    });
+  }
+
+  function registerRevealTarget(element) {
+    if (!(element instanceof HTMLElement)) return;
+    if (revealedElements.has(element)) return;
+    if (element.classList.contains('animate-fade-in')) return;
+    if (element.matches('.modal-panel, [id$="-modal-content"]')) return;
+    if (!isElementVisible(element)) return;
+    if (element.closest('[data-lenscraft-motion="skip"]')) return;
+
+    revealedElements.add(element);
+    element.dataset.lenscraftMotion = 'queued';
+    revealObserver.observe(element);
+  }
+
+  const revealObserver = new IntersectionObserver(
+    function (entries) {
+      entries.forEach(function (entry) {
+        if (!entry.isIntersecting) return;
+        revealObserver.unobserve(entry.target);
+        playReveal(entry.target, Object.assign(buildAnimationSpec(entry.target), {
+          delay: countVisibleSiblings(entry.target)
+        }));
+      });
+    },
+    {
+      threshold: 0.14,
+      rootMargin: '0px 0px -10% 0px'
+    }
+  );
+
+  function collectTargets(root) {
+    const searchRoot = root instanceof Element || root instanceof Document ? root : document;
+    selectorList.forEach(function (selector) {
+      if (searchRoot instanceof Element && searchRoot.matches(selector)) {
+        registerRevealTarget(searchRoot);
+      }
+
+      if (typeof searchRoot.querySelectorAll === 'function') {
+        searchRoot.querySelectorAll(selector).forEach(registerRevealTarget);
+      }
+    });
+  }
+
+  function maybeAnimateModal(target) {
+    if (!(target instanceof HTMLElement)) return;
+
+    const modalPanel = target.matches('.modal-panel, [id$="-modal-content"]')
+      ? target
+      : target.querySelector('.modal-panel, [id$="-modal-content"]');
+
+    if (!modalPanel || !isElementVisible(modalPanel)) return;
+
+    const now = Date.now();
+    const lastAnimated = modalAnimationTimestamps.get(modalPanel) || 0;
+    if (now - lastAnimated < 140) return;
+
+    modalAnimationTimestamps.set(modalPanel, now);
+    playReveal(modalPanel, {
+      duration: 320,
+      distance: 20,
+      scale: 0.98,
+      delay: 0
+    });
+
+    const modalBackdrop = target.matches('.modal-overlay, [id$="-modal"]')
+      ? target
+      : target.closest('.modal-overlay, [id$="-modal"]');
+
+    if (modalBackdrop && typeof modalBackdrop.animate === 'function' && isElementVisible(modalBackdrop)) {
+      const backdropAnimation = modalBackdrop.animate(
+        [
+          { opacity: 0.01 },
+          { opacity: 1 }
+        ],
+        {
+          duration: 200,
+          easing: EASE_OUT,
+          fill: 'both'
+        }
+      );
+
+      backdropAnimation.addEventListener('finish', function () {
+        backdropAnimation.cancel();
+      });
+    }
+  }
+
+  function primeMotionSystem() {
+    collectTargets(document);
+    requestAnimationFrame(function () {
+      collectTargets(document);
+    });
+  }
+
+  const mutationObserver = new MutationObserver(function (mutations) {
+    mutations.forEach(function (mutation) {
+      if (mutation.type === 'attributes' && mutation.target instanceof HTMLElement) {
+        collectTargets(mutation.target);
+        maybeAnimateModal(mutation.target);
+      }
+
+      mutation.addedNodes.forEach(function (node) {
+        if (!(node instanceof HTMLElement)) return;
+        collectTargets(node);
+        maybeAnimateModal(node);
+      });
+    });
+  });
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', primeMotionSystem, { once: true });
+  } else {
+    primeMotionSystem();
+  }
+
+  mutationObserver.observe(document.body, {
+    childList: true,
+    subtree: true,
+    attributes: true,
+    attributeFilter: ['class', 'style']
+  });
+})();
+</script>
+HTML;
 }
 
 function toast_runtime_script()
@@ -329,6 +690,13 @@ function toast_runtime_script()
   window.alert = function (message) {
     window.showToast(message);
   };
+  window.formatCurrencyIDR = function (amount) {
+    const value = Number(amount || 0);
+    return 'Rp' + value.toLocaleString('id-ID', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
+    });
+  };
 })();
 </script>
 HTML;
@@ -336,7 +704,7 @@ HTML;
 
 function page_runtime_bundle($flash_script = '')
 {
-    return toast_runtime_script() . $flash_script;
+    return motion_runtime_script() . toast_runtime_script() . $flash_script;
 }
 
 function current_user()
@@ -351,30 +719,30 @@ function is_logged_in()
 
 function is_admin_user()
 {
-    return (current_user()['role'] ?? '') === 'admin';
+    return normalize_role_value(current_user()['role'] ?? '') === 'admin';
 }
 
 function is_staff_user()
 {
-    $role = current_user()['role'] ?? '';
+    $role = normalize_role_value(current_user()['role'] ?? '');
 
-    return $role === 'staff' || $role === 'admin';
+    return $role === 'petugas' || $role === 'admin';
 }
 
 function is_customer_user()
 {
-    return (current_user()['role'] ?? '') === 'user';
+    return normalize_role_value(current_user()['role'] ?? '') === 'pelanggan';
 }
 
 function redirect_logged_in_user_home()
 {
-    $role = current_user()['role'] ?? 'user';
+    $role = normalize_role_value(current_user()['role'] ?? 'pelanggan');
 
     if ($role === 'admin') {
         redirect_to('admin/index.php');
     }
 
-    if ($role === 'staff') {
+    if ($role === 'petugas') {
         redirect_to('staff/index.php');
     }
 
@@ -409,7 +777,183 @@ function verify_csrf_request()
 
 function format_currency($amount)
 {
-    return '$' . number_format((float) $amount, 2);
+    return 'Rp' . number_format((float) $amount, 2, ',', '.');
+}
+
+function normalize_role_value($role)
+{
+    $role = trim((string) $role);
+
+    $map = [
+        'admin' => 'admin',
+        'staff' => 'petugas',
+        'petugas' => 'petugas',
+        'user' => 'pelanggan',
+        'pelanggan' => 'pelanggan',
+        'customer' => 'pelanggan',
+    ];
+
+    return $map[$role] ?? 'pelanggan';
+}
+
+function normalize_user_status_value($status)
+{
+    $status = trim((string) $status);
+
+    $map = [
+        'active' => 'aktif',
+        'aktif' => 'aktif',
+        'inactive' => 'nonaktif',
+        'nonaktif' => 'nonaktif',
+        'pending' => 'menunggu',
+        'menunggu' => 'menunggu',
+    ];
+
+    return $map[$status] ?? 'menunggu';
+}
+
+function normalize_product_status_value($status)
+{
+    return normalize_user_status_value($status);
+}
+
+function normalize_rental_status_value($status)
+{
+    $status = trim((string) $status);
+
+    $map = [
+        'pending' => 'menunggu',
+        'menunggu' => 'menunggu',
+        'upcoming' => 'mendatang',
+        'mendatang' => 'mendatang',
+        'approved' => 'aktif',
+        'active' => 'aktif',
+        'aktif' => 'aktif',
+        'completed' => 'selesai',
+        'selesai' => 'selesai',
+        'cancelled' => 'dibatalkan',
+        'dibatalkan' => 'dibatalkan',
+        'rejected' => 'ditolak',
+        'ditolak' => 'ditolak',
+    ];
+
+    return $map[$status] ?? 'menunggu';
+}
+
+function normalize_return_status_value($status)
+{
+    $status = trim((string) $status);
+
+    $map = [
+        'pending' => 'menunggu',
+        'menunggu' => 'menunggu',
+        'completed' => 'selesai',
+        'selesai' => 'selesai',
+    ];
+
+    return $map[$status] ?? 'menunggu';
+}
+
+function storage_return_status_value($status)
+{
+    $normalized = normalize_return_status_value($status);
+    $column_type = db_column_type('returns', 'status');
+
+    if (strpos($column_type, "'pending'") !== false || strpos($column_type, "'completed'") !== false) {
+        $map = [
+            'menunggu' => 'pending',
+            'selesai' => 'completed',
+        ];
+
+        return $map[$normalized] ?? 'pending';
+    }
+
+    $map = [
+        'menunggu' => 'menunggu',
+        'selesai' => 'selesai',
+    ];
+
+    return $map[$normalized] ?? 'menunggu';
+}
+
+function present_borrowing_workflow_status($status)
+{
+    $normalized = normalize_rental_status_value($status);
+
+    $map = [
+        'menunggu' => 'menunggu',
+        'mendatang' => 'menunggu',
+        'aktif' => 'approved',
+        'selesai' => 'approved',
+        'dibatalkan' => 'ditolak',
+        'ditolak' => 'ditolak',
+    ];
+
+    return $map[$normalized] ?? 'menunggu';
+}
+
+function present_return_workflow_status($status, $allow_borrowed = true)
+{
+    $raw = trim((string) $status);
+
+    if ($allow_borrowed && in_array($raw, ['borrowed', 'dipinjam'], true)) {
+        return 'borrowed';
+    }
+
+    if ($raw === 'overdue') {
+        return 'overdue';
+    }
+
+    $normalized = normalize_return_status_value($raw);
+    $map = [
+        'selesai' => 'returned',
+        'menunggu' => 'menunggu',
+    ];
+
+    return $map[$normalized] ?? 'menunggu';
+}
+
+function normalize_delivery_method_value($method)
+{
+    $method = trim((string) $method);
+
+    $map = [
+        'pickup' => 'ambil_sendiri',
+        'ambil_sendiri' => 'ambil_sendiri',
+        'delivery' => 'diantar',
+        'diantar' => 'diantar',
+    ];
+
+    return $map[$method] ?? 'ambil_sendiri';
+}
+
+function normalize_category_slug_value($slug)
+{
+    $slug = trim((string) $slug);
+
+    $map = [
+        'mirrorless' => 'kamera-mirrorless',
+        'kamera-mirrorless' => 'kamera-mirrorless',
+        'lens' => 'lensa',
+        'lensa' => 'lensa',
+        'video' => 'video',
+    ];
+
+    return $map[$slug] ?? $slug;
+}
+
+function normalize_login_identifier($login)
+{
+    $login = trim((string) $login);
+
+    $map = [
+        'petugas' => 'staff',
+        'pelanggan' => 'user',
+        'petugas@lenscraft.local' => 'staff@lenscraft.local',
+        'pelanggan@example.com' => 'user@example.com',
+    ];
+
+    return $map[$login] ?? $login;
 }
 
 function build_rental_code()

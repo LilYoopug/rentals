@@ -6,7 +6,7 @@ source "$(cd "$(dirname "$0")/.." && pwd)/tests/helpers/test-env.sh"
 start_test_stack
 
 column_type="$(mysql_test -N -B information_schema -e "SELECT COLUMN_TYPE FROM COLUMNS WHERE TABLE_SCHEMA = 'lenscraft' AND TABLE_NAME = 'returns' AND COLUMN_NAME = 'status'")"
-if [[ "${column_type}" != "enum('pending','completed')" ]]; then
+if [[ "${column_type}" != "enum('menunggu','selesai')" ]]; then
   echo "Expected returns.status enum to remove flagged, got: ${column_type:-<empty>}"
   exit 1
 fi
@@ -19,7 +19,7 @@ INSERT INTO rentals (
   daily_rate, discount_percentage, delivery_method, delivery_fee, total_price, status, created_at
 ) VALUES (
   'RENT-TRIGGER-PENDING', 3, 3, CURDATE(), DATE_ADD(CURDATE(), INTERVAL 1 DAY), 2,
-  59.00, 0, 'pickup', 0.00, 118.00, 'pending', NOW()
+  59.00, 0, 'ambil_sendiri', 0.00, 118.00, 'menunggu', NOW()
 );
 SQL
 
@@ -31,7 +31,7 @@ fi
 
 mysql_test lenscraft <<'SQL'
 UPDATE rentals
-SET status = 'cancelled', cancelled_at = NOW(), cancel_reason = 'trigger test'
+SET status = 'dibatalkan', cancelled_at = NOW(), cancel_reason = 'trigger test'
 WHERE rental_code = 'RENT-TRIGGER-PENDING';
 SQL
 
@@ -47,7 +47,7 @@ INSERT INTO rentals (
   daily_rate, discount_percentage, delivery_method, delivery_fee, total_price, status, created_at, approved_at
 ) VALUES (
   'RENT-TRIGGER-RETURN', 3, 3, CURDATE(), DATE_ADD(CURDATE(), INTERVAL 1 DAY), 2,
-  59.00, 0, 'pickup', 0.00, 118.00, 'active', NOW(), NOW()
+  59.00, 0, 'ambil_sendiri', 0.00, 118.00, 'aktif', NOW(), NOW()
 );
 SQL
 
@@ -61,7 +61,7 @@ rental_id="$(mysql_test -N -B lenscraft -e "SELECT id FROM rentals WHERE rental_
 
 mysql_test lenscraft <<SQL
 INSERT INTO returns (return_code, rental_id, processed_by, notes, status, returned_at, created_at)
-VALUES ('RET-TRIGGER-RETURN', ${rental_id}, 2, 'Trigger completed return', 'completed', NOW(), NOW());
+VALUES ('RET-TRIGGER-RETURN', ${rental_id}, 2, 'Trigger completed return', 'selesai', NOW(), NOW());
 SQL
 
 after_return_stock="$(mysql_test -N -B lenscraft -e "SELECT stock_available FROM products WHERE id = 3")"
@@ -71,7 +71,7 @@ if [[ "${after_return_stock}" != "${initial_stock}" ]]; then
 fi
 
 rental_status="$(mysql_test -N -B lenscraft -e "SELECT status FROM rentals WHERE rental_code = 'RENT-TRIGGER-RETURN'")"
-if [[ "${rental_status}" != "completed" ]]; then
+if [[ "${rental_status}" != "selesai" ]]; then
   echo "Expected completed return trigger to mark rental completed, got: ${rental_status:-<empty>}"
   exit 1
 fi
@@ -82,7 +82,7 @@ INSERT INTO rentals (
   daily_rate, discount_percentage, delivery_method, delivery_fee, total_price, status, created_at
 ) VALUES (
   'RENT-TRIGGER-DELETE', 3, 3, CURDATE(), DATE_ADD(CURDATE(), INTERVAL 1 DAY), 2,
-  59.00, 0, 'pickup', 0.00, 118.00, 'pending', NOW()
+  59.00, 0, 'ambil_sendiri', 0.00, 118.00, 'menunggu', NOW()
 );
 DELETE FROM rentals WHERE rental_code = 'RENT-TRIGGER-DELETE';
 SQL

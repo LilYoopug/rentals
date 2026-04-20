@@ -48,7 +48,7 @@ function create_category($data)
             trim((string) ($data['description'] ?? '')),
             trim((string) ($data['icon'] ?? 'camera')),
             trim((string) ($data['color'] ?? 'blue')),
-            trim((string) ($data['status'] ?? 'active')),
+            trim((string) ($data['status'] ?? 'aktif')),
         ]
     );
 }
@@ -66,7 +66,7 @@ function update_category_record($id, $data)
             trim((string) ($data['description'] ?? '')),
             trim((string) ($data['icon'] ?? 'camera')),
             trim((string) ($data['color'] ?? 'blue')),
-            trim((string) ($data['status'] ?? 'active')),
+            trim((string) ($data['status'] ?? 'aktif')),
             (int) $id,
         ]
     );

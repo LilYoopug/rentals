@@ -8,11 +8,11 @@ function normalize_product_row($row)
         'id' => (int) ($row['id'] ?? 0),
         'name' => (string) ($row['name'] ?? ''),
         'brand' => (string) ($row['brand'] ?? ''),
-        'category' => (string) ($row['category_slug'] ?? ''),
+        'category' => normalize_category_slug_value((string) ($row['category_slug'] ?? '')),
         'price' => (float) ($row['price_per_day'] ?? 0),
         'discount' => (int) ($row['discount_percentage'] ?? 0),
         'description' => (string) ($row['description'] ?? ''),
-        'image' => (string) ($row['image_path'] ?? 'images/gear-placeholder.svg'),
+        'image' => public_media_path((string) ($row['image_path'] ?? 'images/gear-placeholder.svg')),
         'inStock' => (bool) ($row['in_stock'] ?? 0),
         'stock' => (int) ($row['stock_available'] ?? 0),
     ];
@@ -24,7 +24,7 @@ function get_all_products()
         return [];
     }
 
-    return array_map('normalize_product_row', db_all('SELECT * FROM products WHERE status = "active" ORDER BY id ASC'));
+    return array_map('normalize_product_row', db_all('SELECT * FROM products WHERE status IN ("aktif", "active") ORDER BY id ASC'));
 }
 
 function get_product_row($id)
@@ -49,9 +49,25 @@ function get_related_products($id, $category_slug)
         return [];
     }
 
+    $normalized_slug = normalize_category_slug_value($category_slug);
+    $legacy_slug_map = [
+        'kamera-mirrorless' => 'mirrorless',
+        'lensa' => 'lens',
+        'video' => 'video',
+    ];
+    $legacy_slug = $legacy_slug_map[$normalized_slug] ?? $normalized_slug;
+
     return array_map(
         'normalize_product_row',
-        db_all('SELECT * FROM products WHERE id <> ? AND category_slug = ? AND status = "active" ORDER BY id ASC LIMIT 4', [(int) $id, $category_slug])
+        db_all(
+            'SELECT * FROM products
+             WHERE id <> ?
+               AND category_slug IN (?, ?)
+               AND status IN ("aktif", "active")
+             ORDER BY id ASC
+             LIMIT 4',
+            [(int) $id, $normalized_slug, $legacy_slug]
+        )
     );
 }
 
@@ -70,7 +86,7 @@ function create_product_record($data)
         return false;
     }
 
-    $category_slug = trim((string) ($data['category_slug'] ?? $data['category'] ?? 'mirrorless'));
+    $category_slug = trim((string) ($data['category_slug'] ?? $data['category'] ?? 'kamera-mirrorless'));
     $category = find_category_by_slug($category_slug);
     $category_id = (int) ($data['category_id'] ?? ($category['id'] ?? 1));
 
@@ -88,7 +104,7 @@ function create_product_record($data)
             (int) ($data['stock_total'] ?? $data['total_stock'] ?? 1),
             (int) ($data['stock_available'] ?? $data['stock'] ?? 1),
             (int) ((int) ($data['stock_available'] ?? $data['stock'] ?? 1) > 0),
-            trim((string) ($data['status'] ?? 'active')),
+            trim((string) ($data['status'] ?? 'aktif')),
         ]
     );
 }
@@ -99,7 +115,7 @@ function update_product_record($id, $data)
         return false;
     }
 
-    $category_slug = trim((string) ($data['category_slug'] ?? $data['category'] ?? 'mirrorless'));
+    $category_slug = trim((string) ($data['category_slug'] ?? $data['category'] ?? 'kamera-mirrorless'));
     $category = find_category_by_slug($category_slug);
     $category_id = (int) ($data['category_id'] ?? ($category['id'] ?? 1));
     $stock_available = (int) ($data['stock_available'] ?? $data['stock'] ?? 1);
@@ -118,7 +134,7 @@ function update_product_record($id, $data)
             (int) ($data['stock_total'] ?? $data['total_stock'] ?? 1),
             $stock_available,
             (int) ($stock_available > 0),
-            trim((string) ($data['status'] ?? 'active')),
+            trim((string) ($data['status'] ?? 'aktif')),
             (int) $id,
         ]
     );

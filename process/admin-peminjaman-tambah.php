@@ -12,7 +12,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && verify_csrf_request() && $user_id >
     'start_date' => $_POST['start_date'] ?? date('Y-m-d'),
     'end_date' => $_POST['end_date'] ?? date('Y-m-d'),
     'total_days' => $_POST['total_days'] ?? 1,
-    'delivery_method' => $_POST['delivery_method'] ?? 'pickup',
+    'delivery_method' => $_POST['delivery_method'] ?? 'ambil_sendiri',
 ])) {
     set_flash('success', 'Peminjaman berhasil ditambahkan.');
 } else {

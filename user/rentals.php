@@ -3,12 +3,14 @@ require_once __DIR__ . '/../includes/customer-check.php';
 require_once __DIR__ . '/../data/products-data.php';
 require_once __DIR__ . '/../data/rentals-data.php';
 require_once __DIR__ . '/../includes/flash.php';
+$customer_session_user = current_user();
+$avatar_url = !empty($customer_session_user['avatar_path']) ? '../' . ltrim((string) $customer_session_user['avatar_path'], '/') : '';
 $products_json = json_encode(get_all_products(), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
 $rentals_json = json_encode(get_customer_rentals((int) current_user()['id']), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
 $current_user_json = json_encode(current_user(), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
 ?>
 <!doctype html>
-<html lang="en">
+<html lang="id">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -185,7 +187,7 @@ $current_user_json = json_encode(current_user(), JSON_UNESCAPED_SLASHES | JSON_U
       }
 
       .floating-nav-btn.active {
-        background: linear-gradient(135deg, var(--accent-brass) 0%, var(--accent-brass-deep) 100%);
+        background: linear-gradient(135deg, #c7a65a 0%, #8f6421 100%);
         color: white;
       }
 
@@ -237,8 +239,26 @@ $current_user_json = json_encode(current_user(), JSON_UNESCAPED_SLASHES | JSON_U
         </div>
 
         <!-- Right side -->
-        <div class="flex items-center gap-3 border-l border-neutral-800 pl-4">
-          <span class="text-sm text-neutral-400">Demo Mode</span>
+        <div class="flex items-center gap-4">
+          <div class="flex items-center gap-3 border-l border-neutral-800 pl-4">
+            <div class="text-right hidden sm:block">
+              <div class="text-sm font-medium text-white"><?= e((string) ($customer_session_user['fullname'] ?? 'User Name')) ?></div>
+              <div class="text-xs text-neutral-500">Sudah masuk</div>
+            </div>
+            <div class="w-10 h-10 bg-neutral-800 rounded-full flex items-center justify-center border border-neutral-700 overflow-hidden">
+              <?php if ($avatar_url !== ''): ?>
+                <img src="<?= e($avatar_url) ?>" alt="Profile avatar" class="w-full h-full object-cover" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
+              <?php endif; ?>
+              <svg class="w-5 h-5 text-neutral-400" style="<?= $avatar_url !== '' ? 'display:none;' : '' ?>" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+              </svg>
+            </div>
+            <a href="../logout.php" class="text-sm text-neutral-400 hover:text-white transition-colors" title="Logout">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+              </svg>
+            </a>
+          </div>
         </div>
       </div>
     </nav>
@@ -256,8 +276,8 @@ $current_user_json = json_encode(current_user(), JSON_UNESCAPED_SLASHES | JSON_U
         <div class="border-b border-neutral-800 mb-8">
           <div class="flex gap-8 overflow-x-auto scrollbar-hide">
             <button class="tab-btn active" data-tab="all">Semua</button>
-            <button class="tab-btn" data-tab="active">Aktif</button>
-            <button class="tab-btn" data-tab="pending">Menunggu</button>
+            <button class="tab-btn" data-tab="aktif">Aktif</button>
+            <button class="tab-btn" data-tab="menunggu">Menunggu</button>
             <button class="tab-btn" data-tab="complete">Selesai</button>
           </div>
         </div>
@@ -289,8 +309,8 @@ $current_user_json = json_encode(current_user(), JSON_UNESCAPED_SLASHES | JSON_U
                     <label class="block text-xs font-medium text-neutral-300 mb-2">Jenis Peralatan</label>
                     <select id="equipment-type" class="w-full px-3 py-2 bg-neutral-800 border border-neutral-700 rounded-xl text-neutral-100 text-sm focus:outline-none control-focus">
                       <option value="all">Semua Peralatan</option>
-                      <option value="mirrorless">Kamera Mirrorless</option>
-                      <option value="lens">Lensa</option>
+                      <option value="kamera-mirrorless">Kamera Mirrorless</option>
+                      <option value="lensa">Lensa</option>
                       <option value="video">Peralatan Video</option>
                     </select>
                   </div>
@@ -620,8 +640,8 @@ $current_user_json = json_encode(current_user(), JSON_UNESCAPED_SLASHES | JSON_U
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
               </svg>
             </div>
-            <h3 class="text-2xl font-serif text-white mb-2">Return Confirmed!</h3>
-            <p class="text-neutral-400 text-sm">The equipment has been marked as returned.</p>
+            <h3 class="text-2xl font-serif text-white mb-2">Permintaan Terkirim!</h3>
+            <p class="text-neutral-400 text-sm">Pengembalian sedang menunggu persetujuan petugas.</p>
           </div>
           
           <div class="bg-neutral-800/50 border border-neutral-700 rounded-xl p-4 mb-6">
@@ -692,7 +712,7 @@ $current_user_json = json_encode(current_user(), JSON_UNESCAPED_SLASHES | JSON_U
         <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
         </svg>
-        <span>Rentals</span>
+        <span>Rental</span>
       </button>
       <button class="floating-nav-btn" data-nav="settings" aria-label="Pengaturan">
         <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -742,7 +762,7 @@ $current_user_json = json_encode(current_user(), JSON_UNESCAPED_SLASHES | JSON_U
         
         // Update button states
         tabButtons.forEach(btn => {
-          btn.classList.toggle('active', btn.dataset.tab === tab);
+          btn.classList.toggle('aktif', btn.dataset.tab === tab);
         });
         
         // Update content visibility
@@ -759,12 +779,12 @@ $current_user_json = json_encode(current_user(), JSON_UNESCAPED_SLASHES | JSON_U
         switch(status) {
           case 'all':
             return rentals;
-          case 'active':
-            return rentals.filter(r => r.status === 'active');
-          case 'pending':
-            return rentals.filter(r => r.status === 'pending' || r.status === 'upcoming');
+          case 'aktif':
+            return rentals.filter(r => r.status === 'aktif');
+          case 'menunggu':
+            return rentals.filter(r => r.status === 'menunggu' || r.status === 'mendatang');
           case 'complete':
-            return rentals.filter(r => r.status === 'completed' || r.status === 'cancelled');
+            return rentals.filter(r => r.status === 'selesai' || r.status === 'dibatalkan');
           default:
             return rentals;
         }
@@ -887,14 +907,17 @@ $current_user_json = json_encode(current_user(), JSON_UNESCAPED_SLASHES | JSON_U
       }
 
       function createRentalRow(rental) {
-        const startDate = new Date(rental.startDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-        const endDate = new Date(rental.endDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+        const startDate = new Date(rental.startDate).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
+        const endDate = new Date(rental.endDate).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
         
         const statusBadge = getStatusBadge(rental.status);
-        const discountDisplay = rental.discount > 0 ? `<span class="text-xs text-neutral-500 line-through ml-1">$${rental.dailyRate}/day</span>` : '';
+        const originalDailyRate = getOriginalDailyRate(rental);
+        const discountDisplay = rental.discount > 0 && originalDailyRate > rental.dailyRate
+          ? `<span class="text-xs text-neutral-500 line-through ml-1">${window.formatCurrencyIDR(originalDailyRate)}/hari</span>`
+          : '';
         
         let actions = '';
-        if (rental.status === 'active') {
+        if (rental.status === 'aktif') {
           actions = `
             <div class="flex gap-2 justify-end">
               <button onclick="viewRentalDetails('${rental.id}')" class="p-2 text-neutral-400 hover:text-white transition-colors" title="Lihat Detail">
@@ -949,17 +972,17 @@ $current_user_json = json_encode(current_user(), JSON_UNESCAPED_SLASHES | JSON_U
                 </div>
                 <div class="flex justify-between">
                   <span class="text-neutral-500">Durasi</span>
-                  <span class="text-neutral-200">${rental.totalDays} day${rental.totalDays > 1 ? 's' : ''}</span>
+                  <span class="text-neutral-200">${rental.totalDays} hari</span>
                 </div>
                 ${rental.discount > 0 ? `
                 <div class="flex justify-between">
-                  <span class="text-neutral-500">Discount</span>
+                  <span class="text-neutral-500">Diskon</span>
                   <span class="text-green-400">${rental.discount}%</span>
                 </div>
                 ` : ''}
                 <div class="flex justify-between">
                   <span class="text-neutral-500">Total</span>
-                  <span class="text-white font-semibold">$${rental.total.toFixed(2)}</span>
+                  <span class="text-white font-semibold">${window.formatCurrencyIDR(rental.total)}</span>
                 </div>
               </div>
               
@@ -986,12 +1009,12 @@ $current_user_json = json_encode(current_user(), JSON_UNESCAPED_SLASHES | JSON_U
               <div class="col-span-2 text-sm">
                 <div class="text-neutral-200">${startDate}</div>
                 <div class="text-neutral-500 text-xs">sampai ${endDate}</div>
-                <div class="text-neutral-400 text-xs mt-1">${rental.totalDays} day${rental.totalDays > 1 ? 's' : ''}</div>
+                <div class="text-neutral-400 text-xs mt-1">${rental.totalDays} hari</div>
               </div>
 
               <!-- Total -->
               <div class="col-span-2">
-                <div class="text-sm font-semibold text-white">$${rental.total.toFixed(2)}</div>
+                <div class="text-sm font-semibold text-white">${window.formatCurrencyIDR(rental.total)}</div>
                 ${rental.discount > 0 ? `<div class="text-xs text-neutral-500">${rental.discount}% diskon diterapkan</div>` : ''}
               </div>
 
@@ -1011,17 +1034,37 @@ $current_user_json = json_encode(current_user(), JSON_UNESCAPED_SLASHES | JSON_U
 
       function getStatusBadge(status) {
         const badges = {
-          active: '<span class="badge badge-success">Aktif</span>',
-          upcoming: '<span class="badge badge-info">Akan Datang</span>',
-          completed: '<span class="badge badge-neutral">Selesai</span>',
-          cancelled: '<span class="badge badge-danger">Dibatalkan</span>',
-          pending: '<span class="badge badge-warning">Menunggu</span>'
+          aktif: '<span class="badge badge-success">Aktif</span>',
+          mendatang: '<span class="badge badge-info">Mendatang</span>',
+          selesai: '<span class="badge badge-neutral">Selesai</span>',
+          dibatalkan: '<span class="badge badge-danger">Dibatalkan</span>',
+          menunggu: '<span class="badge badge-warning">Menunggu</span>'
         };
-        return badges[status] || badges.pending;
+        return badges[status] || badges.menunggu;
       }
 
       function capitalizeFirst(str) {
         return str.charAt(0).toUpperCase() + str.slice(1);
+      }
+
+      function getOriginalDailyRate(rental, productPrice = 0) {
+        const explicitOriginal = Number(productPrice || 0);
+        if (explicitOriginal > 0) {
+          return explicitOriginal;
+        }
+
+        const discountedRate = Number(rental.dailyRate || 0);
+        const discountPercent = Number(rental.discount || 0);
+        if (discountPercent > 0 && discountPercent < 100 && discountedRate > 0) {
+          return Math.round(discountedRate / (1 - (discountPercent / 100)));
+        }
+
+        return discountedRate;
+      }
+
+      function getDiscountAmount(rental, productPrice = 0) {
+        const originalDailyRate = getOriginalDailyRate(rental, productPrice);
+        return Math.max(0, originalDailyRate - Number(rental.dailyRate || 0));
       }
 
       // Action handlers
@@ -1041,34 +1084,36 @@ $current_user_json = json_encode(current_user(), JSON_UNESCAPED_SLASHES | JSON_U
         document.getElementById('modal-description').textContent = product.description;
       
         // Dates
-        const startDate = new Date(rental.startDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-        const endDate = new Date(rental.endDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+        const startDate = new Date(rental.startDate).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
+        const endDate = new Date(rental.endDate).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
         document.getElementById('modal-rental-dates').textContent = `${startDate} - ${endDate}`;
-        document.getElementById('modal-duration').textContent = `${rental.totalDays} day${rental.totalDays > 1 ? 's' : ''}`;
+        document.getElementById('modal-duration').textContent = `${rental.totalDays} hari`;
       
         // Status
         document.getElementById('modal-status').innerHTML = getStatusBadge(rental.status);
       
         // Pricing
-        const dailyRateDisplay = rental.discount > 0
-          ? `<span class="text-sm text-neutral-500 line-through ml-1">$${rental.dailyRate}/day</span>`
+        const originalDailyRate = getOriginalDailyRate(rental, product.price);
+        const discountAmount = getDiscountAmount(rental, product.price);
+        const dailyRateDisplay = rental.discount > 0 && originalDailyRate > rental.dailyRate
+          ? `<span class="text-sm text-neutral-500 line-through ml-1">${window.formatCurrencyIDR(originalDailyRate)}/hari</span>`
           : '';
-        document.getElementById('modal-daily-rate').innerHTML = `<span class="text-white">$${rental.dailyRate}/day</span> ${dailyRateDisplay}`;
+        document.getElementById('modal-daily-rate').innerHTML = `<span class="text-white">${window.formatCurrencyIDR(rental.dailyRate)}/hari</span> ${dailyRateDisplay}`;
         document.getElementById('modal-days').textContent = rental.totalDays;
-        document.getElementById('modal-delivery-fee').textContent = `$${rental.deliveryFee ? rental.deliveryFee.toFixed(2) : '0.00'}`;
+        document.getElementById('modal-delivery-fee').textContent = window.formatCurrencyIDR(rental.deliveryFee || 0);
       
         if (rental.discount > 0) {
           document.getElementById('modal-discount-row').classList.remove('hidden');
-          document.getElementById('modal-discount').textContent = `${rental.discount}% ($${(rental.dailyRate * rental.discount / 100).toFixed(2)} saved)`;
+          document.getElementById('modal-discount').textContent = `${rental.discount}% (${window.formatCurrencyIDR(discountAmount)} hemat)`;
         } else {
           document.getElementById('modal-discount-row').classList.add('hidden');
         }
       
-        document.getElementById('modal-total').textContent = `$${rental.total.toFixed(2)}`;
-        document.getElementById('modal-delivery').textContent = rental.deliveryMethod || 'pickup';
+        document.getElementById('modal-total').textContent = window.formatCurrencyIDR(rental.total);
+        document.getElementById('modal-delivery').textContent = rental.deliveryMethod || 'ambil_sendiri';
       
         // Timeline
-        document.getElementById('modal-created-at').textContent = new Date(rental.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+        document.getElementById('modal-created-at').textContent = new Date(rental.createdAt).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
       
         // Show/hide timeline rows based on status
         const approvedContainer = document.getElementById('modal-approved-container');
@@ -1077,21 +1122,21 @@ $current_user_json = json_encode(current_user(), JSON_UNESCAPED_SLASHES | JSON_U
       
         if (rental.approvedAt) {
           approvedContainer.classList.remove('hidden');
-          document.getElementById('modal-approved-at').textContent = new Date(rental.approvedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+          document.getElementById('modal-approved-at').textContent = new Date(rental.approvedAt).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
         } else {
           approvedContainer.classList.add('hidden');
         }
       
         if (rental.completedAt) {
           completedContainer.classList.remove('hidden');
-          document.getElementById('modal-completed-at').textContent = new Date(rental.completedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+          document.getElementById('modal-completed-at').textContent = new Date(rental.completedAt).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
         } else {
           completedContainer.classList.add('hidden');
         }
       
         if (rental.cancelledAt) {
           cancelledContainer.classList.remove('hidden');
-          document.getElementById('modal-cancelled-at').textContent = new Date(rental.cancelledAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+          document.getElementById('modal-cancelled-at').textContent = new Date(rental.cancelledAt).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
         } else {
           cancelledContainer.classList.add('hidden');
         }
@@ -1136,10 +1181,10 @@ $current_user_json = json_encode(current_user(), JSON_UNESCAPED_SLASHES | JSON_U
         document.getElementById('return-product-image').src = rental.product.image;
         document.getElementById('return-rental-id').textContent = rental.id;
       
-        const startDate = new Date(rental.startDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-        const endDate = new Date(rental.endDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+        const startDate = new Date(rental.startDate).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
+        const endDate = new Date(rental.endDate).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
         document.getElementById('return-rental-dates').textContent = `${startDate} - ${endDate}`;
-        document.getElementById('return-total').textContent = `$${rental.total.toFixed(2)}`;
+        document.getElementById('return-total').textContent = window.formatCurrencyIDR(rental.total);
       
         // Show return modal
         const modal = document.getElementById('return-modal');

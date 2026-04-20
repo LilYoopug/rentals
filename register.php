@@ -6,7 +6,7 @@ if (is_logged_in()) {
 }
 ?>
 <!doctype html>
-<html lang="en">
+<html lang="id">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -185,7 +185,7 @@ if (is_logged_in()) {
               type="button"
               onclick="togglePassword('password', this)"
               class="absolute right-3 top-9 text-neutral-400 hover:text-white transition-colors p-1"
-              aria-label="Toggle password visibility"
+              aria-label="Tampilkan atau sembunyikan kata sandi"
             >
               <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
@@ -211,7 +211,7 @@ if (is_logged_in()) {
               type="button"
               onclick="togglePassword('confirm_password', this)"
               class="absolute right-3 top-9 text-neutral-400 hover:text-white transition-colors p-1"
-              aria-label="Toggle password visibility"
+              aria-label="Tampilkan atau sembunyikan kata sandi"
             >
               <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
@@ -278,87 +278,87 @@ if (is_logged_in()) {
     <script>
       const modalData = {
         terms: {
-          title: 'Terms of Service',
+          title: 'Syarat Layanan',
           content: `
-            <h3 class="text-lg font-semibold text-white mb-4">LensCraft - Terms of Service</h3>
-            <p class="mb-4">Last updated: March 2026</p>
+            <h3 class="text-lg font-semibold text-white mb-4">LensCraft - Syarat Layanan</h3>
+            <p class="mb-4">Terakhir diperbarui: Maret 2026</p>
 
-            <h4 class="text-base font-semibold text-white mt-6 mb-3">1. Acceptance of Terms</h4>
-            <p class="mb-4">By accessing and using LensCraft, you accept and agree to be bound by the terms and provision of this agreement. If you do not agree to these Terms of Service, you should not use our platform.</p>
+            <h4 class="text-base font-semibold text-white mt-6 mb-3">1. Persetujuan Syarat</h4>
+            <p class="mb-4">Dengan mengakses dan menggunakan LensCraft, Anda menyetujui seluruh syarat dan ketentuan layanan ini. Jika Anda tidak menyetujuinya, jangan gunakan platform ini.</p>
 
-            <h4 class="text-base font-semibold text-white mt-6 mb-3">2. User Accounts</h4>
-            <p class="mb-4">To use certain features of LensCraft, you must register for an account. You agree to provide accurate, current, and complete information during the registration process and to update such information to keep it accurate, current, and complete.</p>
-            <p class="mb-4">You are responsible for safeguarding your credentials and for all activities that occur under your account. You agree to immediately notify us of any unauthorized use of your account.</p>
+            <h4 class="text-base font-semibold text-white mt-6 mb-3">2. Akun Pengguna</h4>
+            <p class="mb-4">Untuk menggunakan fitur tertentu di LensCraft, Anda harus membuat akun. Anda setuju memberikan informasi yang akurat, terbaru, dan lengkap saat registrasi serta memperbaruinya bila ada perubahan.</p>
+            <p class="mb-4">Anda bertanggung jawab menjaga kredensial akun dan seluruh aktivitas yang terjadi di akun Anda. Segera beri tahu kami jika ada penggunaan akun tanpa izin.</p>
 
-            <h4 class="text-base font-semibold text-white mt-6 mb-3">3. Rental Services</h4>
-            <p class="mb-4">LensCraft provides a platform for renting photography and videography equipment. All rentals are subject to availability and confirmation of payment.</p>
-            <p class="mb-4">Rental periods are defined at the time of booking. Late returns may incur additional charges at the daily rate. Damaged or lost equipment will be charged at replacement cost.</p>
+            <h4 class="text-base font-semibold text-white mt-6 mb-3">3. Layanan Rental</h4>
+            <p class="mb-4">LensCraft menyediakan platform untuk menyewa peralatan fotografi dan videografi. Semua rental bergantung pada ketersediaan stok dan konfirmasi pembayaran.</p>
+            <p class="mb-4">Periode rental ditentukan saat pemesanan. Keterlambatan pengembalian dapat menimbulkan biaya tambahan sesuai tarif harian. Peralatan yang rusak atau hilang akan dikenakan biaya penggantian.</p>
 
-            <h4 class="text-base font-semibold text-white mt-6 mb-3">4. Payment Terms</h4>
-            <p class="mb-4">All rental fees must be paid in full before equipment delivery. We accept various payment methods as indicated at checkout.</p>
-            <p class="mb-4">Refunds are at the discretion of LensCraft and are subject to our cancellation policy.</p>
+            <h4 class="text-base font-semibold text-white mt-6 mb-3">4. Ketentuan Pembayaran</h4>
+            <p class="mb-4">Seluruh biaya rental harus dibayar lunas sebelum peralatan dikirim atau diambil. Metode pembayaran mengikuti opsi yang tersedia saat checkout.</p>
+            <p class="mb-4">Pengembalian dana mengikuti kebijakan pembatalan LensCraft dan diproses sesuai peninjauan kami.</p>
 
-            <h4 class="text-base font-semibold text-white mt-6 mb-3">5. User Conduct</h4>
-            <p class="mb-4">You agree not to use LensCraft for any unlawful purpose or in any way that could damage, disable, overburden, or impair our services.</p>
-            <p class="mb-4">You are responsible for taking proper care of the equipment during the rental period and returning it according to the agreed rental terms.</p>
+            <h4 class="text-base font-semibold text-white mt-6 mb-3">5. Tanggung Jawab Pengguna</h4>
+            <p class="mb-4">Anda setuju untuk tidak menggunakan LensCraft untuk tujuan melanggar hukum atau dengan cara yang dapat merusak, membebani, atau mengganggu layanan kami.</p>
+            <p class="mb-4">Anda bertanggung jawab menjaga peralatan selama masa rental dan mengembalikannya sesuai syarat yang disepakati.</p>
 
-            <h4 class="text-base font-semibold text-white mt-6 mb-3">6. Limitation of Liability</h4>
-            <p class="mb-4">LensCraft shall not be liable for any indirect, incidental, special, or consequential damages arising out of or in connection with your use of our services.</p>
-            <p class="mb-4">Our total liability shall not exceed the amount paid by you for the rental in question.</p>
+            <h4 class="text-base font-semibold text-white mt-6 mb-3">6. Batas Tanggung Jawab</h4>
+            <p class="mb-4">LensCraft tidak bertanggung jawab atas kerugian tidak langsung, insidental, khusus, atau konsekuensial yang timbul dari penggunaan layanan kami.</p>
+            <p class="mb-4">Batas tanggung jawab kami tidak melebihi jumlah yang Anda bayarkan untuk rental terkait.</p>
 
             <h4 class="text-base font-semibold text-white mt-6 mb-3">7. Changes to Terms</h4>
-            <p class="mb-4">We reserve the right to modify these Terms of Service at any time. Continued use of the platform after changes constitutes your acceptance of the updated terms.</p>
+            <p class="mb-4">Kami berhak memperbarui syarat layanan kapan saja. Penggunaan platform setelah perubahan berarti Anda menerima versi terbaru dari syarat tersebut.</p>
 
-            <h4 class="text-base font-semibold text-white mt-6 mb-3">8. Contact Information</h4>
-            <p class="mb-4">For questions about these Terms of Service, please contact us at support@lenscraft.com</p>
+            <h4 class="text-base font-semibold text-white mt-6 mb-3">8. Informasi Kontak</h4>
+            <p class="mb-4">Untuk pertanyaan terkait syarat layanan, hubungi kami di support@lenscraft.com</p>
           `
         },
         privacy: {
-          title: 'Privacy Policy',
+          title: 'Kebijakan Privasi',
           content: `
-            <h3 class="text-lg font-semibold text-white mb-4">LensCraft - Privacy Policy</h3>
-            <p class="mb-4">Last updated: March 2026</p>
+            <h3 class="text-lg font-semibold text-white mb-4">LensCraft - Kebijakan Privasi</h3>
+            <p class="mb-4">Terakhir diperbarui: Maret 2026</p>
 
-            <h4 class="text-base font-semibold text-white mt-6 mb-3">1. Information We Collect</h4>
-            <p class="mb-4">We collect information you provide directly to us, including but not limited to:</p>
+            <h4 class="text-base font-semibold text-white mt-6 mb-3">1. Informasi yang Kami Kumpulkan</h4>
+            <p class="mb-4">Kami mengumpulkan informasi yang Anda berikan langsung kepada kami, termasuk namun tidak terbatas pada:</p>
             <ul class="list-disc pl-6 mb-4 space-y-2">
-              <li>Name, email address, and phone number</li>
-              <li>Billing and shipping addresses</li>
-              <li>Account credentials</li>
-              <li>Rental history and preferences</li>
+              <li>Nama, alamat email, dan nomor telepon</li>
+              <li>Alamat penagihan dan pengiriman</li>
+              <li>Kredensial akun</li>
+              <li>Riwayat rental dan preferensi</li>
             </ul>
 
-            <h4 class="text-base font-semibold text-white mt-6 mb-3">2. How We Use Your Data</h4>
-            <p class="mb-4">We use the information we collect to:</p>
+            <h4 class="text-base font-semibold text-white mt-6 mb-3">2. Cara Kami Menggunakan Data Anda</h4>
+            <p class="mb-4">Kami menggunakan informasi yang kami kumpulkan untuk:</p>
             <ul class="list-disc pl-6 mb-4 space-y-2">
-              <li>Process your registrations and rentals</li>
-              <li>Send you transaction updates and support messages</li>
-              <li>Improve our services and user experience</li>
-              <li>Comply with legal obligations</li>
+              <li>Memproses registrasi dan rental Anda</li>
+              <li>Mengirim pembaruan transaksi dan pesan dukungan</li>
+              <li>Meningkatkan layanan dan pengalaman pengguna</li>
+              <li>Memenuhi kewajiban hukum</li>
             </ul>
 
-            <h4 class="text-base font-semibold text-white mt-6 mb-3">3. Data Sharing</h4>
-            <p class="mb-4">We do not sell your personal data. We may share your information with:</p>
+            <h4 class="text-base font-semibold text-white mt-6 mb-3">3. Berbagi Data</h4>
+            <p class="mb-4">Kami tidak menjual data pribadi Anda. Kami dapat membagikan informasi Anda kepada:</p>
             <ul class="list-disc pl-6 mb-4 space-y-2">
-              <li>Service providers who assist our operations (payment processing, delivery)</li>
-              <li>Legal authorities when required by law</li>
-              <li>Business partners with your consent</li>
+              <li>Penyedia layanan yang membantu operasional kami seperti pembayaran dan pengiriman</li>
+              <li>Otoritas hukum jika diwajibkan oleh peraturan</li>
+              <li>Mitra bisnis dengan persetujuan Anda</li>
             </ul>
 
-            <h4 class="text-base font-semibold text-white mt-6 mb-3">4. Data Security</h4>
-            <p class="mb-4">We implement appropriate technical and organizational measures to protect your personal data. However, no method of transmission is 100% secure, and we cannot guarantee absolute security.</p>
+            <h4 class="text-base font-semibold text-white mt-6 mb-3">4. Keamanan Data</h4>
+            <p class="mb-4">Kami menerapkan langkah teknis dan organisasi yang sesuai untuk melindungi data pribadi Anda. Namun, tidak ada metode transmisi yang sepenuhnya aman dan kami tidak dapat menjamin keamanan absolut.</p>
 
-            <h4 class="text-base font-semibold text-white mt-6 mb-3">5. Your Rights</h4>
-            <p class="mb-4">You have the right to access, correct, or delete your personal data. You may also opt out of marketing communications at any time.</p>
+            <h4 class="text-base font-semibold text-white mt-6 mb-3">5. Hak Anda</h4>
+            <p class="mb-4">Anda berhak mengakses, memperbaiki, atau menghapus data pribadi Anda. Anda juga dapat berhenti menerima komunikasi pemasaran kapan saja.</p>
 
-            <h4 class="text-base font-semibold text-white mt-6 mb-3">6. Cookies</h4>
-            <p class="mb-4">We use cookies to enhance your experience, analyze site traffic, and personalize content. You can manage cookie preferences through your browser settings.</p>
+            <h4 class="text-base font-semibold text-white mt-6 mb-3">6. Cookie</h4>
+            <p class="mb-4">Kami menggunakan cookie untuk meningkatkan pengalaman Anda, menganalisis lalu lintas situs, dan menyesuaikan konten. Anda dapat mengelola preferensi cookie melalui pengaturan browser Anda.</p>
 
-            <h4 class="text-base font-semibold text-white mt-6 mb-3">7. Changes to Privacy Policy</h4>
-            <p class="mb-4">We may update this policy periodically. The updated version will be indicated by an updated 'Last updated' date.</p>
+            <h4 class="text-base font-semibold text-white mt-6 mb-3">7. Changes to Kebijakan Privasi</h4>
+            <p class="mb-4">Kami dapat memperbarui kebijakan ini secara berkala. Versi terbaru akan ditandai dengan tanggal pembaruan yang baru.</p>
 
-            <h4 class="text-base font-semibold text-white mt-6 mb-3">8. Contact</h4>
-            <p class="mb-4">For privacy concerns, contact our Data Protection Officer at privacy@lenscraft.com</p>
+            <h4 class="text-base font-semibold text-white mt-6 mb-3">8. Kontak</h4>
+            <p class="mb-4">Untuk pertanyaan privasi, hubungi tim kami di privacy@lenscraft.com</p>
           `
         }
       };
