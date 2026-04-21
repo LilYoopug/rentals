@@ -672,6 +672,9 @@ $staff_report_initial_table_rows_json = json_encode($staff_report_initial_table_
       href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:wght@700&display=swap"
       rel="stylesheet"
     />
+    <script>
+      document.documentElement.classList.add('staff-js', 'staff-page-loading');
+    </script>
     <style>
       :root {
         --accent-brass: #c7a65a;
@@ -702,6 +705,35 @@ $staff_report_initial_table_rows_json = json_encode($staff_report_initial_table_
       .card-hover:hover {
         transform: translateY(-8px);
         box-shadow: 0 20px 40px rgba(255, 255, 255, 0.08);
+      }
+      @keyframes skeletonShimmer {
+        0% {
+          transform: translateX(-100%);
+        }
+        100% {
+          transform: translateX(100%);
+        }
+      }
+      .skeleton-shell {
+        position: relative;
+        overflow: hidden;
+        background: rgba(255, 255, 255, 0.06);
+      }
+      .skeleton-shell::after {
+        content: "";
+        position: absolute;
+        inset: 0;
+        background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.14), transparent);
+        animation: skeletonShimmer 1.35s ease-in-out infinite;
+      }
+      #reports-skeleton {
+        display: none;
+      }
+      .staff-js.staff-page-loading #reports-skeleton {
+        display: block;
+      }
+      .staff-js.staff-page-loading #reports {
+        display: none !important;
       }
       .nav-blur {
         background: rgba(5, 5, 5, 0.86);
@@ -1104,6 +1136,86 @@ $staff_report_initial_table_rows_json = json_encode($staff_report_initial_table_
       <div class="p-6 md:p-8">
         <!-- Content Sections -->
         <div id="content-area">
+
+          <section id="reports-skeleton" aria-hidden="true">
+            <div class="mb-8 space-y-3">
+              <div class="skeleton-shell h-10 w-72 rounded-2xl"></div>
+              <div class="skeleton-shell h-4 w-96 max-w-full rounded-full"></div>
+            </div>
+
+            <div class="bg-neutral-900 border border-neutral-800 rounded-2xl p-6 mb-6">
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
+                <div class="space-y-3">
+                  <div class="skeleton-shell h-4 w-28 rounded-full"></div>
+                  <div class="space-y-3">
+                    <div class="skeleton-shell h-12 w-full rounded-xl"></div>
+                    <div class="skeleton-shell h-12 w-full rounded-xl"></div>
+                    <div class="skeleton-shell h-12 w-full rounded-xl"></div>
+                  </div>
+                </div>
+                <div class="space-y-3">
+                  <div class="skeleton-shell h-4 w-24 rounded-full"></div>
+                  <div class="skeleton-shell h-12 w-full rounded-xl"></div>
+                </div>
+              </div>
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-4 pt-4 border-t border-neutral-800">
+                <div class="space-y-3">
+                  <div class="skeleton-shell h-4 w-16 rounded-full"></div>
+                  <div class="skeleton-shell h-12 w-full rounded-xl"></div>
+                </div>
+                <div class="space-y-3">
+                  <div class="skeleton-shell h-4 w-12 rounded-full"></div>
+                  <div class="skeleton-shell h-12 w-full rounded-xl"></div>
+                </div>
+              </div>
+              <div class="mt-5 flex flex-col sm:flex-row gap-3">
+                <div class="skeleton-shell h-12 flex-1 rounded-xl"></div>
+                <div class="skeleton-shell h-12 flex-1 rounded-xl"></div>
+                <div class="skeleton-shell h-12 flex-1 rounded-xl"></div>
+              </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
+              <?php for ($report_summary_skeleton = 0; $report_summary_skeleton < 4; $report_summary_skeleton++): ?>
+                <div class="bg-neutral-900 border border-neutral-800 rounded-2xl p-6 space-y-3">
+                  <div class="skeleton-shell h-4 w-28 rounded-full"></div>
+                  <div class="skeleton-shell h-8 w-24 rounded-xl"></div>
+                  <div class="skeleton-shell h-3 w-full rounded-full"></div>
+                </div>
+              <?php endfor; ?>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+              <div class="lg:col-span-2 bg-neutral-900 border border-neutral-800 rounded-2xl p-6">
+                <div class="skeleton-shell h-6 w-40 rounded-xl mb-4"></div>
+                <div class="skeleton-shell h-80 w-full rounded-2xl"></div>
+              </div>
+              <div class="bg-neutral-900 border border-neutral-800 rounded-2xl p-6">
+                <div class="skeleton-shell h-6 w-44 rounded-xl mb-4"></div>
+                <div class="skeleton-shell h-64 w-full rounded-2xl"></div>
+              </div>
+              <div class="bg-neutral-900 border border-neutral-800 rounded-2xl p-6">
+                <div class="skeleton-shell h-6 w-36 rounded-xl mb-4"></div>
+                <div class="skeleton-shell h-64 w-full rounded-2xl"></div>
+              </div>
+            </div>
+
+            <div class="bg-neutral-900 border border-neutral-800 rounded-2xl overflow-hidden">
+              <div class="p-6 border-b border-neutral-800">
+                <div class="skeleton-shell h-6 w-32 rounded-xl"></div>
+              </div>
+              <div class="p-6 space-y-4">
+                <?php for ($report_table_skeleton = 0; $report_table_skeleton < 6; $report_table_skeleton++): ?>
+                  <div class="grid grid-cols-4 gap-4">
+                    <div class="skeleton-shell h-4 w-full rounded-full"></div>
+                    <div class="skeleton-shell h-4 w-full rounded-full"></div>
+                    <div class="skeleton-shell h-4 w-full rounded-full"></div>
+                    <div class="skeleton-shell h-4 w-full rounded-full"></div>
+                  </div>
+                <?php endfor; ?>
+              </div>
+            </div>
+          </section>
 
           <!-- Ringkasan Section -->
           <section id="reports" class="content-section">
@@ -1710,6 +1822,10 @@ $staff_report_initial_table_rows_json = json_encode($staff_report_initial_table_
         syncCustomDateRange();
         syncCustomDateConstraints();
         renderReport();
+
+        window.addEventListener('load', function () {
+          document.documentElement.classList.remove('staff-page-loading');
+        });
       })();
     </script>
     <?= page_runtime_bundle($flash_script) ?>

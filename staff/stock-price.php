@@ -105,6 +105,9 @@ foreach ($product_rows as $row) {
       href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:wght@700&display=swap"
       rel="stylesheet"
     />
+    <script>
+      document.documentElement.classList.add('staff-js');
+    </script>
     <style>
       :root {
         --accent-brass: #c7a65a;
@@ -133,8 +136,79 @@ foreach ($product_rows as $row) {
         transform: translateY(-6px);
         box-shadow: 0 20px 40px rgba(255, 255, 255, 0.08);
       }
+      @keyframes skeletonShimmer {
+        0% {
+          transform: translateX(-100%);
+        }
+        100% {
+          transform: translateX(100%);
+        }
+      }
+      .skeleton-shimmer {
+        position: relative;
+        overflow: hidden;
+        background: rgba(255, 255, 255, 0.06);
+      }
+      .skeleton-shimmer::after {
+        content: "";
+        position: absolute;
+        inset: 0;
+        background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.14), transparent);
+        animation: skeletonShimmer 1.35s ease-in-out infinite;
+      }
       .table-row-hover:hover {
         background-color: rgba(255, 255, 255, 0.03);
+      }
+      .stock-loading-shell {
+        display: none;
+      }
+      .stock-loading-grid {
+        display: grid;
+        gap: 1rem;
+        padding: 1.5rem;
+      }
+      .stock-loading-row {
+        display: grid;
+        grid-template-columns: minmax(0, 2.3fr) repeat(4, minmax(0, 1fr));
+        gap: 1rem;
+        align-items: center;
+        width: 100%;
+        padding: 1rem 1.25rem;
+        border: 1px solid rgba(255, 255, 255, 0.06);
+        border-radius: 1.25rem;
+        background: rgba(10, 10, 10, 0.7);
+      }
+      .stock-loading-product {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        min-width: 0;
+      }
+      .stock-loading-meta {
+        min-width: 0;
+        flex: 1 1 auto;
+      }
+      .stock-loading-stack {
+        display: flex;
+        flex-direction: column;
+        gap: 0.55rem;
+        min-width: 0;
+      }
+      .stock-loading-pill {
+        height: 2.75rem;
+        border-radius: 1rem;
+      }
+      .staff-js [data-stock-loading="true"] #stock-price-loading {
+        display: block;
+      }
+      .staff-js [data-stock-loading="true"] #stock-price-form {
+        height: 0;
+        overflow: hidden;
+        opacity: 0;
+        pointer-events: none;
+      }
+      .staff-js [data-stock-loading="false"] #stock-price-loading {
+        display: none;
       }
       .floating-nav {
         position: fixed;
@@ -409,6 +483,14 @@ foreach ($product_rows as $row) {
         .stock-price-table .field-shell {
           width: 100%;
         }
+        .stock-loading-grid {
+          padding: 1rem;
+        }
+        .stock-loading-row {
+          grid-template-columns: minmax(0, 1fr);
+          gap: 0.85rem;
+          padding: 1rem;
+        }
       }
       .hero-panel {
         background:
@@ -499,6 +581,12 @@ foreach ($product_rows as $row) {
 
         <div class="px-4 py-2">
           <p class="text-xs font-semibold text-neutral-500 uppercase tracking-wider mb-3">Akses Cepat</p>
+          <a href="index.php" class="flex items-center gap-3 px-4 py-2 rounded-lg text-sm text-neutral-400 hover:text-white transition-colors">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+            </svg>
+            <span>Lihat Situs</span>
+          </a>
           <a href="../products.php" class="flex items-center gap-3 px-4 py-2 rounded-lg text-sm text-neutral-400 hover:text-white transition-colors">
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
@@ -565,7 +653,39 @@ foreach ($product_rows as $row) {
           </div>
         </section>
 
-        <section class="rounded-3xl border border-neutral-800 bg-neutral-900/70 overflow-hidden">
+        <section id="stock-price-shell" data-stock-loading="true" class="rounded-3xl border border-neutral-800 bg-neutral-900/70 overflow-hidden">
+          <div id="stock-price-loading" class="stock-loading-shell" aria-hidden="true">
+            <div class="stock-loading-grid">
+              <?php for ($stock_skeleton_index = 0; $stock_skeleton_index < 5; $stock_skeleton_index++): ?>
+                <div class="stock-loading-row">
+                  <div class="stock-loading-product">
+                    <div class="skeleton-shimmer h-16 w-16 rounded-2xl"></div>
+                    <div class="stock-loading-meta stock-loading-stack">
+                      <div class="skeleton-shimmer h-4 w-3/4 rounded-full"></div>
+                      <div class="skeleton-shimmer h-3 w-1/2 rounded-full"></div>
+                      <div class="skeleton-shimmer h-3 w-1/3 rounded-full"></div>
+                    </div>
+                  </div>
+                  <div class="stock-loading-stack">
+                    <div class="skeleton-shimmer h-4 w-20 rounded-full"></div>
+                    <div class="skeleton-shimmer stock-loading-pill w-full"></div>
+                  </div>
+                  <div class="stock-loading-stack">
+                    <div class="skeleton-shimmer h-4 w-16 rounded-full"></div>
+                    <div class="skeleton-shimmer stock-loading-pill w-full"></div>
+                  </div>
+                  <div class="stock-loading-stack">
+                    <div class="skeleton-shimmer h-4 w-24 rounded-full"></div>
+                    <div class="skeleton-shimmer stock-loading-pill w-full"></div>
+                  </div>
+                  <div class="stock-loading-stack">
+                    <div class="skeleton-shimmer h-4 w-24 rounded-full"></div>
+                    <div class="skeleton-shimmer stock-loading-pill w-full"></div>
+                  </div>
+                </div>
+              <?php endfor; ?>
+            </div>
+          </div>
           <form id="stock-price-form" action="../process/staff-stock-price-bulk-update.php" method="POST">
             <?= csrf_input() ?>
             <div class="overflow-x-auto stock-price-table-wrapper">
@@ -730,6 +850,7 @@ foreach ($product_rows as $row) {
       const sidebar = document.getElementById('sidebar');
       const sidebarToggle = document.getElementById('sidebar-toggle');
       const sidebarOverlay = document.getElementById('sidebar-overlay');
+      const stockPriceShell = document.getElementById('stock-price-shell');
       const editModeToggle = document.getElementById('edit-mode-toggle');
       const editModeBar = document.getElementById('edit-mode-bar');
       const stockPriceForm = document.getElementById('stock-price-form');
@@ -851,6 +972,10 @@ foreach ($product_rows as $row) {
           input.disabled = !enabled;
         });
 
+        document.querySelectorAll('[data-stock-total]').forEach(function (input) {
+          input.disabled = !enabled;
+        });
+
         document.querySelectorAll('[data-stock-adjust]').forEach(function (button) {
           button.disabled = !enabled;
         });
@@ -868,6 +993,14 @@ foreach ($product_rows as $row) {
           discountPanel.classList.toggle('is-disabled', !discountToggle.checked);
         });
         syncFloatingBarFooterState();
+      }
+
+      function finishStockLoading() {
+        if (!stockPriceShell) {
+          return;
+        }
+
+        stockPriceShell.setAttribute('data-stock-loading', 'false');
       }
 
       function resetEditState(updateToggle = true) {
@@ -1019,6 +1152,10 @@ foreach ($product_rows as $row) {
         link.classList.toggle('nav-item-active', active);
         link.classList.toggle('text-neutral-400', !active);
         link.classList.toggle('text-white', active);
+      });
+
+      window.addEventListener('load', function () {
+        requestAnimationFrame(finishStockLoading);
       });
     </script>
     <?= page_runtime_bundle($flash_script) ?>

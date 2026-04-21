@@ -498,7 +498,65 @@ $staff_default_report_rows = $staff_report_tables['borrowings'];
       .table-row-hover:hover {
         background-color: rgba(255, 255, 255, 0.03);
       }
+      @keyframes staffSkeletonShimmer {
+        0% {
+          transform: translateX(-100%);
+        }
+        100% {
+          transform: translateX(100%);
+        }
+      }
+      .table-skeleton-shell {
+        width: 100%;
+        padding: 1.25rem 1.5rem;
+      }
+      .table-skeleton-card {
+        display: grid;
+        grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr) minmax(0, 1.2fr) minmax(0, 1fr) minmax(0, 0.9fr) minmax(0, 0.8fr) minmax(0, 0.85fr);
+        gap: 1rem;
+        align-items: center;
+        width: 100%;
+      }
+      .table-skeleton-stack {
+        display: flex;
+        flex-direction: column;
+        gap: 0.55rem;
+        min-width: 0;
+      }
+      .table-skeleton-line {
+        position: relative;
+        overflow: hidden;
+        height: 0.95rem;
+        border-radius: 9999px;
+        background: rgba(255, 255, 255, 0.06);
+      }
+      .table-skeleton-line::after {
+        content: "";
+        position: absolute;
+        inset: 0;
+        background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.14), transparent);
+        animation: staffSkeletonShimmer 1.35s ease-in-out infinite;
+      }
+      .table-skeleton-thumb {
+        width: 2.75rem;
+        height: 2.75rem;
+        flex-shrink: 0;
+        border-radius: 0.85rem;
+      }
+      .table-skeleton-equip {
+        display: flex;
+        align-items: center;
+        gap: 0.85rem;
+        min-width: 0;
+      }
       @media (max-width: 639px) {
+        .table-skeleton-shell {
+          padding: 1rem;
+        }
+        .table-skeleton-card {
+          grid-template-columns: minmax(0, 1fr);
+          gap: 0.85rem;
+        }
         .mobile-name-ellipsis {
           display: block;
           max-width: 100%;
@@ -1003,7 +1061,9 @@ $staff_default_report_rows = $staff_report_tables['borrowings'];
       const navItems = document.querySelectorAll('.nav-item');
       const sections = document.querySelectorAll('.content-section');
 
-      function showSection(sectionId) {
+      function showSection(sectionId, options = {}) {
+        const animate = options.animate === true;
+
         // Update nav items
         navItems.forEach(item => {
           if (item.dataset.section === sectionId) {
@@ -1019,13 +1079,19 @@ $staff_default_report_rows = $staff_report_tables['borrowings'];
         sections.forEach(section => {
           if (section.id === sectionId) {
             section.classList.remove('hidden');
-            // Re-trigger animation
-            section.style.opacity = '0';
-            section.style.transform = 'translateY(30px)';
-            setTimeout(() => {
+            if (animate) {
+              section.style.opacity = '0';
+              section.style.transform = 'translateY(30px)';
+              requestAnimationFrame(() => {
+                requestAnimationFrame(() => {
+                  section.style.opacity = '1';
+                  section.style.transform = 'translateY(0)';
+                });
+              });
+            } else {
               section.style.opacity = '1';
               section.style.transform = 'translateY(0)';
-            }, 50);
+            }
           } else {
             section.classList.add('hidden');
           }
@@ -1045,9 +1111,9 @@ if (sectionId === 'monitor-returns') {
       function initializeSection() {
         const hash = window.location.hash.substring(1);
         if (hash && document.getElementById(hash)) {
-          showSection(hash);
+          showSection(hash, { animate: false });
         } else {
-          showSection(<?= json_encode($staff_active_section) ?>);
+          showSection(<?= json_encode($staff_active_section) ?>, { animate: false });
         }
       }
 
@@ -1060,6 +1126,7 @@ if (sectionId === 'monitor-returns') {
 
       // Sample returns data
       const returns = <?= $returns_json ?>;
+      renderTableLoadingState(document.getElementById('returns-table-body'), 7, 5);
 
       let filteredReturns = [...returns];
       let returnsCurrentPage = 1;
@@ -1139,6 +1206,48 @@ if (sectionId === 'monitor-returns') {
             </td>
           </tr>
         `;
+      }
+
+      function renderTableLoadingState(tbody, columnCount, count = 5) {
+        if (!tbody) return;
+
+        tbody.innerHTML = Array.from({ length: count }).map(() => `
+          <tr>
+            <td colspan="${columnCount}" class="p-0">
+              <div class="table-skeleton-shell">
+                <div class="table-skeleton-card">
+                  <div class="table-skeleton-stack">
+                    <div class="table-skeleton-line w-24"></div>
+                  </div>
+                  <div class="table-skeleton-stack">
+                    <div class="table-skeleton-line w-32"></div>
+                    <div class="table-skeleton-line w-20"></div>
+                  </div>
+                  <div class="table-skeleton-equip">
+                    <div class="table-skeleton-line table-skeleton-thumb"></div>
+                    <div class="table-skeleton-stack flex-1">
+                      <div class="table-skeleton-line w-full"></div>
+                      <div class="table-skeleton-line w-2/3"></div>
+                    </div>
+                  </div>
+                  <div class="table-skeleton-stack">
+                    <div class="table-skeleton-line w-full"></div>
+                    <div class="table-skeleton-line w-2/3"></div>
+                  </div>
+                  <div class="table-skeleton-stack">
+                    <div class="table-skeleton-line w-20"></div>
+                  </div>
+                  <div class="table-skeleton-stack">
+                    <div class="table-skeleton-line w-24"></div>
+                  </div>
+                  <div class="table-skeleton-stack items-end">
+                    <div class="table-skeleton-line w-24"></div>
+                  </div>
+                </div>
+              </div>
+            </td>
+          </tr>
+        `).join('');
       }
 
       // ============================================
@@ -1520,11 +1629,8 @@ if (sectionId === 'monitor-returns') {
     </script>
     <script>
 document.addEventListener('DOMContentLoaded', function () {
-  if (typeof renderReturnsTable === 'function') {
-    renderReturnsTable();
-  }
-  if (typeof showSection === 'function') {
-    showSection(<?= json_encode($staff_active_section) ?>);
+  if (typeof initializeSection === 'function') {
+    initializeSection();
   }
   document.querySelectorAll('a.nav-item[href]').forEach(function (link) {
     const active = link.getAttribute('href') === <?= json_encode($staff_active_href) ?>;

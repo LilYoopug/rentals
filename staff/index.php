@@ -63,6 +63,29 @@ function staff_change_meta($current, $previous)
     return ['text' => '0%', 'class' => 'text-neutral-400 bg-neutral-800/50 border border-neutral-700'];
 }
 
+function staff_compact_currency($amount)
+{
+  $amount = (float) $amount;
+
+  if ($amount >= 1000000000) {
+    $value = $amount / 1000000000;
+    $suffix = ' M';
+  } elseif ($amount >= 1000000) {
+    $value = $amount / 1000000;
+    $suffix = ' Jt';
+  } elseif ($amount >= 1000) {
+    $value = $amount / 1000;
+    $suffix = ' Rb';
+  } else {
+    return 'Rp' . number_format($amount, 0, ',', '.');
+  }
+
+  $formatted = number_format($value, $value >= 100 ? 0 : 2, ',', '.');
+  $formatted = rtrim(rtrim($formatted, '0'), ',');
+
+  return 'Rp' . $formatted . $suffix;
+}
+
 $staff_borrowing_rows = get_staff_borrowing_rows();
 $staff_return_rows = get_staff_return_rows();
 $all_borrowing_rows = get_all_borrowings();
@@ -226,7 +249,9 @@ $staff_summary = [
     'pending_change' => staff_change_meta($pending_approval_count, $pending_yesterday_count),
     'returns_today' => $returns_today,
     'returns_change' => staff_change_meta($returns_today, $returns_yesterday),
+    'revenue_today_full' => format_currency($revenue_today),
     'revenue_today' => format_currency($revenue_today),
+    'revenue_today_compact' => staff_compact_currency($revenue_today),
     'revenue_change' => staff_change_meta($revenue_today, $revenue_yesterday),
     'active_rentals' => $active_rental_count,
     'active_badge_text' => $active_rental_count > 0 ? 'Aktif' : 'Kosong',
@@ -395,6 +420,9 @@ $staff_default_report_rows = $staff_report_tables['borrowings'];
       href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:wght@700&display=swap"
       rel="stylesheet"
     />
+    <script>
+      document.documentElement.classList.add('staff-js', 'staff-page-loading');
+    </script>
     <style>
       :root {
         --accent-brass: #c7a65a;
@@ -425,6 +453,35 @@ $staff_default_report_rows = $staff_report_tables['borrowings'];
       .card-hover:hover {
         transform: translateY(-8px);
         box-shadow: 0 20px 40px rgba(255, 255, 255, 0.08);
+      }
+      @keyframes skeletonShimmer {
+        0% {
+          transform: translateX(-100%);
+        }
+        100% {
+          transform: translateX(100%);
+        }
+      }
+      .skeleton-shell {
+        position: relative;
+        overflow: hidden;
+        background: rgba(255, 255, 255, 0.06);
+      }
+      .skeleton-shell::after {
+        content: "";
+        position: absolute;
+        inset: 0;
+        background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.14), transparent);
+        animation: skeletonShimmer 1.35s ease-in-out infinite;
+      }
+      #dashboard-skeleton {
+        display: none;
+      }
+      .staff-js.staff-page-loading #dashboard-skeleton {
+        display: block;
+      }
+      .staff-js.staff-page-loading #overview {
+        display: none !important;
       }
       .nav-blur {
         background: rgba(5, 5, 5, 0.86);
@@ -830,6 +887,73 @@ $staff_default_report_rows = $staff_report_tables['borrowings'];
         <!-- Content Sections -->
         <div id="content-area">
 
+          <section id="dashboard-skeleton" aria-hidden="true">
+            <div class="mb-8 space-y-3">
+              <div class="skeleton-shell h-10 w-72 rounded-2xl"></div>
+              <div class="skeleton-shell h-4 w-96 max-w-full rounded-full"></div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+              <?php for ($dashboard_card_skeleton = 0; $dashboard_card_skeleton < 4; $dashboard_card_skeleton++): ?>
+                <div class="bg-neutral-900 border border-neutral-800 rounded-2xl p-6 space-y-4">
+                  <div class="flex items-center justify-between">
+                    <div class="skeleton-shell h-12 w-12 rounded-xl"></div>
+                    <div class="skeleton-shell h-6 w-16 rounded-full"></div>
+                  </div>
+                  <div class="skeleton-shell h-8 w-24 rounded-xl"></div>
+                  <div class="skeleton-shell h-4 w-36 rounded-full"></div>
+                </div>
+              <?php endfor; ?>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              <div class="lg:col-span-2 bg-neutral-900 border border-neutral-800 rounded-2xl p-6">
+                <div class="flex items-center justify-between mb-6">
+                  <div class="skeleton-shell h-7 w-52 rounded-xl"></div>
+                  <div class="skeleton-shell h-5 w-20 rounded-full"></div>
+                </div>
+                <div class="space-y-4">
+                  <?php for ($dashboard_list_skeleton = 0; $dashboard_list_skeleton < 3; $dashboard_list_skeleton++): ?>
+                    <div class="flex items-center justify-between gap-4 border-b border-neutral-800 pb-4 last:border-b-0 last:pb-0">
+                      <div class="flex items-center gap-3 min-w-0 flex-1">
+                        <div class="skeleton-shell h-10 w-10 rounded-lg"></div>
+                        <div class="flex-1 space-y-2 min-w-0">
+                          <div class="skeleton-shell h-4 w-44 max-w-full rounded-full"></div>
+                          <div class="skeleton-shell h-3 w-32 rounded-full"></div>
+                        </div>
+                      </div>
+                      <div class="flex gap-2">
+                        <div class="skeleton-shell h-8 w-16 rounded-lg"></div>
+                        <div class="skeleton-shell h-8 w-16 rounded-lg"></div>
+                      </div>
+                    </div>
+                  <?php endfor; ?>
+                </div>
+              </div>
+
+              <div class="bg-neutral-900 border border-neutral-800 rounded-2xl p-6">
+                <div class="skeleton-shell h-7 w-32 rounded-xl mb-6"></div>
+                <div class="space-y-3 mb-8">
+                  <?php for ($dashboard_action_skeleton = 0; $dashboard_action_skeleton < 3; $dashboard_action_skeleton++): ?>
+                    <div class="skeleton-shell h-12 w-full rounded-xl"></div>
+                  <?php endfor; ?>
+                </div>
+                <div class="space-y-4">
+                  <div class="skeleton-shell h-5 w-28 rounded-full mb-4"></div>
+                  <?php for ($dashboard_progress_skeleton = 0; $dashboard_progress_skeleton < 3; $dashboard_progress_skeleton++): ?>
+                    <div class="space-y-2">
+                      <div class="flex items-center justify-between gap-3">
+                        <div class="skeleton-shell h-3 w-28 rounded-full"></div>
+                        <div class="skeleton-shell h-3 w-14 rounded-full"></div>
+                      </div>
+                      <div class="skeleton-shell h-2 w-full rounded-full"></div>
+                    </div>
+                  <?php endfor; ?>
+                </div>
+              </div>
+            </div>
+          </section>
+
           <!-- Ringkasan Section -->
           <section id="overview" class="content-section animate-fade-in">
             <div class="mb-8">
@@ -877,7 +1001,7 @@ $staff_default_report_rows = $staff_report_tables['borrowings'];
                   </div>
                   <span class="text-xs font-medium px-2 py-1 rounded-full <?= e($staff_summary['revenue_change']['class']) ?>"><?= e($staff_summary['revenue_change']['text']) ?></span>
                 </div>
-                <div class="text-3xl font-bold text-white mb-1"><?= e($staff_summary['revenue_today']) ?></div>
+                <div class="min-w-0 text-2xl font-bold leading-tight text-white md:text-3xl break-words" title="<?= e($staff_summary['revenue_today_full']) ?>"><?= e($staff_summary['revenue_today_compact']) ?></div>
                 <div class="text-sm text-neutral-400">Pendapatan Hari Ini</div>
               </div>
 
@@ -899,14 +1023,22 @@ $staff_default_report_rows = $staff_report_tables['borrowings'];
             <!-- Quick Actions & Recent Activity -->
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
               <!-- Persetujuan Menunggu -->
-              <div class="lg:col-span-2 bg-neutral-900 border border-neutral-800 rounded-2xl p-6">
+              <div class="lg:col-span-2 bg-neutral-900 border border-neutral-800 rounded-2xl p-6 flex flex-col">
                 <div class="flex items-center justify-between mb-6">
                   <h2 class="text-xl font-semibold text-white">Persetujuan Menunggu</h2>
                   <a href="borrowings.php" class="text-sm text-neutral-400 hover:text-white transition-colors">Lihat Semua</a>
                 </div>
-                <div class="space-y-4" id="pending-approvals-list">
+                <div class="space-y-4 flex-1" id="pending-approvals-list">
                   <?php if (empty($staff_pending_approvals)): ?>
-                    <div class="py-6 text-sm text-neutral-500">Tidak ada permintaan yang menunggu persetujuan.</div>
+                    <div class="flex h-full flex-col items-center justify-center rounded-2xl border border-dashed border-neutral-800 bg-neutral-950/40 px-6 py-12 text-center">
+                      <div class="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl border border-neutral-800 bg-neutral-900 text-neutral-400">
+                        <svg class="h-7 w-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                      </div>
+                      <p class="text-sm font-medium text-white">Tidak ada permintaan menunggu</p>
+                      <p class="mt-2 max-w-sm text-sm text-neutral-500">Tidak ada permintaan yang menunggu persetujuan.</p>
+                    </div>
                   <?php else: ?>
                     <?php foreach ($staff_pending_approvals as $approval): ?>
                       <div class="flex items-center justify-between py-3 border-b border-neutral-800">
@@ -1117,6 +1249,10 @@ document.addEventListener('DOMContentLoaded', function () {
     link.classList.toggle('text-neutral-400', !active);
     link.classList.toggle('text-white', active);
   });
+});
+
+window.addEventListener('load', function () {
+  document.documentElement.classList.remove('staff-page-loading');
 });
 </script>
     <?= page_runtime_bundle($flash_script) ?>

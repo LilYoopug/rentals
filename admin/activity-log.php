@@ -57,6 +57,9 @@ $admin_activities_json = json_encode($admin_activities, JSON_UNESCAPED_SLASHES |
       href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:wght@700&display=swap"
       rel="stylesheet"
     />
+    <script>
+      document.documentElement.classList.add('admin-js', 'admin-page-loading');
+    </script>
     <style>
       :root {
         --accent-brass: #c7a65a;
@@ -85,6 +88,35 @@ $admin_activities_json = json_encode($admin_activities, JSON_UNESCAPED_SLASHES |
       .animate-fade-in {
         opacity: 0;
         animation: fadeInUp 0.45s ease-out forwards;
+      }
+      @keyframes skeletonShimmer {
+        0% {
+          transform: translateX(-100%);
+        }
+        100% {
+          transform: translateX(100%);
+        }
+      }
+      .skeleton-shell {
+        position: relative;
+        overflow: hidden;
+        background: rgba(255, 255, 255, 0.06);
+      }
+      .skeleton-shell::after {
+        content: "";
+        position: absolute;
+        inset: 0;
+        background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.14), transparent);
+        animation: skeletonShimmer 1.35s ease-in-out infinite;
+      }
+      #admin-page-skeleton {
+        display: none;
+      }
+      .admin-js.admin-page-loading #admin-page-skeleton {
+        display: block;
+      }
+      .admin-js.admin-page-loading #activity-log {
+        display: none !important;
       }
       .sidebar-scroll::-webkit-scrollbar {
         width: 6px;
@@ -239,6 +271,30 @@ $admin_activities_json = json_encode($admin_activities, JSON_UNESCAPED_SLASHES |
     <main class="lg:ml-64 pt-16 min-h-screen">
       <div class="p-6 md:p-8">
         <div id="content-area">
+          <section id="admin-page-skeleton" aria-hidden="true">
+            <div class="mb-8 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+              <div class="space-y-3">
+                <div class="skeleton-shell h-10 w-52 rounded-2xl"></div>
+                <div class="skeleton-shell h-4 w-80 max-w-full rounded-full"></div>
+              </div>
+              <div class="skeleton-shell h-10 w-28 rounded-xl"></div>
+            </div>
+            <div class="bg-neutral-900 border border-neutral-800 rounded-2xl p-6 mb-6">
+              <div class="skeleton-shell h-12 w-full rounded-xl"></div>
+            </div>
+            <div class="bg-neutral-900 border border-neutral-800 rounded-2xl p-6 space-y-4">
+              <?php for ($admin_activity_skeleton = 0; $admin_activity_skeleton < 6; $admin_activity_skeleton++): ?>
+                <div class="flex items-start gap-4">
+                  <div class="skeleton-shell h-12 w-12 rounded-xl flex-shrink-0"></div>
+                  <div class="flex-1 space-y-2">
+                    <div class="skeleton-shell h-4 w-48 rounded-full"></div>
+                    <div class="skeleton-shell h-3 w-32 rounded-full"></div>
+                    <div class="skeleton-shell h-3 w-full rounded-full"></div>
+                  </div>
+                </div>
+              <?php endfor; ?>
+            </div>
+          </section>
           <section id="activity-log" class="content-section">
             <div class="mb-8">
               <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
@@ -570,6 +626,11 @@ $admin_activities_json = json_encode($admin_activities, JSON_UNESCAPED_SLASHES |
         });
       });
     </script>
+    <script>
+window.addEventListener('load', function () {
+  document.documentElement.classList.remove('admin-page-loading');
+});
+</script>
     <?= page_runtime_bundle($flash_script) ?>
   </body>
 </html>

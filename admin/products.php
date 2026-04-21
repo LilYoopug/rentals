@@ -360,6 +360,9 @@ $admin_activities_json = json_encode($admin_activities, JSON_UNESCAPED_SLASHES |
       href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:wght@700&display=swap"
       rel="stylesheet"
     />
+    <script>
+      document.documentElement.classList.add('admin-js', 'admin-page-loading');
+    </script>
     <style>
       :root {
         --accent-brass: #c7a65a;
@@ -390,6 +393,35 @@ $admin_activities_json = json_encode($admin_activities, JSON_UNESCAPED_SLASHES |
       .card-hover:hover {
         transform: translateY(-8px);
         box-shadow: 0 20px 40px rgba(255, 255, 255, 0.08);
+      }
+      @keyframes skeletonShimmer {
+        0% {
+          transform: translateX(-100%);
+        }
+        100% {
+          transform: translateX(100%);
+        }
+      }
+      .skeleton-shell {
+        position: relative;
+        overflow: hidden;
+        background: rgba(255, 255, 255, 0.06);
+      }
+      .skeleton-shell::after {
+        content: "";
+        position: absolute;
+        inset: 0;
+        background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.14), transparent);
+        animation: skeletonShimmer 1.35s ease-in-out infinite;
+      }
+      #admin-page-skeleton {
+        display: none;
+      }
+      .admin-js.admin-page-loading #admin-page-skeleton {
+        display: block;
+      }
+      .admin-js.admin-page-loading #tools-stock {
+        display: none !important;
       }
       .nav-blur {
         background: rgba(5, 5, 5, 0.86);
@@ -860,6 +892,29 @@ $admin_activities_json = json_encode($admin_activities, JSON_UNESCAPED_SLASHES |
       <div class="p-6 md:p-8">
         <!-- Content Sections (all hidden by default, shown via JS) -->
         <div id="content-area">
+          <section id="admin-page-skeleton" aria-hidden="true">
+            <div class="mb-8 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+              <div class="space-y-3">
+                <div class="skeleton-shell h-10 w-72 rounded-2xl"></div>
+                <div class="skeleton-shell h-4 w-72 max-w-full rounded-full"></div>
+              </div>
+              <div class="skeleton-shell h-12 w-44 rounded-xl"></div>
+            </div>
+            <div class="bg-neutral-900 border border-neutral-800 rounded-2xl p-6 mb-6">
+              <div class="skeleton-shell h-12 w-full rounded-xl"></div>
+            </div>
+            <div class="bg-neutral-900 border border-neutral-800 rounded-2xl p-6 space-y-4">
+              <?php for ($admin_products_skeleton = 0; $admin_products_skeleton < 5; $admin_products_skeleton++): ?>
+                <div class="grid grid-cols-1 sm:grid-cols-5 gap-4 items-center">
+                  <div class="skeleton-shell h-4 w-full rounded-full"></div>
+                  <div class="skeleton-shell h-4 w-full rounded-full"></div>
+                  <div class="skeleton-shell h-4 w-full rounded-full"></div>
+                  <div class="skeleton-shell h-4 w-full rounded-full"></div>
+                  <div class="skeleton-shell h-4 w-full rounded-full"></div>
+                </div>
+              <?php endfor; ?>
+            </div>
+          </section>
           
           <!-- User Modal -->
           <div id="inventory-modal" class="fixed inset-0 z-50 hidden flex items-center justify-center p-4 modal-overlay">
@@ -3083,6 +3138,11 @@ document.addEventListener('DOMContentLoaded', function () {
     link.classList.toggle('text-neutral-400', !active);
     link.classList.toggle('text-white', active);
   });
+});
+</script>
+    <script>
+window.addEventListener('load', function () {
+  document.documentElement.classList.remove('admin-page-loading');
 });
 </script>
     <?= page_runtime_bundle($flash_script) ?>
