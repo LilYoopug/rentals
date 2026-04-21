@@ -408,7 +408,6 @@ function motion_runtime_script()
 
   const revealedElements = new WeakSet();
   const modalAnimationTimestamps = new WeakMap();
-  document.body.classList.add('lenscraft-motion-ready');
 
   function isPaginationTarget(element) {
     if (!(element instanceof HTMLElement)) return false;
@@ -469,16 +468,20 @@ function motion_runtime_script()
       return;
     }
 
+    // Preserve horizontal centering for elements that rely on translateX(-50%)
+    const preserveCenterX = element.matches && element.matches('.floating-nav');
+    const baseX = preserveCenterX ? '-50%' : '0';
+
     const animation = element.animate(
       [
         {
           opacity: 0.01,
-          transform: `translate3d(0, ${animationSpec.distance}px, 0) scale(${animationSpec.scale})`,
+          transform: `translate3d(${baseX}, ${animationSpec.distance}px, 0) scale(${animationSpec.scale})`,
           filter: 'saturate(0.92)'
         },
         {
           opacity: 1,
-          transform: 'translate3d(0, 0, 0) scale(1)',
+          transform: `translate3d(${baseX}, 0, 0) scale(1)`,
           filter: 'saturate(1)'
         }
       ],
@@ -582,9 +585,21 @@ function motion_runtime_script()
   }
 
   function primeMotionSystem() {
-    collectTargets(document);
+    // Defer adding the runtime-ready class to the next paint frame so
+    // initial styles render without the runtime transitions. This
+    // prevents a visible 'second refresh' effect when the class
+    // toggles transition rules after first paint.
     requestAnimationFrame(function () {
+      try {
+        document.body.classList.add('lenscraft-motion-ready');
+      } catch (e) {
+        // ignore if body isn't available for some reason
+      }
+
       collectTargets(document);
+      requestAnimationFrame(function () {
+        collectTargets(document);
+      });
     });
   }
 

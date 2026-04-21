@@ -1427,30 +1427,52 @@ $current_user_json = json_encode(current_user(), JSON_UNESCAPED_SLASHES | JSON_U
         floatingNav.classList.toggle('footer-near', isNearFooter);
       }
 
-      document.addEventListener('DOMContentLoaded', () => {
-        const currentPage = window.location.pathname.split('/').pop() || 'index.php';
-        const pageMap = {
-          'index.php': 'home',
-          'rentals.php': 'rentals',
-          'index.php': 'home',
-          'profile.php': 'settings'
-        };
-        
-        const activeNav = pageMap[currentPage];
-        if (activeNav) {
-          document.querySelectorAll('.floating-nav-btn').forEach(btn => {
-            btn.classList.remove('active');
-            if (btn.dataset.nav === activeNav) {
-              btn.classList.add('active');
-            }
-          });
+      // Determine and set active floating nav button based on current URL/path.
+      function setFloatingNavActiveFromPath() {
+        try {
+          const path = window.location.pathname.toLowerCase();
+          const segments = path.split('/').filter(Boolean);
+          const last = segments.length ? segments[segments.length - 1] : '';
+          let activeNav = null;
+
+          if (last === '' || last === 'index.php' || last === 'products.php' || path === '/' || path.includes('/products.php')) {
+            activeNav = 'home';
+          } else if (last === 'rentals.php' || path.includes('/user/rentals.php') || path.includes('/rentals.php')) {
+            activeNav = 'rentals';
+          } else if (last === 'profile.php' || path.includes('/user/profile.php') || path.includes('/profile.php') || path.includes('/settings.php')) {
+            activeNav = 'settings';
+          }
+
+          if (activeNav) {
+            document.querySelectorAll('.floating-nav-btn').forEach(btn => {
+              btn.classList.toggle('active', btn.dataset.nav === activeNav);
+            });
+          }
+        } catch (e) {
+          // ignore
         }
-        
-        // Initialize rentals
-        renderRentals();
-        
+      }
+
+      // Apply early so the correct button is highlighted before other load-time effects.
+      setFloatingNavActiveFromPath();
+
+      // Initialize rentals and floating navigation after DOM is ready
+      document.addEventListener('DOMContentLoaded', () => {
+        // Ensure currency formatter and other runtime helpers are available
+        if (typeof window.formatCurrencyIDR !== 'function') {
+          // Wait a tick to allow page runtime bundle to initialize
+          setTimeout(() => {
+            renderRentals();
+          }, 0);
+        } else {
+          renderRentals();
+        }
+
         // Floating navigation functionality
         const floatingNavButtons = document.querySelectorAll('.floating-nav-btn');
+        // Ensure active state reflects current path
+        setFloatingNavActiveFromPath();
+
         floatingNavButtons.forEach(btn => {
           btn.addEventListener('click', function() {
             // Remove active class from all buttons
@@ -1461,9 +1483,9 @@ $current_user_json = json_encode(current_user(), JSON_UNESCAPED_SLASHES | JSON_U
             // Navigate based on data-nav attribute
             const navType = this.dataset.nav;
             const pages = {
-              'home': 'index.php',
+              'home': '../products.php',
               'rentals': 'rentals.php',
-              'settings': 'profile.php'
+              'settings': '../settings.php'
             };
             if (pages[navType]) {
               window.location.href = pages[navType];

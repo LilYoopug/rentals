@@ -677,54 +677,69 @@ $avatar_url = $is_logged_in && !empty(current_user()['avatar_path']) ? ltrim((st
         floatingNav.classList.toggle('footer-near', isNearFooter);
       }
 
-      document.addEventListener('DOMContentLoaded', () => {
-        const currentPage = window.location.pathname.split('/').pop() || 'products.php';
-        const pageMap = {
-          'products.php': 'home',
-          'rentals.php': 'rentals',
-          'profile.php': 'settings'
-        };
-        
-        const activeNav = pageMap[currentPage];
-        if (activeNav) {
-          document.querySelectorAll('.floating-nav-btn').forEach(btn => {
-            btn.classList.remove('active');
-            if (btn.dataset.nav === activeNav) {
-              btn.classList.add('active');
+        // Determine and set active floating nav button based on current URL/path.
+        function setFloatingNavActiveFromPath() {
+          try {
+            const path = window.location.pathname.toLowerCase();
+            const segments = path.split('/').filter(Boolean);
+            const last = segments.length ? segments[segments.length - 1] : '';
+            let activeNav = null;
+
+            if (last === '' || last === 'index.php' || last === 'products.php' || path === '/' || path.includes('/products.php')) {
+              activeNav = 'home';
+            } else if (last === 'rentals.php' || path.includes('/user/rentals.php') || path.includes('/rentals.php')) {
+              activeNav = 'rentals';
+            } else if (last === 'profile.php' || path.includes('/user/profile.php') || path.includes('/profile.php') || path.includes('/settings.php')) {
+              activeNav = 'settings';
             }
-          });
+
+            if (activeNav) {
+              document.querySelectorAll('.floating-nav-btn').forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.nav === activeNav);
+              });
+            }
+          } catch (e) {
+            // ignore
+          }
         }
-        
-        // Initialize products
-        itemsPerPage = getItemsPerPage();
-        renderProducts();
-        renderPagination();
 
-        // Floating navigation functionality
-        const floatingNavButtons = document.querySelectorAll('.floating-nav-btn');
-        if (floatingNavButtons.length > 0) {
-          floatingNavButtons.forEach(btn => {
-            btn.addEventListener('click', function() {
-              floatingNavButtons.forEach(b => b.classList.remove('active'));
-              this.classList.add('active');
+        // Run early so the correct button is highlighted before other load-time effects.
+        setFloatingNavActiveFromPath();
 
-              const navType = this.dataset.nav;
-              const pages = {
-                'home': 'products.php',
-                'rentals': 'user/rentals.php',
-                'settings': 'user/profile.php'
-              };
-              if (pages[navType]) {
-                window.location.href = pages[navType];
-              }
+        document.addEventListener('DOMContentLoaded', () => {
+          // Ensure active state is applied after any dynamic routing or DOM updates.
+          setFloatingNavActiveFromPath();
+
+          // Initialize products
+          itemsPerPage = getItemsPerPage();
+          renderProducts();
+          renderPagination();
+
+          // Floating navigation functionality
+          const floatingNavButtons = document.querySelectorAll('.floating-nav-btn');
+          if (floatingNavButtons.length > 0) {
+            floatingNavButtons.forEach(btn => {
+              btn.addEventListener('click', function() {
+                floatingNavButtons.forEach(b => b.classList.remove('active'));
+                this.classList.add('active');
+
+                const navType = this.dataset.nav;
+                const pages = {
+                  'home': 'products.php',
+                  'rentals': 'user/rentals.php',
+                  'settings': 'user/profile.php'
+                };
+                if (pages[navType]) {
+                  window.location.href = pages[navType];
+                }
+              });
             });
-          });
-        }
+          }
 
-        syncFloatingNavFooterState();
-        window.addEventListener('scroll', syncFloatingNavFooterState, { passive: true });
-        window.addEventListener('resize', syncFloatingNavFooterState);
-      });
+          syncFloatingNavFooterState();
+          window.addEventListener('scroll', syncFloatingNavFooterState, { passive: true });
+          window.addEventListener('resize', syncFloatingNavFooterState);
+        });
 
       // Recalculate items per page on window resize
       let resizeTimeout;
