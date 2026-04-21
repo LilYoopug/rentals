@@ -264,6 +264,22 @@ $avatar_url = $is_logged_in && !empty(current_user()['avatar_path']) ? ltrim((st
          <!-- Products Grid -->
          <div id="products-grid" class="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6"></div>
 
+        <!-- Empty state when no products are available -->
+        <div id="products-empty" class="hidden p-12 text-center">
+          <div class="w-16 h-16 mx-auto mb-4 rounded-full bg-neutral-800 flex items-center justify-center">
+            <svg class="w-8 h-8 text-neutral-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7l9-4 9 4M4 10v6a2 2 0 002 2h2m10-8v6a2 2 0 01-2 2h-2m-6 0h6" />
+            </svg>
+          </div>
+          <h3 class="text-lg font-semibold text-white mb-2">Tidak Ada Produk</h3>
+          <p class="text-neutral-400 text-sm mb-6 max-w-md mx-auto">Belum ada produk tersedia saat ini.</p>
+          <?php if (is_admin_user()): ?>
+            <a href="admin/products.php" class="inline-flex items-center gap-2 px-6 py-3 bg-white text-black font-semibold rounded-lg hover:bg-neutral-200 transition-colors">Tambahkan Produk</a>
+          <?php else: ?>
+            <a href="index.php" class="inline-flex items-center gap-2 px-6 py-3 bg-white text-black font-semibold rounded-lg hover:bg-neutral-200 transition-colors">Kembali ke Beranda</a>
+          <?php endif; ?>
+        </div>
+
         <!-- Pagination -->
         <div class="flex flex-col sm:flex-row items-center justify-between gap-4 py-6 border-t border-neutral-800">
           <!-- Page Numbers -->
@@ -343,6 +359,9 @@ $avatar_url = $is_logged_in && !empty(current_user()['avatar_path']) ? ltrim((st
       const categorySelect = document.getElementById('category');
       const sortSelect = document.getElementById('sort');
       const productsGrid = document.getElementById('products-grid');
+      const productsEmpty = document.getElementById('products-empty');
+      const paginationContainer = document.getElementById('pagination-container');
+      const productsPaginationShell = paginationContainer ? paginationContainer.parentElement : null;
       const filterBtn = document.getElementById('filter-btn');
       const filterDropdown = document.getElementById('filter-dropdown');
       const suggestions = document.getElementById('suggestions');
@@ -481,13 +500,30 @@ $avatar_url = $is_logged_in && !empty(current_user()['avatar_path']) ? ltrim((st
       // Render products grid
       function renderProducts() {
         productsGrid.innerHTML = '';
+
+        const totalItems = filteredProducts.length;
+        if (totalItems === 0) {
+          if (productsEmpty) productsEmpty.classList.remove('hidden');
+          productsGrid.classList.add('hidden');
+          if (productsPaginationShell) productsPaginationShell.classList.add('hidden');
+          return;
+        }
+
+        // Show grid and pagination when there are items
+        if (productsEmpty) productsEmpty.classList.add('hidden');
+        productsGrid.classList.remove('hidden');
+        if (productsPaginationShell) productsPaginationShell.classList.remove('hidden');
+
+        const totalPages = Math.ceil(totalItems / itemsPerPage) || 1;
+        if (currentPage > totalPages) currentPage = totalPages;
+
         const start = (currentPage - 1) * itemsPerPage;
         const end = start + itemsPerPage;
         const pageProducts = filteredProducts.slice(start, end);
         pageProducts.forEach(product => {
           productsGrid.appendChild(renderProductCard(product));
         });
-       }
+      }
 
        // Search action - loads products when triggered
        function performSearch() {
