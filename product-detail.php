@@ -196,6 +196,22 @@ $avatar_url = $is_logged_in && !empty(current_user()['avatar_path']) ? ltrim((st
               <span class="text-sm text-neutral-400">Alamat Pengiriman</span>
               <span class="text-sm font-medium text-white text-right" id="confirm-delivery-address"></span>
             </div>
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-sm text-neutral-400">Harga / Hari</span>
+              <span class="text-sm font-medium text-white" id="confirm-daily-rate"></span>
+            </div>
+            <div class="flex items-center justify-between mb-2 hidden" id="confirm-discount-row">
+              <span class="text-sm text-neutral-400">Diskon</span>
+              <span class="text-sm font-medium text-green-400" id="confirm-discount"></span>
+            </div>
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-sm text-neutral-400">Durasi</span>
+              <span class="text-sm font-medium text-white" id="confirm-days"></span>
+            </div>
+            <div class="flex items-center justify-between mb-2 hidden" id="confirm-delivery-fee-row">
+              <span class="text-sm text-neutral-400">Biaya Pengiriman</span>
+              <span class="text-sm font-medium text-white" id="confirm-delivery-fee"></span>
+            </div>
             <div class="border-t border-neutral-700 pt-2 mt-2">
               <div class="flex items-center justify-between">
                 <span class="text-base font-semibold text-white">Total</span>
@@ -762,15 +778,31 @@ $avatar_url = $is_logged_in && !empty(current_user()['avatar_path']) ? ltrim((st
         document.getElementById('confirm-product-name').textContent = product.name;
         document.getElementById('confirm-rental-dates').textContent = `${startDateInput.value} sampai ${endDateInput.value}`;
         document.getElementById('confirm-delivery-method').textContent = deliveryMethodInput.value;
+        document.getElementById('confirm-daily-rate').textContent = `${window.formatCurrencyIDR(dailyRate)} / hari`;
+        document.getElementById('confirm-days').textContent = `${days} hari`;
         document.getElementById('confirm-total').textContent = window.formatCurrencyIDR(total);
+
+        const confirmDiscountRow = document.getElementById('confirm-discount-row');
+        const confirmDiscount = document.getElementById('confirm-discount');
+        if (confirmDiscountRow && confirmDiscount) {
+          confirmDiscount.textContent = product.discount > 0 ? `${product.discount}%` : '';
+          confirmDiscountRow.classList.toggle('hidden', !(product.discount > 0));
+        }
 
         const confirmDeliveryAddressRow = document.getElementById('confirm-delivery-address-row');
         const confirmDeliveryAddress = document.getElementById('confirm-delivery-address');
+        const confirmDeliveryFeeRow = document.getElementById('confirm-delivery-fee-row');
+        const confirmDeliveryFee = document.getElementById('confirm-delivery-fee');
         const isDelivery = deliveryMethodInput.value === 'diantar';
 
         if (confirmDeliveryAddressRow && confirmDeliveryAddress) {
           confirmDeliveryAddress.textContent = formatDeliveryAddress(getCurrentUser());
           confirmDeliveryAddressRow.classList.toggle('hidden', !isDelivery);
+        }
+
+        if (confirmDeliveryFeeRow && confirmDeliveryFee) {
+          confirmDeliveryFee.textContent = window.formatCurrencyIDR(deliveryFee);
+          confirmDeliveryFeeRow.classList.toggle('hidden', !isDelivery);
         }
 
         // Show confirmation modal

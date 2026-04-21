@@ -85,6 +85,8 @@ foreach ($staff_borrowing_rows as $row) {
         'startDate' => (string) ($row['start_date'] ?? ''),
         'endDate' => (string) ($row['end_date'] ?? ''),
         'days' => (int) ($row['total_days'] ?? 0),
+      'dailyRate' => (float) ($row['daily_rate'] ?? 0),
+      'discount' => (int) ($row['discount_percentage'] ?? 0),
         'amount' => (float) ($row['total_price'] ?? 0),
         'status' => $status,
     ];
@@ -1023,7 +1025,28 @@ $staff_default_report_rows = $staff_report_tables['borrowings'];
             </div>
             <div class="space-y-2">
               <div class="action-sheet-eyebrow">Mohon konfirmasi</div>
-              <p class="action-sheet-copy" id="staff-action-modal-message"></p>
+              <div class="space-y-3">
+                <p class="action-sheet-copy" id="staff-action-modal-message"></p>
+                <div id="staff-action-modal-meta" class="hidden rounded-xl border border-neutral-700 bg-neutral-900/70 p-4">
+                  <div id="staff-action-modal-product" class="mb-4 hidden items-center gap-3 rounded-xl border border-neutral-800 bg-neutral-950/60 p-3">
+                    <img id="staff-action-modal-product-image" src="../images/gear-placeholder.svg" alt="Product preview" class="h-14 w-14 rounded-xl border border-neutral-700 bg-neutral-800 object-cover">
+                    <div class="min-w-0 flex-1">
+                      <div id="staff-action-modal-product-name" class="truncate text-sm font-semibold text-white">-</div>
+                      <div id="staff-action-modal-product-subtitle" class="mt-1 text-xs text-neutral-400">-</div>
+                    </div>
+                  </div>
+                  <div class="grid grid-cols-1 gap-3 text-sm sm:grid-cols-2">
+                    <div>
+                      <div class="text-[11px] uppercase tracking-[0.2em] text-neutral-500">Harga / hari</div>
+                      <div class="mt-1 font-medium text-white" id="staff-action-modal-price">-</div>
+                    </div>
+                    <div>
+                      <div class="text-[11px] uppercase tracking-[0.2em] text-neutral-500">Diskon</div>
+                      <div class="mt-1 font-medium text-white" id="staff-action-modal-discount">-</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -1556,12 +1579,46 @@ if (sectionId === 'approve-borrowings') {
 
 
 
-      function openStaffActionModal(title, message, onConfirm) {
+      function openStaffActionModal(title, message, onConfirm, meta = null) {
         const confirmBtn = document.getElementById('staff-action-confirm-btn');
         const iconWrap = document.getElementById('staff-action-modal-icon');
         const eyebrow = document.querySelector('.action-sheet-eyebrow');
+        const metaCard = document.getElementById('staff-action-modal-meta');
+        const metaProduct = document.getElementById('staff-action-modal-product');
+        const metaProductImage = document.getElementById('staff-action-modal-product-image');
+        const metaProductName = document.getElementById('staff-action-modal-product-name');
+        const metaProductSubtitle = document.getElementById('staff-action-modal-product-subtitle');
+        const metaPrice = document.getElementById('staff-action-modal-price');
+        const metaDiscount = document.getElementById('staff-action-modal-discount');
         document.getElementById('staff-action-modal-title').textContent = title;
         document.getElementById('staff-action-modal-message').textContent = message;
+
+        if (metaCard && metaPrice && metaDiscount) {
+          if (meta && (typeof meta.price !== 'undefined' || typeof meta.discount !== 'undefined')) {
+            if (metaProduct && metaProductImage && metaProductName && metaProductSubtitle) {
+              metaProductImage.src = meta.image || '../images/gear-placeholder.svg';
+              metaProductName.textContent = meta.name || '-';
+              metaProductSubtitle.textContent = meta.subtitle || '-';
+              metaProduct.classList.remove('hidden');
+              metaProduct.classList.add('flex');
+            }
+            metaPrice.textContent = typeof meta.price !== 'undefined' ? `${window.formatCurrencyIDR(meta.price)} / hari` : '-';
+            metaDiscount.textContent = meta.discount > 0 ? `${meta.discount}%` : 'Tidak ada';
+            metaCard.classList.remove('hidden');
+          } else {
+            if (metaProduct && metaProductImage && metaProductName && metaProductSubtitle) {
+              metaProductImage.src = '../images/gear-placeholder.svg';
+              metaProductName.textContent = '-';
+              metaProductSubtitle.textContent = '-';
+              metaProduct.classList.add('hidden');
+              metaProduct.classList.remove('flex');
+            }
+            metaPrice.textContent = '-';
+            metaDiscount.textContent = '-';
+            metaCard.classList.add('hidden');
+          }
+        }
+
         if (/tolak|rusak/i.test(title)) {
           if (eyebrow) eyebrow.textContent = 'High impact action';
           confirmBtn.textContent = 'Ya, lanjutkan';
@@ -1609,9 +1666,16 @@ if (sectionId === 'approve-borrowings') {
       }
 
       function approveBorrowing(id) {
+        const borrowing = borrowings.find((entry) => entry.id === id);
         openStaffActionModal('Setujui Peminjaman', `Setujui peminjaman ${id}?`, function () {
           postStaffAction('../process/staff-peminjaman-approve.php', { rental_code: id });
-        });
+        }, borrowing ? {
+          name: borrowing.equipment,
+          subtitle: `${borrowing.brand || 'LensCraft'} • ${capitalizeFirst(borrowing.category || 'equipment')}`,
+          image: borrowing.image,
+          price: borrowing.dailyRate,
+          discount: borrowing.discount
+        } : null);
       }
 
       function rejectBorrowing(id) {
