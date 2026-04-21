@@ -429,14 +429,14 @@ $avatar_url = $is_logged_in && !empty(current_user()['avatar_path']) ? ltrim((st
           ? '<span class="absolute top-3 left-3 inline-flex items-center px-2.5 py-1 text-xs font-semibold bg-neutral-900/80 backdrop-blur-sm text-neutral-100 border border-neutral-700/50 rounded-full">Tersedia</span>'
           : '<span class="absolute top-3 left-3 inline-flex items-center px-2.5 py-1 text-xs font-semibold bg-red-900/40 text-red-400 border border-red-800/50 rounded-full backdrop-blur-sm">Tidak Tersedia</span>';
         
-       const priceDisplay = product.discount > 0
-          ? `
-            <div class="flex flex-col items-start gap-1">
-              <span class="text-sm text-neutral-600 line-through">${window.formatCurrencyIDR(product.price)}</span>
-              <span class="text-xl font-bold text-white">${window.formatCurrencyIDR(Math.round(product.price * (1 - product.discount / 100)))}<span class="text-sm font-normal text-neutral-500 ml-1">/hari</span></span>
-            </div>
-          `
-          : `<span class="text-xl font-bold text-white">${window.formatCurrencyIDR(product.price)}<span class="text-sm font-normal text-neutral-500 ml-1">/hari</span></span>`;
+        const priceDisplay = product.discount > 0
+           ? `
+             <div class="flex flex-col items-start gap-1">
+               <span class="text-xs text-neutral-600 line-through">${window.formatCurrencyIDR(product.price)}</span>
+               <span class="text-lg font-bold text-white">${window.formatCurrencyIDR(Math.round(product.price * (1 - product.discount / 100)))}<span class="text-xs font-normal text-neutral-500 ml-1">/hari</span></span>
+             </div>
+           `
+           : `<span class="text-lg font-bold text-white">${window.formatCurrencyIDR(product.price)}<span class="text-xs font-normal text-neutral-500 ml-1">/hari</span></span>`;
 
         const categoryBadge = `
           <span class="inline-flex flex-shrink-0 items-center px-2.5 py-1 rounded-full border border-neutral-700 bg-neutral-800/80 text-[11px] font-semibold uppercase tracking-[0.16em] text-neutral-300">
