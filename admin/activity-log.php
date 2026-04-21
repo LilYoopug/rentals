@@ -507,7 +507,7 @@ $admin_activities_json = json_encode($admin_activities, JSON_UNESCAPED_SLASHES |
         }
 
         activityTimeline.innerHTML = pageActivities.map((activity) => `
-          <div class="flex gap-4 pb-6 border-b border-neutral-800 last:border-b-0 animate-fade-in">
+          <div class="flex gap-4 py-6 border-b border-neutral-800 first:pt-0 last:border-b-0 last:pb-0 animate-fade-in">
             <div class="flex-shrink-0">
               <div class="w-10 h-10 rounded-full ${activityColorClasses[activity.color] || activityColorClasses.indigo} flex items-center justify-center border">
                 ${activityIcons[activity.icon] || activityIcons.alert}

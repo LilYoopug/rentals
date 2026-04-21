@@ -94,6 +94,29 @@ function admin_media_path($path)
     return '../' . ltrim($image_path, '/');
 }
 
+function dashboard_compact_currency($amount)
+{
+  $amount = (float) $amount;
+
+  if ($amount >= 1000000000) {
+    $value = $amount / 1000000000;
+    $suffix = ' M';
+  } elseif ($amount >= 1000000) {
+    $value = $amount / 1000000;
+    $suffix = ' Jt';
+  } elseif ($amount >= 1000) {
+    $value = $amount / 1000;
+    $suffix = ' Rb';
+  } else {
+    return 'Rp' . number_format($amount, 0, ',', '.');
+  }
+
+  $formatted = number_format($value, $value >= 100 ? 0 : 2, ',', '.');
+  $formatted = rtrim(rtrim($formatted, '0'), ',');
+
+  return 'Rp' . $formatted . $suffix;
+}
+
 function dashboard_transaction_badge($status)
 {
     $status = normalize_rental_status_value($status);
@@ -312,7 +335,8 @@ $admin_summary = [
     'total_users' => number_format(count($admin_user_rows)),
     'total_equipment' => number_format(count($admin_product_rows)),
     'total_transactions' => number_format(count($admin_borrowing_rows)),
-    'revenue_mtd' => format_currency($current_month_revenue),
+    'revenue_mtd' => dashboard_compact_currency($current_month_revenue),
+    'revenue_mtd_full' => format_currency($current_month_revenue),
     'users_change' => dashboard_percent_change($current_month_users, $previous_month_users),
     'equipment_change' => dashboard_percent_change($current_month_products, $previous_month_products),
     'transactions_change' => dashboard_percent_change($current_month_transactions, $previous_month_transactions),
@@ -1010,7 +1034,7 @@ $admin_activities_json = json_encode($admin_activities, JSON_UNESCAPED_SLASHES |
                   </div>
                   <span class="text-xs font-medium px-2 py-1 rounded-full <?= e($admin_summary['revenue_change']['class']) ?>"><?= e($admin_summary['revenue_change']['text']) ?></span>
                 </div>
-                <div class="text-3xl font-bold text-white mb-1"><?= e($admin_summary['revenue_mtd']) ?></div>
+                <div class="min-w-0 text-2xl font-bold leading-tight text-white md:text-3xl break-words" title="<?= e($admin_summary['revenue_mtd_full']) ?>"><?= e($admin_summary['revenue_mtd']) ?></div>
                 <div class="text-sm text-neutral-400">Pendapatan (Bulan Ini)</div>
               </div>
             </div>

@@ -20,6 +20,9 @@ $avatar_url = $is_logged_in && !empty(current_user()['avatar_path']) ? ltrim((st
       href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:wght@700&display=swap"
       rel="stylesheet"
     />
+    <script>
+      document.documentElement.classList.add('detail-page-loading');
+    </script>
     <style>
       :root {
         --accent-brass: #c7a65a;
@@ -57,6 +60,37 @@ $avatar_url = $is_logged_in && !empty(current_user()['avatar_path']) ? ltrim((st
       .image-zoom { transition: transform 0.5s ease; }
       .image-zoom:hover { transform: scale(1.05); }
       .badge { display: inline-block; padding: 0.25rem 0.75rem; border-radius: 9999px; font-size: 0.75rem; font-weight: 500; border: 1px solid; }
+      @keyframes skeletonShimmer {
+        0% {
+          transform: translateX(-100%);
+        }
+        100% {
+          transform: translateX(100%);
+        }
+      }
+      .skeleton-shell {
+        position: relative;
+        overflow: hidden;
+        background: rgba(255, 255, 255, 0.06);
+      }
+      .skeleton-shell::after {
+        content: "";
+        position: absolute;
+        inset: 0;
+        background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.14), transparent);
+        animation: skeletonShimmer 1.35s ease-in-out infinite;
+      }
+      #product-detail-skeleton {
+        display: none;
+      }
+      .detail-page-loading #product-detail-skeleton {
+        display: block;
+      }
+      .detail-page-loading #product-detail-container,
+      .detail-page-loading #related-products {
+        opacity: 0;
+        pointer-events: none;
+      }
       .floating-nav {
         position: fixed;
         bottom: 1.5rem;
@@ -157,6 +191,59 @@ $avatar_url = $is_logged_in && !empty(current_user()['avatar_path']) ? ltrim((st
     </nav>
 
     <main class="pt-24 pb-20 px-6">
+      <section class="max-w-7xl mx-auto" id="product-detail-skeleton" aria-hidden="true">
+        <div class="mb-8 space-y-2">
+          <div class="skeleton-shell h-4 w-40 rounded-full"></div>
+        </div>
+        <div class="grid lg:grid-cols-2 gap-12 items-start">
+          <div class="skeleton-shell aspect-square rounded-2xl border border-neutral-800 bg-neutral-900"></div>
+          <div class="space-y-6">
+            <div class="space-y-3">
+              <div class="flex items-center gap-3">
+                <div class="skeleton-shell h-7 w-24 rounded-full"></div>
+                <div class="skeleton-shell h-7 w-24 rounded-full"></div>
+              </div>
+              <div class="skeleton-shell h-12 w-72 max-w-full rounded-2xl"></div>
+              <div class="skeleton-shell h-6 w-40 rounded-xl"></div>
+            </div>
+            <div class="border-t border-neutral-800 pt-6 space-y-3">
+              <div class="skeleton-shell h-10 w-56 rounded-2xl"></div>
+              <div class="skeleton-shell h-4 w-28 rounded-full"></div>
+            </div>
+            <div class="border-t border-neutral-800 pt-6 space-y-3">
+              <div class="skeleton-shell h-6 w-24 rounded-xl"></div>
+              <div class="skeleton-shell h-4 w-full rounded-full"></div>
+              <div class="skeleton-shell h-4 w-5/6 rounded-full"></div>
+              <div class="skeleton-shell h-4 w-3/4 rounded-full"></div>
+            </div>
+            <div class="border-t border-neutral-800 pt-6 space-y-4">
+              <div class="skeleton-shell h-6 w-28 rounded-xl"></div>
+              <div class="grid grid-cols-2 gap-4">
+                <?php for ($detail_spec_skeleton = 0; $detail_spec_skeleton < 4; $detail_spec_skeleton++): ?>
+                  <div class="rounded-lg border border-neutral-800 bg-neutral-900/50 p-4 space-y-2">
+                    <div class="skeleton-shell h-3 w-20 rounded-full"></div>
+                    <div class="skeleton-shell h-4 w-24 rounded-full"></div>
+                  </div>
+                <?php endfor; ?>
+              </div>
+            </div>
+            <div class="border-t border-neutral-800 pt-6 space-y-4">
+              <div class="grid grid-cols-2 gap-4">
+                <div class="space-y-2">
+                  <div class="skeleton-shell h-4 w-24 rounded-full"></div>
+                  <div class="skeleton-shell h-12 w-full rounded-xl"></div>
+                </div>
+                <div class="space-y-2">
+                  <div class="skeleton-shell h-4 w-24 rounded-full"></div>
+                  <div class="skeleton-shell h-12 w-full rounded-xl"></div>
+                </div>
+              </div>
+              <div class="skeleton-shell h-28 w-full rounded-xl"></div>
+              <div class="skeleton-shell h-14 w-full rounded-xl"></div>
+            </div>
+          </div>
+        </div>
+      </section>
       <div class="max-w-7xl mx-auto" id="product-detail-container"></div>
       <section class="max-w-7xl mx-auto mt-20" id="related-products">
         <h2 class="text-2xl font-serif text-white mb-8">Peralatan Terkait</h2>
@@ -911,6 +998,10 @@ $avatar_url = $is_logged_in && !empty(current_user()['avatar_path']) ? ltrim((st
         closeModal();
         window.location.href = 'user/rentals.php';
       }
+
+      window.addEventListener('load', function () {
+        document.documentElement.classList.remove('detail-page-loading');
+      });
 
       // Initialize delivery method selection on page load
       function initDikirimMethodSelection(productId) {
