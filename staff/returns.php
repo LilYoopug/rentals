@@ -965,7 +965,7 @@ $staff_default_report_rows = $staff_report_tables['borrowings'];
               </svg>
             </div>
             <div class="space-y-2">
-              <div class="action-sheet-eyebrow">Please confirm</div>
+              <div class="action-sheet-eyebrow">Mohon konfirmasi</div>
               <p class="action-sheet-copy" id="staff-action-modal-message"></p>
             </div>
           </div>

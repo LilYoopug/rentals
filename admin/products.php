@@ -865,7 +865,7 @@ $admin_activities_json = json_encode($admin_activities, JSON_UNESCAPED_SLASHES |
           <div id="inventory-modal" class="fixed inset-0 z-50 hidden flex items-center justify-center p-4 modal-overlay">
             <div class="modal-panel rounded-3xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
               <div class="modal-header p-6 border-b border-neutral-800 flex items-center justify-between">
-                <h3 class="text-xl font-semibold text-white" id="inventory-modal-title">Add Equipment</h3>
+                <h3 class="text-xl font-semibold text-white" id="inventory-modal-title">Tambah Peralatan</h3>
                 <button onclick="closeInventarisModal()" class="modal-close text-neutral-400 hover:text-white transition-colors">
                   <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
@@ -885,28 +885,28 @@ $admin_activities_json = json_encode($admin_activities, JSON_UNESCAPED_SLASHES |
                       <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
                       </svg>
-                      <span>Upload Product Image</span>
+                      <span>Unggah Gambar Produk</span>
                     </label>
                     <input type="file" id="inventory-image-file" name="image_file" accept="image/*" class="hidden">
-                    <p class="inventory-upload-meta">Upload JPG, PNG, WebP, or GIF. The preview updates instantly before saving.</p>
+                    <p class="inventory-upload-meta">Unggah JPG, PNG, WebP, atau GIF. Pratinjau akan diperbarui secara instan sebelum disimpan.</p>
                   </div>
                 </div>
                 <div class="inventory-form-shell">
                   <div>
-                    <label class="block mb-2">Equipment Name</label>
-                    <input type="text" id="inventory-name" name="name" required class="w-full px-4 py-3 bg-neutral-800 border border-neutral-700 rounded-lg text-neutral-100 focus:outline-none focus:ring-2 focus:ring-neutral-700">
+                    <label class="block mb-2">Nama Peralatan</label>
+                    <input type="text" id="inventory-name" name="name" required maxlength="100" placeholder="Masukkan nama peralatan" class="w-full px-4 py-3 bg-neutral-800 border border-neutral-700 rounded-lg text-neutral-100 focus:outline-none focus:ring-2 focus:ring-neutral-700">
                   </div>
                   <div>
-                    <label class="block mb-2">Brand</label>
-                    <input type="text" id="inventory-brand" name="brand" required class="w-full px-4 py-3 bg-neutral-800 border border-neutral-700 rounded-lg text-neutral-100 focus:outline-none focus:ring-2 focus:ring-neutral-700">
+                    <label class="block mb-2">Merek</label>
+                    <input type="text" id="inventory-brand" name="brand" required maxlength="50" placeholder="Masukkan merek peralatan" class="w-full px-4 py-3 bg-neutral-800 border border-neutral-700 rounded-lg text-neutral-100 focus:outline-none focus:ring-2 focus:ring-neutral-700">
                   </div>
                   <div>
-                    <label class="block mb-2">Description</label>
-                    <textarea id="inventory-description" name="description" rows="4" class="w-full px-4 py-3 bg-neutral-800 border border-neutral-700 rounded-lg text-neutral-100 focus:outline-none focus:ring-2 focus:ring-neutral-700 resize-none" placeholder="Short product description for the catalog and modal."></textarea>
+                    <label class="block mb-2">Deskripsi</label>
+                    <textarea id="inventory-description" name="description" rows="4" maxlength="1000" placeholder="Deskripsi singkat produk untuk katalog dan modal." class="w-full px-4 py-3 bg-neutral-800 border border-neutral-700 rounded-lg text-neutral-100 focus:outline-none focus:ring-2 focus:ring-neutral-700 resize-none"></textarea>
                   </div>
                   <div class="grid grid-cols-2 gap-4">
                     <div>
-                      <label class="block mb-2">Category</label>
+                      <label class="block mb-2">Kategori</label>
                       <select id="inventory-category" name="category_slug" required class="w-full px-4 py-3 bg-neutral-800 border border-neutral-700 rounded-lg text-neutral-100 focus:outline-none focus:ring-2 focus:ring-neutral-700">
                         <?php foreach ($admin_categories as $category): ?>
                           <option value="<?= e((string) $category['slug']) ?>"><?= e((string) $category['name']) ?></option>
@@ -923,22 +923,22 @@ $admin_activities_json = json_encode($admin_activities, JSON_UNESCAPED_SLASHES |
                   </div>
                   <div class="grid grid-cols-2 gap-4">
                     <div>
-                      <label class="block mb-2">Daily Rate ($)</label>
-                      <input type="number" id="inventory-price" name="price" required min="0" step="0.01" class="w-full px-4 py-3 bg-neutral-800 border border-neutral-700 rounded-lg text-neutral-100 focus:outline-none focus:ring-2 focus:ring-neutral-700">
+                      <label class="block mb-2">Harian ($)</label>
+                      <input type="number" id="inventory-price" name="price" required min="0" step="0.01" placeholder="0.00" class="w-full px-4 py-3 bg-neutral-800 border border-neutral-700 rounded-lg text-neutral-100 focus:outline-none focus:ring-2 focus:ring-neutral-700">
                     </div>
                     <div>
-                      <label class="block mb-2">Discount (%)</label>
-                      <input type="number" id="inventory-discount" name="discount" min="0" max="100" value="0" class="w-full px-4 py-3 bg-neutral-800 border border-neutral-700 rounded-lg text-neutral-100 focus:outline-none focus:ring-2 focus:ring-neutral-700">
+                      <label class="block mb-2">Diskon (%)</label>
+                      <input type="number" id="inventory-discount" name="discount" min="0" max="100" value="0" placeholder="0" class="w-full px-4 py-3 bg-neutral-800 border border-neutral-700 rounded-lg text-neutral-100 focus:outline-none focus:ring-2 focus:ring-neutral-700">
                     </div>
                   </div>
                   <div class="grid grid-cols-2 gap-4">
                     <div>
-                      <label class="block mb-2">Total Stock</label>
-                      <input type="number" id="inventory-total-stock" name="stock_total" required min="0" class="w-full px-4 py-3 bg-neutral-800 border border-neutral-700 rounded-lg text-neutral-100 focus:outline-none focus:ring-2 focus:ring-neutral-700">
+                      <label class="block mb-2">Total Stok</label>
+                      <input type="number" id="inventory-total-stock" name="stock_total" required min="0" placeholder="0" class="w-full px-4 py-3 bg-neutral-800 border border-neutral-700 rounded-lg text-neutral-100 focus:outline-none focus:ring-2 focus:ring-neutral-700">
                     </div>
                     <div>
-                      <label class="block mb-2">Current Stock</label>
-                      <input type="number" id="inventory-stock" name="stock" required min="0" class="w-full px-4 py-3 bg-neutral-800 border border-neutral-700 rounded-lg text-neutral-100 focus:outline-none focus:ring-2 focus:ring-neutral-700">
+                      <label class="block mb-2">Stok Saat Ini</label>
+                      <input type="number" id="inventory-stock" name="stock" required min="0" placeholder="0" class="w-full px-4 py-3 bg-neutral-800 border border-neutral-700 rounded-lg text-neutral-100 focus:outline-none focus:ring-2 focus:ring-neutral-700">
                     </div>
                   </div>
                   <div class="modal-actions">
@@ -946,7 +946,7 @@ $admin_activities_json = json_encode($admin_activities, JSON_UNESCAPED_SLASHES |
                       Batal
                     </button>
                     <button type="submit" class="flex-1 px-4 py-3 bg-white text-black font-semibold rounded-lg hover:bg-neutral-200 transition-colors">
-                      Save Equipment
+                      Simpan Peralatan
                     </button>
                   </div>
                 </div>

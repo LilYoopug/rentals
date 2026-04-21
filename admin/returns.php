@@ -1003,7 +1003,7 @@ $admin_activities_json = json_encode($admin_activities, JSON_UNESCAPED_SLASHES |
           </div>
           <div class="modal-actions">
             <button type="button" onclick="closeAdminReturnModal()" class="flex-1 px-4 py-3 bg-neutral-800 border border-neutral-700 rounded-lg text-neutral-300 hover:bg-neutral-700 transition-colors">Batal</button>
-            <button type="submit" class="flex-1 px-4 py-3 bg-white text-black font-semibold rounded-lg hover:bg-neutral-200 transition-colors">Save Return</button>
+            <button type="submit" class="flex-1 px-4 py-3 bg-white text-black font-semibold rounded-lg hover:bg-neutral-200 transition-colors">Simpan Pengembalian</button>
           </div>
         </form>
       </div>

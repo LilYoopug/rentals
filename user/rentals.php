@@ -476,7 +476,7 @@ $current_user_json = json_encode(current_user(), JSON_UNESCAPED_SLASHES | JSON_U
               </svg>
             </div>
             <h3 class="text-2xl font-serif text-white mb-2">Kembalikan Peralatan</h3>
-            <p class="text-neutral-400 text-sm">Are you sure you want to return this rental?</p>
+            <p class="text-neutral-400 text-sm">Apakah Anda yakin ingin mengembalikan sewa ini?</p>
           </div>
           
           <div class="bg-neutral-800/50 border border-neutral-700 rounded-xl p-4 mb-6">
@@ -503,12 +503,12 @@ $current_user_json = json_encode(current_user(), JSON_UNESCAPED_SLASHES | JSON_U
           </div>
           
           <p class="text-xs text-neutral-500 text-center mb-6">
-            Please ensure the equipment is packed properly and ready for pickup/drop-off.
+            Pastikan peralatan sudah dikemas dengan baik dan siap untuk diambil/dikembalikan.
           </p>
           
           <div class="flex gap-3">
             <button onclick="closeReturnModal()" class="flex-1 py-3 px-4 bg-neutral-800 border border-neutral-700 hover:bg-neutral-700 text-white text-sm font-medium rounded-xl transition-colors">
-              Cancel
+              Batal
             </button>
             <button onclick="confirmReturn()" class="flex-1 py-3 px-4 bg-green-600 hover:bg-green-700 text-white text-sm font-medium rounded-xl transition-colors">
               Konfirmasi Pengembalian
@@ -526,7 +526,7 @@ $current_user_json = json_encode(current_user(), JSON_UNESCAPED_SLASHES | JSON_U
           <!-- Modal Header -->
           <div class="flex items-start justify-between mb-6">
             <div>
-              <h3 class="text-2xl font-serif text-white mb-1">Rental Details</h3>
+              <h3 class="text-2xl font-serif text-white mb-1">Detail Sewa</h3>
               <p class="text-sm text-neutral-400" id="modal-rental-id"></p>
             </div>
             <button onclick="closeRentalDetailsModal()" class="text-neutral-400 hover:text-white transition-colors">
@@ -562,7 +562,7 @@ $current_user_json = json_encode(current_user(), JSON_UNESCAPED_SLASHES | JSON_U
                 <h5 class="text-xs sm:text-sm font-semibold text-neutral-300 mb-2 sm:mb-3">Periode Sewa</h5>
                 <div class="space-y-2 text-xs sm:text-sm">
                   <div class="flex justify-between">
-                    <span class="text-neutral-400">From</span>
+                    <span class="text-neutral-400">Dari</span>
                     <span class="text-white" id="modal-rental-dates"></span>
                   </div>
                   <div class="flex justify-between">
@@ -570,7 +570,7 @@ $current_user_json = json_encode(current_user(), JSON_UNESCAPED_SLASHES | JSON_U
                     <span class="text-white" id="modal-duration"></span>
                   </div>
                   <div class="flex justify-between">
-                    <span class="text-neutral-400">Delivery</span>
+                    <span class="text-neutral-400">Pengiriman</span>
                     <span class="text-white capitalize" id="modal-delivery"></span>
                   </div>
                 </div>
@@ -578,22 +578,22 @@ $current_user_json = json_encode(current_user(), JSON_UNESCAPED_SLASHES | JSON_U
 
               <!-- Pricing Summary -->
               <div class="bg-neutral-800/50 border border-neutral-700 rounded-xl p-3 sm:p-4">
-                <h5 class="text-xs sm:text-sm font-semibold text-neutral-300 mb-2 sm:mb-3">Pricing</h5>
+                <h5 class="text-xs sm:text-sm font-semibold text-neutral-300 mb-2 sm:mb-3">Harga</h5>
                 <div class="space-y-2 text-xs sm:text-sm">
                   <div class="flex justify-between">
-                    <span class="text-neutral-400">Daily rate</span>
+                    <span class="text-neutral-400">Harian</span>
                     <span class="text-white" id="modal-daily-rate"></span>
                   </div>
                   <div class="flex justify-between">
-                    <span class="text-neutral-400">Days</span>
+                    <span class="text-neutral-400">Hari</span>
                     <span class="text-white" id="modal-days"></span>
                   </div>
                   <div class="flex justify-between">
-                    <span class="text-neutral-400">Delivery</span>
+                    <span class="text-neutral-400">Pengiriman</span>
                     <span class="text-white" id="modal-delivery-fee"></span>
                   </div>
                   <div id="modal-discount-row" class="flex justify-between hidden">
-                    <span class="text-neutral-400">Discount</span>
+                    <span class="text-neutral-400">Diskon</span>
                     <span class="text-green-400" id="modal-discount"></span>
                   </div>
                   <div class="border-t border-neutral-700 pt-2 mt-2 flex justify-between">
@@ -606,7 +606,7 @@ $current_user_json = json_encode(current_user(), JSON_UNESCAPED_SLASHES | JSON_U
 
             <!-- Timeline -->
             <div class="bg-neutral-800/50 border border-neutral-700 rounded-xl p-3 sm:p-4">
-              <h5 class="text-xs sm:text-sm font-semibold text-neutral-300 mb-2 sm:mb-3">Timeline</h5>
+              <h5 class="text-xs sm:text-sm font-semibold text-neutral-300 mb-2 sm:mb-3">Linimasa</h5>
               <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3 text-xs sm:text-sm">
                 <div>
                   <div class="text-neutral-500 text-[10px] sm:text-xs uppercase mb-1">Dibuat</div>

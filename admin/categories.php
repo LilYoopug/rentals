@@ -865,7 +865,7 @@ $admin_activities_json = json_encode($admin_activities, JSON_UNESCAPED_SLASHES |
           <div id="category-modal" class="fixed inset-0 z-50 hidden flex items-center justify-center p-4 modal-overlay">
             <div class="modal-panel rounded-3xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
               <div class="modal-header p-6 border-b border-neutral-800 flex items-center justify-between">
-                <h3 class="text-xl font-semibold text-white" id="category-modal-title">Add Category</h3>
+                <h3 class="text-xl font-semibold text-white" id="category-modal-title">Tambah Kategori</h3>
                 <button onclick="closeCategoryModal()" class="modal-close text-neutral-400 hover:text-white transition-colors">
                   <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
@@ -875,35 +875,35 @@ $admin_activities_json = json_encode($admin_activities, JSON_UNESCAPED_SLASHES |
               <form id="category-form" class="p-6 space-y-4 modal-body-shell">
                 <input type="hidden" id="category-id">
                 <div>
-                  <label class="block text-sm font-medium text-neutral-400 mb-2">Category Name</label>
-                  <input type="text" id="category-name" required class="w-full px-4 py-3 bg-neutral-800 border border-neutral-700 rounded-lg text-neutral-100 focus:outline-none focus:ring-2 focus:ring-neutral-700">
+                  <label class="block text-sm font-medium text-neutral-400 mb-2">Nama Kategori</label>
+                  <input type="text" id="category-name" required maxlength="100" placeholder="Masukkan nama kategori" class="w-full px-4 py-3 bg-neutral-800 border border-neutral-700 rounded-lg text-neutral-100 focus:outline-none focus:ring-2 focus:ring-neutral-700">
                 </div>
                 <div>
-                  <label class="block text-sm font-medium text-neutral-400 mb-2">Description</label>
-                  <textarea id="category-description" rows="3" class="w-full px-4 py-3 bg-neutral-800 border border-neutral-700 rounded-lg text-neutral-100 focus:outline-none focus:ring-2 focus:ring-neutral-700"></textarea>
+                  <label class="block text-sm font-medium text-neutral-400 mb-2">Deskripsi</label>
+                  <textarea id="category-description" rows="3" maxlength="500" placeholder="Masukkan deskripsi kategori" class="w-full px-4 py-3 bg-neutral-800 border border-neutral-700 rounded-lg text-neutral-100 focus:outline-none focus:ring-2 focus:ring-neutral-700"></textarea>
                 </div>
                 <div>
-                  <label class="block text-sm font-medium text-neutral-400 mb-2">Icon</label>
+                  <label class="block text-sm font-medium text-neutral-400 mb-2">Ikon</label>
                   <select id="category-icon" class="w-full px-4 py-3 bg-neutral-800 border border-neutral-700 rounded-lg text-neutral-100 focus:outline-none focus:ring-2 focus:ring-neutral-700">
-                    <option value="camera">Camera</option>
-                    <option value="lensa">Lens</option>
+                    <option value="camera">Kamera</option>
+                    <option value="lensa">Lensa</option>
                     <option value="video">Video</option>
                     <option value="audio">Audio</option>
                     <option value="tripod">Tripod</option>
-                    <option value="light">Light</option>
-                    <option value="accessory">Accessory</option>
+                    <option value="light">Pencahayaan</option>
+                    <option value="accessory">Aksesoris</option>
                   </select>
                 </div>
                 <div>
-                  <label class="block text-sm font-medium text-neutral-400 mb-2">Color</label>
+                  <label class="block text-sm font-medium text-neutral-400 mb-2">Warna</label>
                   <select id="category-color" class="w-full px-4 py-3 bg-neutral-800 border border-neutral-700 rounded-lg text-neutral-100 focus:outline-none focus:ring-2 focus:ring-neutral-700">
-                    <option value="blue">Blue</option>
-                    <option value="green">Green</option>
-                    <option value="purple">Purple</option>
-                    <option value="yellow">Yellow</option>
-                    <option value="red">Red</option>
+                    <option value="blue">Biru</option>
+                    <option value="green">Hijau</option>
+                    <option value="purple">Ungu</option>
+                    <option value="yellow">Kuning</option>
+                    <option value="red">Merah</option>
                     <option value="indigo">Indigo</option>
-                    <option value="orange">Orange</option>
+                    <option value="orange">Oranye</option>
                     <option value="teal">Teal</option>
                   </select>
                 </div>
@@ -919,7 +919,7 @@ $admin_activities_json = json_encode($admin_activities, JSON_UNESCAPED_SLASHES |
                     Batal
                   </button>
                   <button type="submit" class="flex-1 px-4 py-3 bg-white text-black font-semibold rounded-lg hover:bg-neutral-200 transition-colors">
-                    Save Category
+                    Simpan Kategori
                   </button>
                 </div>
               </form>

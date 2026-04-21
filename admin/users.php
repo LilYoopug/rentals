@@ -876,12 +876,12 @@ $admin_activities_json = json_encode($admin_activities, JSON_UNESCAPED_SLASHES |
               <form id="user-form" class="p-6 space-y-4 modal-body-shell">
                 <input type="hidden" id="user-id">
                 <div>
-                  <label class="block text-sm font-medium text-neutral-400 mb-2">Full Name</label>
-                  <input type="text" id="user-name" required class="w-full px-4 py-3 bg-neutral-800 border border-neutral-700 rounded-lg text-neutral-100 focus:outline-none focus:ring-2 focus:ring-neutral-700">
+                  <label class="block text-sm font-medium text-neutral-400 mb-2">Nama Lengkap</label>
+                  <input type="text" id="user-name" required maxlength="100" placeholder="Masukkan nama lengkap" class="w-full px-4 py-3 bg-neutral-800 border border-neutral-700 rounded-lg text-neutral-100 focus:outline-none focus:ring-2 focus:ring-neutral-700">
                 </div>
                 <div>
                   <label class="block text-sm font-medium text-neutral-400 mb-2">Alamat Email</label>
-                  <input type="email" id="user-email" required class="w-full px-4 py-3 bg-neutral-800 border border-neutral-700 rounded-lg text-neutral-100 focus:outline-none focus:ring-2 focus:ring-neutral-700">
+                  <input type="email" id="user-email" required maxlength="255" placeholder="contoh@email.com" class="w-full px-4 py-3 bg-neutral-800 border border-neutral-700 rounded-lg text-neutral-100 focus:outline-none focus:ring-2 focus:ring-neutral-700">
                 </div>
                 <div>
                   <label class="block text-sm font-medium text-neutral-400 mb-2">Role</label>
@@ -904,7 +904,7 @@ $admin_activities_json = json_encode($admin_activities, JSON_UNESCAPED_SLASHES |
                     Batal
                   </button>
                   <button type="submit" class="flex-1 px-4 py-3 bg-white text-black font-semibold rounded-lg hover:bg-neutral-200 transition-colors">
-                    Save User
+                    Simpan Pengguna
                   </button>
                 </div>
               </form>

@@ -865,7 +865,7 @@ $admin_activities_json = json_encode($admin_activities, JSON_UNESCAPED_SLASHES |
           <div id="transaction-modal" class="fixed inset-0 z-50 hidden flex items-center justify-center p-4 modal-overlay">
             <div class="modal-panel rounded-3xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
               <div class="modal-header p-6 border-b border-neutral-800 flex items-center justify-between">
-                <h3 class="text-xl font-semibold text-white" id="transaction-modal-title">Add Peminjaman</h3>
+                <h3 class="text-xl font-semibold text-white" id="transaction-modal-title">Tambah Peminjaman</h3>
                 <button onclick="closeTransactionModal()" class="modal-close text-neutral-400 hover:text-white transition-colors">
                   <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
@@ -875,22 +875,22 @@ $admin_activities_json = json_encode($admin_activities, JSON_UNESCAPED_SLASHES |
               <form id="transaction-form" class="p-6 space-y-4 modal-body-shell">
                 <input type="hidden" id="transaction-id">
                 <div>
-                  <label class="block text-sm font-medium text-neutral-400 mb-2">Customer Name</label>
-                  <input type="text" id="transaction-customer" required class="w-full px-4 py-3 bg-neutral-800 border border-neutral-700 rounded-lg text-neutral-100 focus:outline-none focus:ring-2 focus:ring-neutral-700">
+                  <label class="block text-sm font-medium text-neutral-400 mb-2">Nama Pelanggan</label>
+                  <input type="text" id="transaction-customer" required maxlength="100" placeholder="Masukkan nama pelanggan" class="w-full px-4 py-3 bg-neutral-800 border border-neutral-700 rounded-lg text-neutral-100 focus:outline-none focus:ring-2 focus:ring-neutral-700">
                 </div>
                 <div>
-                  <label class="block text-sm font-medium text-neutral-400 mb-2">Equipment</label>
+                  <label class="block text-sm font-medium text-neutral-400 mb-2">Peralatan</label>
                   <select id="transaction-equipment" required class="w-full px-4 py-3 bg-neutral-800 border border-neutral-700 rounded-lg text-neutral-100 focus:outline-none focus:ring-2 focus:ring-neutral-700">
                     <!-- Options populated by JS -->
                   </select>
                 </div>
                 <div class="grid grid-cols-2 gap-4">
                   <div>
-                    <label class="block text-sm font-medium text-neutral-400 mb-2">Start Date</label>
+                    <label class="block text-sm font-medium text-neutral-400 mb-2">Tanggal Mulai</label>
                     <input type="date" id="transaction-start-date" required class="w-full px-4 py-3 bg-neutral-800 border border-neutral-700 rounded-lg text-neutral-100 focus:outline-none focus:ring-2 focus:ring-neutral-700">
                   </div>
                   <div>
-                    <label class="block text-sm font-medium text-neutral-400 mb-2">End Date</label>
+                    <label class="block text-sm font-medium text-neutral-400 mb-2">Tanggal Selesai</label>
                     <input type="date" id="transaction-end-date" required class="w-full px-4 py-3 bg-neutral-800 border border-neutral-700 rounded-lg text-neutral-100 focus:outline-none focus:ring-2 focus:ring-neutral-700">
                   </div>
                 </div>
@@ -900,7 +900,7 @@ $admin_activities_json = json_encode($admin_activities, JSON_UNESCAPED_SLASHES |
                     <select id="transaction-status" required class="w-full px-4 py-3 bg-neutral-800 border border-neutral-700 rounded-lg text-neutral-100 focus:outline-none focus:ring-2 focus:ring-neutral-700">
                       <option value="menunggu">Menunggu</option>
                       <option value="disetujui">Disetujui</option>
-                      <option value="mendatang">Upcoming</option>
+                      <option value="mendatang">Akan Datang</option>
                       <option value="aktif">Aktif</option>
                       <option value="selesai">Selesai</option>
                       <option value="dibatalkan">Dibatalkan</option>
@@ -912,7 +912,7 @@ $admin_activities_json = json_encode($admin_activities, JSON_UNESCAPED_SLASHES |
                       Batal
                     </button>
                     <button type="submit" class="flex-1 px-4 py-3 bg-white text-black font-semibold rounded-lg hover:bg-neutral-200 transition-colors">
-                      Save Peminjaman
+                      Simpan Peminjaman
                     </button>
                   </div>
                 </div>
@@ -1048,7 +1048,7 @@ $admin_activities_json = json_encode($admin_activities, JSON_UNESCAPED_SLASHES |
           </div>
           <div class="modal-actions">
             <button type="button" onclick="closeAdminReturnModal()" class="flex-1 px-4 py-3 bg-neutral-800 border border-neutral-700 rounded-lg text-neutral-300 hover:bg-neutral-700 transition-colors">Batal</button>
-            <button type="submit" class="flex-1 px-4 py-3 bg-white text-black font-semibold rounded-lg hover:bg-neutral-200 transition-colors">Save Return</button>
+            <button type="submit" class="flex-1 px-4 py-3 bg-white text-black font-semibold rounded-lg hover:bg-neutral-200 transition-colors">Simpan Pengembalian</button>
           </div>
         </form>
       </div>
