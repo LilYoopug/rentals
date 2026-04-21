@@ -1026,6 +1026,81 @@ $staff_report_initial_table_rows_json = json_encode($staff_report_initial_table_
         color: #60a5fa;
         border-color: rgba(59, 130, 246, 0.3);
       }
+
+      @media print {
+        body {
+          background: white !important;
+          color: black !important;
+          padding: 0 !important;
+          margin: 0 !important;
+        }
+        nav, 
+        aside, 
+        #sidebar-toggle, 
+        #sidebar-overlay,
+        .sidebar-blur,
+        #report-export-form,
+        .fixed,
+        #sidebar {
+          display: none !important;
+        }
+        main {
+          margin: 0 !important;
+          padding: 0 !important;
+          width: 100% !important;
+          position: relative !important;
+          left: 0 !important;
+        }
+        .content-section {
+          display: block !important;
+          padding: 0 !important;
+        }
+        .bg-neutral-900, 
+        .bg-neutral-800,
+        .bg-neutral-800\/30 {
+          background-color: white !important;
+          border-color: #e5e5e5 !important;
+        }
+        .text-white, 
+        .text-neutral-100,
+        .text-neutral-300,
+        .text-neutral-400 {
+          color: black !important;
+        }
+        .border-neutral-800,
+        .border-neutral-700 {
+          border-color: #e5e5e5 !important;
+        }
+        canvas {
+          max-width: 100% !important;
+          height: auto !important;
+        }
+        .grid {
+          grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+        }
+        .md\:grid-cols-4 {
+          grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+        }
+        .lg\:grid-cols-2 {
+          grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+        }
+        .overflow-x-auto {
+          overflow: visible !important;
+        }
+        table {
+          width: 100% !important;
+          border-collapse: collapse !important;
+        }
+        th, td {
+          border: 1px solid #e5e5e5 !important;
+        }
+        .rounded-2xl {
+          border-radius: 0 !important;
+        }
+        .p-6, .p-8 {
+          padding: 1rem !important;
+        }
+      }
     </style>
   </head>
 
@@ -1225,7 +1300,14 @@ $staff_report_initial_table_rows_json = json_encode($staff_report_initial_table_
                   <h1 class="text-3xl md:text-4xl font-serif text-white mb-2">Laporan & Analitik</h1>
                   <p class="text-neutral-400">Generate insights and export data for decision making.</p>
                 </div>
-
+                <div class="flex items-center gap-3">
+                  <button onclick="window.print()" class="px-5 py-3 bg-neutral-800 border border-neutral-700 rounded-xl text-sm font-medium text-neutral-200 hover:bg-neutral-700 transition-colors flex items-center justify-center gap-2">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 012 2v1H7v-1a2 2 0 012-2zm3-2V9m-4 0h8" />
+                    </svg>
+                    <span class="hidden sm:inline">Print Browsers</span>
+                  </button>
+                </div>
               </div>
             </div>
 
@@ -1247,6 +1329,7 @@ $staff_report_initial_table_rows_json = json_encode($staff_report_initial_table_
                       <input type="checkbox" id="report-section-returns" name="report_sections[]" value="returns" class="rounded border-neutral-600 bg-neutral-900 text-[var(--accent-brass)] focus:ring-0" <?= in_array('returns', $staff_report_filters['sections'], true) ? 'checked' : '' ?>>
                       <span class="text-sm text-neutral-100">Pengembalian</span>
                     </label>
+                    <!-- Earnings checkbox removed as requested -->
                   </div>
                 </div>
                 <div>
@@ -1259,6 +1342,7 @@ $staff_report_initial_table_rows_json = json_encode($staff_report_initial_table_
                     <option value="custom" <?= $staff_report_filters['range'] === 'custom' ? 'selected' : '' ?>>Custom range</option>
                   </select>
                 </div>
+                
               </div>
               <div id="custom-date-range" class="mt-4 <?= $staff_report_filters['range'] === 'custom' ? 'grid' : 'hidden' ?> grid-cols-1 sm:grid-cols-2 gap-3 border-t border-neutral-800 pt-4">
                 <div>
@@ -1285,57 +1369,6 @@ $staff_report_initial_table_rows_json = json_encode($staff_report_initial_table_
                 </button>
               </div>
             </form>
-
-            <!-- Summary Stats -->
-            <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
-              <div class="bg-neutral-900 border border-neutral-800 rounded-2xl p-6">
-                <div class="text-sm text-neutral-400 mb-2">Total Requests</div>
-                <div class="text-2xl font-bold text-white" id="report-total-requests"><?= e((string) $staff_report_summary_cards['total_requests']) ?></div>
-                <div class="text-xs text-neutral-400 mt-2">Borrowings inside the selected range</div>
-              </div>
-              <div class="bg-neutral-900 border border-neutral-800 rounded-2xl p-6">
-                <div class="text-sm text-neutral-400 mb-2">Approved Requests</div>
-                <div class="text-2xl font-bold text-white" id="report-total-approved"><?= e((string) $staff_report_summary_cards['approved_requests']) ?></div>
-                <div class="text-xs text-neutral-400 mt-2">Requests already approved in range</div>
-              </div>
-              <div class="bg-neutral-900 border border-neutral-800 rounded-2xl p-6">
-                <div class="text-sm text-neutral-400 mb-2">Pending Requests</div>
-                <div class="text-2xl font-bold text-white" id="report-total-pending"><?= e((string) $staff_report_summary_cards['pending_requests']) ?></div>
-                <div class="text-xs text-neutral-400 mt-2">Requests still waiting for action</div>
-              </div>
-              <div class="bg-neutral-900 border border-neutral-800 rounded-2xl p-6">
-                <div class="text-sm text-neutral-400 mb-2">Total Revenue</div>
-                <div class="text-2xl font-bold text-white" id="report-total-revenue"><?= e($staff_report_summary_cards['total_revenue']) ?></div>
-                <div class="text-xs text-neutral-400 mt-2">Revenue from requests in the selected range</div>
-              </div>
-            </div>
-
-            <!-- Charts Grid -->
-            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-              <!-- Main Chart -->
-              <div class="lg:col-span-2 bg-neutral-900 border border-neutral-800 rounded-2xl p-6">
-                <h3 class="text-lg font-semibold text-white mb-4">Tren Pendapatan</h3>
-                <div class="h-80">
-                  <canvas id="mainChart"></canvas>
-                </div>
-              </div>
-
-              <!-- Pie Chart -->
-              <div class="bg-neutral-900 border border-neutral-800 rounded-2xl p-6">
-                <h3 class="text-lg font-semibold text-white mb-4">Category Distribution</h3>
-                <div class="h-64">
-                  <canvas id="categoryChart"></canvas>
-                </div>
-              </div>
-
-              <!-- Bar Chart -->
-              <div class="bg-neutral-900 border border-neutral-800 rounded-2xl p-6">
-                <h3 class="text-lg font-semibold text-white mb-4">Top Equipment</h3>
-                <div class="h-64">
-                  <canvas id="topEquipmentChart"></canvas>
-                </div>
-              </div>
-            </div>
 
             <!-- Data Table -->
             <div class="bg-neutral-900 border border-neutral-800 rounded-2xl overflow-hidden">
@@ -1517,13 +1550,15 @@ $staff_report_initial_table_rows_json = json_encode($staff_report_initial_table_
             return false;
           }
 
-          if (bounds.custom && (!bounds.start || !bounds.end)) {
-            return true;
+          const date = parseDateInput(dateStr);
+          if (!date) {
+            return false;
           }
 
-          const date = parseDateInput(dateStr);
-          if (!date || !bounds.start || !bounds.end) {
-            return false;
+          if (bounds.custom) {
+            if (bounds.start && date < bounds.start) return false;
+            if (bounds.end && date > bounds.end) return false;
+            return true;
           }
 
           return date >= bounds.start && date <= bounds.end;
@@ -1601,6 +1636,22 @@ $staff_report_initial_table_rows_json = json_encode($staff_report_initial_table_
         }
 
         function buildTableRows(primarySection, filteredBorrowings, filteredReturns) {
+          if (primarySection === 'revenue') {
+            const totals = new Map();
+            filteredBorrowings.forEach((row) => {
+              const key = row.createdAt;
+              totals.set(key, (totals.get(key) || 0) + Number(row.amount || 0));
+            });
+            const sortedKeys = Array.from(totals.keys()).sort().reverse().slice(0, 10);
+            return sortedKeys.map(date => ({
+              date: date,
+              metric: 'Total Pendapatan Harian',
+              value: formatCurrency(totals.get(date)),
+              change: 'Earning',
+              positive: true
+            }));
+          }
+
           if (primarySection === 'returns') {
             return filteredReturns.slice(0, 8).map((row) => ({
               date: row.date || '-',
@@ -1788,8 +1839,6 @@ $staff_report_initial_table_rows_json = json_encode($staff_report_initial_table_
           const filteredReturns = getFilteredReturns(bounds);
           const primarySection = getSelectedSections()[0] || 'stock';
 
-          renderSummary(buildSummary(filteredBorrowings));
-          renderCharts(filteredBorrowings);
           renderTable(buildTableRows(primarySection, filteredBorrowings, filteredReturns));
         }
 

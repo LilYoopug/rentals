@@ -471,70 +471,329 @@ function staff_report_export_pdf_escape($value)
     return str_replace(['\\', '(', ')'], ['\\\\', '\\(', '\\)'], $text);
 }
 
+function staff_report_export_pdf_text($x, $y, $text, $size = 10, $font = 'F1')
+{
+    $color = "0 0 0 rg\n"; // Default to black
+    if ($size >= 18) $color = "0.05 0.20 0.40 rg\n"; // Navy for header
+    if ($size == 12 && $font == 'F2') $color = "0.05 0.20 0.40 rg\n"; // Section Headers
+    
+    // If we're inside the blue header (checked via Y position or size context)
+    // Actually simpler: if $size is 8.5 it's a table header, let's make it white
+    if ($size == 8.5) $color = "1 1 1 rg\n";
+
+    return "BT\n/{$font} " . number_format((float) $size, 2, '.', '') . " Tf\n" . $color . "1 0 0 1 "
+        . number_format((float) $x, 2, '.', '') . ' ' . number_format((float) $y, 2, '.', '')
+        . " Tm\n(" . staff_report_export_pdf_escape($text) . ") Tj\nET\n";
+}
+
+function staff_report_export_pdf_rect($x, $y, $width, $height, $fill_rgb = null, $stroke_rgb = null, $line_width = 1)
+{
+    $commands = '';
+
+    // Use a blue-ish header theme for the report if it looks too dark
+    if ($fill_rgb === [0.09, 0.09, 0.11]) $fill_rgb = [0.96, 0.97, 0.98]; // Summary boxes
+    if ($fill_rgb === [0.15, 0.16, 0.18]) $fill_rgb = [0.12, 0.28, 0.45]; // Table headers
+    if ($fill_rgb === [0.07, 0.07, 0.08]) $fill_rgb = [1.00, 1.00, 1.00]; // Even rows
+    if ($fill_rgb === [0.10, 0.10, 0.12]) $fill_rgb = [0.98, 0.98, 0.99]; // Odd rows
+    
+    // Borders
+    if ($stroke_rgb === [0.20, 0.22, 0.25]) $stroke_rgb = [0.85, 0.88, 0.91];
+    if ($stroke_rgb === [0.22, 0.24, 0.27]) $stroke_rgb = [0.10, 0.24, 0.38];
+    if ($stroke_rgb === [0.18, 0.20, 0.23]) $stroke_rgb = [0.92, 0.93, 0.95];
+
+    if (is_array($fill_rgb)) {
+        $commands .= sprintf("%.3F %.3F %.3F rg\n", $fill_rgb[0], $fill_rgb[1], $fill_rgb[2]);
+    }
+
+    if (is_array($stroke_rgb)) {
+        $commands .= sprintf("%.3F %.3F %.3F RG\n", $stroke_rgb[0], $stroke_rgb[1], $stroke_rgb[2]);
+        $commands .= sprintf("%.2F w\n", $line_width);
+    }
+
+    $paint = 'S';
+    if (is_array($fill_rgb) && is_array($stroke_rgb)) {
+        $paint = 'B';
+    } elseif (is_array($fill_rgb)) {
+        $paint = 'f';
+    }
+
+    $commands .= sprintf(
+        "%.2F %.2F %.2F %.2F re %s\n",
+        $x,
+        $y,
+        $width,
+        $height,
+        $paint
+    );
+
+    return $commands;
+}
+
+function staff_report_export_pdf_line($x1, $y1, $x2, $y2, $stroke_rgb = [0.26, 0.28, 0.31], $line_width = 1)
+{
+    return sprintf(
+        "%.3F %.3F %.3F RG\n%.2F w\n%.2F %.2F m\n%.2F %.2F l\nS\n",
+        $stroke_rgb[0],
+        $stroke_rgb[1],
+        $stroke_rgb[2],
+        $line_width,
+        $x1,
+        $y1,
+        $x2,
+        $y2
+    );
+}
+
+function staff_report_export_pdf_wrap_text($text, $max_chars)
+{
+    $plain = trim(preg_replace('/\s+/u', ' ', (string) $text));
+    if ($plain === '') {
+        return [''];
+    }
+
+    $max_chars = max(1, (int) $max_chars);
+    $words = preg_split('/\s+/u', $plain) ?: [];
+    $lines = [];
+    $current = '';
+
+    foreach ($words as $word) {
+        $word = (string) $word;
+        if ($current === '') {
+            if (mb_strlen($word) <= $max_chars) {
+                $current = $word;
+                continue;
+            }
+
+            while (mb_strlen($word) > $max_chars) {
+                $lines[] = mb_substr($word, 0, $max_chars);
+                $word = mb_substr($word, $max_chars);
+            }
+            $current = $word;
+            continue;
+        }
+
+        $candidate = $current . ' ' . $word;
+        if (mb_strlen($candidate) <= $max_chars) {
+            $current = $candidate;
+            continue;
+        }
+
+        $lines[] = $current;
+        if (mb_strlen($word) <= $max_chars) {
+            $current = $word;
+            continue;
+        }
+
+        while (mb_strlen($word) > $max_chars) {
+            $lines[] = mb_substr($word, 0, $max_chars);
+            $word = mb_substr($word, $max_chars);
+        }
+        $current = $word;
+    }
+
+    if ($current !== '') {
+        $lines[] = $current;
+    }
+
+    return $lines === [] ? [''] : $lines;
+}
+
+function staff_report_export_pdf_column_widths($headers, $rows, $available_width, $gap)
+{
+    $column_count = count($headers);
+    if ($column_count === 0) {
+        return [];
+    }
+
+    $gap_total = max(0, $column_count - 1) * $gap;
+    $usable_width = max(120, $available_width - $gap_total);
+    $minimum_width = 52;
+
+    if (($minimum_width * $column_count) >= $usable_width) {
+        return array_fill(0, $column_count, $usable_width / $column_count);
+    }
+
+    $sample_rows = array_slice($rows, 0, 12);
+    $weights = [];
+    foreach ($headers as $header) {
+        $max_length = mb_strlen((string) $header);
+        foreach ($sample_rows as $row) {
+            $value = (string) ($row[$header] ?? '');
+            $max_length = max($max_length, min(32, mb_strlen($value)));
+        }
+        $weights[] = max(8, min(32, $max_length));
+    }
+
+    $weight_sum = array_sum($weights) ?: $column_count;
+    $widths = [];
+    foreach ($weights as $weight) {
+        $widths[] = max($minimum_width, ($usable_width * $weight) / $weight_sum);
+    }
+
+    $difference = $usable_width - array_sum($widths);
+    $widths[$column_count - 1] += $difference;
+
+    return $widths;
+}
+
 function staff_report_export_build_pdf($payload)
 {
-    $lines = [
-        'LensCraft Staff Report',
-        'Date Range: ' . $payload['range_label'],
-        'Generated At: ' . $payload['generated_at'],
-        '',
-    ];
+    $page_width = 842;
+    $page_height = 595;
+    $margin = 32;
+    $bottom_margin = 30;
+    $content_width = $page_width - ($margin * 2);
+    $table_gap = 8;
+    $pages = [];
+    $page_number = 0;
+    $content = '';
+    $y = $page_height - $margin;
+
+    $start_page = function ($show_summary = false) use (&$content, &$y, &$page_number, $payload, $page_width, $page_height, $margin, $content_width) {
+        $page_number++;
+        $content = '';
+        $y = $page_height - 38;
+
+        $content .= staff_report_export_pdf_text($margin, $y, 'LensCraft Staff Report', 18, 'F2');
+        $content .= staff_report_export_pdf_text($page_width - 96, $y + 2, 'Page ' . $page_number, 9, 'F1');
+        $content .= staff_report_export_pdf_line($margin, $y - 10, $page_width - $margin, $y - 10, [0.28, 0.30, 0.34], 1);
+        $y -= 24;
+
+        if ($show_summary) {
+            $box_height = 44;
+            $content .= staff_report_export_pdf_rect($margin, $y - $box_height, $content_width, $box_height, [0.09, 0.09, 0.11], [0.20, 0.22, 0.25], 0.8);
+            $content .= staff_report_export_pdf_text($margin + 14, $y - 16, 'Date Range: ' . $payload['range_label'], 10, 'F2');
+            $content .= staff_report_export_pdf_text($margin + 14, $y - 31, 'Generated At: ' . $payload['generated_at'], 9, 'F1');
+            $y -= ($box_height + 18);
+        } else {
+            $y -= 10;
+        }
+    };
+
+    $flush_page = function () use (&$pages, &$content) {
+        if ($content !== '') {
+            $pages[] = $content;
+        }
+    };
+
+    $start_page(true);
 
     foreach ($payload['sections'] as $section) {
-        $lines[] = strtoupper($section['label']);
-        $lines[] = $section['description'];
+        $section_title = strtoupper((string) ($section['label'] ?? 'Section'));
+        $section_description = (string) ($section['description'] ?? '');
+        $description_lines = staff_report_export_pdf_wrap_text($section_description, 120);
+        $heading_height = 16 + (count($description_lines) * 11) + 12;
+
+        if (($y - $heading_height) < $bottom_margin) {
+            $flush_page();
+            $start_page(false);
+        }
+
+        $content .= staff_report_export_pdf_text($margin, $y, $section_title, 12, 'F2');
+        $y -= 16;
+        foreach ($description_lines as $line) {
+            $content .= staff_report_export_pdf_text($margin, $y, $line, 9, 'F1');
+            $y -= 11;
+        }
+        $y -= 8;
+
         if ($section['rows'] === []) {
-            $lines[] = 'No data available';
-            $lines[] = '';
+            $empty_height = 40;
+            if (($y - $empty_height) < $bottom_margin) {
+                $flush_page();
+                $start_page(false);
+            }
+
+            $content .= staff_report_export_pdf_rect($margin, $y - $empty_height, $content_width, $empty_height, [0.09, 0.09, 0.11], [0.20, 0.22, 0.25], 0.8);
+            $content .= staff_report_export_pdf_text($margin + 14, $y - 23, 'No data available for this section.', 10, 'F1');
+            $y -= ($empty_height + 18);
             continue;
         }
 
         $headers = array_keys($section['rows'][0]);
-        $lines[] = implode(' | ', $headers);
-        foreach ($section['rows'] as $row) {
-            $values = [];
-            foreach ($headers as $header) {
-                $values[] = (string) ($row[$header] ?? '');
+        $column_widths = staff_report_export_pdf_column_widths($headers, $section['rows'], $content_width, $table_gap);
+        $header_height = 24;
+
+        $draw_table_header = function () use (&$content, &$y, $margin, $content_width, $header_height, $headers, $column_widths, $table_gap) {
+            $content .= staff_report_export_pdf_rect($margin, $y - $header_height, $content_width, $header_height, [0.15, 0.16, 0.18], [0.22, 0.24, 0.27], 0.8);
+            $x = $margin + 8;
+            foreach ($headers as $index => $header) {
+                $content .= staff_report_export_pdf_text($x, $y - 16, (string) $header, 8.5, 'F2');
+                $x += $column_widths[$index] + $table_gap;
             }
-            $chunk = implode(' | ', $values);
-            while (mb_strlen($chunk) > 110) {
-                $lines[] = mb_substr($chunk, 0, 110);
-                $chunk = mb_substr($chunk, 110);
-            }
-            $lines[] = $chunk;
+            $y -= $header_height;
+        };
+
+        if (($y - $header_height) < $bottom_margin) {
+            $flush_page();
+            $start_page(false);
         }
-        $lines[] = '';
+
+        $draw_table_header();
+
+        foreach ($section['rows'] as $row_index => $row) {
+            $wrapped_cells = [];
+            $max_lines = 1;
+
+            foreach ($headers as $index => $header) {
+                $char_capacity = max(6, (int) floor($column_widths[$index] / 4.7));
+                $lines = staff_report_export_pdf_wrap_text((string) ($row[$header] ?? ''), $char_capacity);
+                $wrapped_cells[$index] = $lines;
+                $max_lines = max($max_lines, count($lines));
+            }
+
+            $row_height = max(24, 10 + ($max_lines * 10));
+            if (($y - $row_height) < $bottom_margin) {
+                $flush_page();
+                $start_page(false);
+
+                $continued_lines = staff_report_export_pdf_wrap_text($section_description . ' (continued)', 120);
+                $content .= staff_report_export_pdf_text($margin, $y, $section_title . ' (CONTINUED)', 12, 'F2');
+                $y -= 16;
+                foreach ($continued_lines as $line) {
+                    $content .= staff_report_export_pdf_text($margin, $y, $line, 9, 'F1');
+                    $y -= 11;
+                }
+                $y -= 8;
+                $draw_table_header();
+            }
+
+            $fill = $row_index % 2 === 0 ? [0.07, 0.07, 0.08] : [0.10, 0.10, 0.12];
+            $content .= staff_report_export_pdf_rect($margin, $y - $row_height, $content_width, $row_height, $fill, [0.18, 0.20, 0.23], 0.5);
+
+            $x = $margin + 8;
+            foreach ($headers as $index => $header) {
+                $line_y = $y - 14;
+                foreach ($wrapped_cells[$index] as $line) {
+                    $content .= staff_report_export_pdf_text($x, $line_y, $line, 8.3, 'F1');
+                    $line_y -= 10;
+                }
+                $x += $column_widths[$index] + $table_gap;
+            }
+
+            $y -= $row_height;
+        }
+
+        $y -= 18;
     }
 
-    $pages = [];
-    $page_lines = [];
-    $line_limit = 48;
-    foreach ($lines as $line) {
-        $page_lines[] = $line;
-        if (count($page_lines) >= $line_limit) {
-            $pages[] = $page_lines;
-            $page_lines = [];
-        }
-    }
-    if ($page_lines !== []) {
-        $pages[] = $page_lines;
+    $flush_page();
+
+    if ($pages === []) {
+        $start_page(true);
+        $content .= staff_report_export_pdf_text($margin, $y, 'No data available.', 11, 'F1');
+        $flush_page();
     }
 
     $objects = [];
     $page_object_ids = [];
     $content_object_ids = [];
     $font_object_id = 3;
-    $next_object_id = 4;
+    $bold_font_object_id = 4;
+    $next_object_id = 5;
 
-    foreach ($pages as $page_index => $page_lines_set) {
-        $content = "BT\n/F1 10 Tf\n36 806 Td\n";
-        foreach ($page_lines_set as $line_index => $line) {
-            if ($line_index > 0) {
-                $content .= "0 -15 Td\n";
-            }
-            $content .= '(' . staff_report_export_pdf_escape($line) . ") Tj\n";
-        }
-        $content .= "ET";
+    foreach ($pages as $page_content) {
+        $content = $page_content;
 
         $content_object_id = $next_object_id++;
         $page_object_id = $next_object_id++;
@@ -542,7 +801,7 @@ function staff_report_export_build_pdf($payload)
         $page_object_ids[] = $page_object_id;
 
         $objects[$content_object_id] = "<< /Length " . strlen($content) . " >>\nstream\n" . $content . "\nendstream";
-        $objects[$page_object_id] = "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 842] /Resources << /Font << /F1 " . $font_object_id . " 0 R >> >> /Contents " . $content_object_id . " 0 R >>";
+        $objects[$page_object_id] = "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 " . $page_width . ' ' . $page_height . "] /Resources << /Font << /F1 " . $font_object_id . " 0 R /F2 " . $bold_font_object_id . " 0 R >> >> /Contents " . $content_object_id . " 0 R >>";
     }
 
     $objects[1] = "<< /Type /Catalog /Pages 2 0 R >>";
@@ -551,6 +810,7 @@ function staff_report_export_build_pdf($payload)
     }, $page_object_ids));
     $objects[2] = "<< /Type /Pages /Count " . count($page_object_ids) . " /Kids [ " . $kids . " ] >>";
     $objects[$font_object_id] = "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>";
+    $objects[$bold_font_object_id] = "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >>";
 
     ksort($objects);
     $pdf = "%PDF-1.4\n";
