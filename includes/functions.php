@@ -749,9 +749,116 @@ function toast_runtime_script()
 HTML;
 }
 
+function skeleton_runtime_script()
+{
+    return <<<'HTML'
+<script>
+(function () {
+  if (window.__lenscraftSkeletonReady) return;
+  window.__lenscraftSkeletonReady = true;
+
+  const style = document.createElement('style');
+  style.setAttribute('data-lenscraft-skeleton', 'true');
+  style.textContent = `
+    @keyframes lens-skeleton-shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+    .skeleton-shimmer { background: linear-gradient(90deg, rgba(255,255,255,0.02) 25%, rgba(255,255,255,0.06) 50%, rgba(255,255,255,0.02) 75%); background-size: 200% 100%; animation: lens-skeleton-shimmer 1.2s linear infinite; }
+    .skeleton-card { border-radius: 1rem; overflow: hidden; background: rgba(17,17,17,0.36); display:flex; flex-direction:column; height:100%; }
+    .skeleton-rect { width:100%; aspect-ratio: 4 / 3; background: rgba(255,255,255,0.02); }
+    .skeleton-content { padding: 1rem; display:flex; flex-direction:column; gap:0.5rem; }
+    .skeleton-line { height: 10px; border-radius: 999px; background: rgba(255,255,255,0.02); }
+    .skeleton-line.long { width: 70%; }
+    .skeleton-line.short { width: 40%; }
+    .skeleton-row { padding: 1rem; border-bottom: 1px solid rgba(255,255,255,0.03); display:flex; flex-direction:column; gap:0.5rem; }
+    @media (min-width: 640px) { .skeleton-row { flex-direction:row; align-items:center; } .skeleton-row .skeleton-left { flex:1; } .skeleton-row .skeleton-right { width: 160px; display:flex; gap:0.5rem; justify-content:flex-end; } }
+  `;
+  document.head.appendChild(style);
+
+  function toEl(selectorOrEl) {
+    if (!selectorOrEl) return null;
+    return (typeof selectorOrEl === 'string') ? document.querySelector(selectorOrEl) : selectorOrEl;
+  }
+
+  function clearSkeleton(container) {
+    const el = toEl(container);
+    if (!el) return;
+    el.querySelectorAll('[data-skeleton]').forEach(n => n.remove());
+  }
+
+  function showSkeletonCards(selectorOrEl, count) {
+    const el = toEl(selectorOrEl);
+    if (!el) return;
+    clearSkeleton(el);
+    const frag = document.createDocumentFragment();
+    for (let i = 0; i < (count || 8); i++) {
+      const item = document.createElement('div');
+      item.setAttribute('data-skeleton', '1');
+      item.className = 'skeleton-card';
+      item.innerHTML = '<div class="skeleton-rect skeleton-shimmer"></div><div class="skeleton-content"><div class="skeleton-line long skeleton-shimmer"></div><div class="skeleton-line short skeleton-shimmer"></div></div>';
+      frag.appendChild(item);
+    }
+    el.appendChild(frag);
+  }
+
+  function showSkeletonRows(selectorOrEl, count) {
+    const el = toEl(selectorOrEl);
+    if (!el) return;
+    clearSkeleton(el);
+    const frag = document.createDocumentFragment();
+    for (let i = 0; i < (count || 4); i++) {
+      const row = document.createElement('div');
+      row.setAttribute('data-skeleton', '1');
+      row.className = 'skeleton-row';
+      const left = document.createElement('div');
+      left.className = 'skeleton-left';
+      const l1 = document.createElement('div'); l1.className = 'skeleton-line long skeleton-shimmer';
+      const l2 = document.createElement('div'); l2.className = 'skeleton-line short skeleton-shimmer';
+      left.appendChild(l1); left.appendChild(l2);
+      const right = document.createElement('div'); right.className = 'skeleton-right';
+      const r1 = document.createElement('div'); r1.className = 'skeleton-line short skeleton-shimmer'; r1.style.width = '60px'; r1.style.height = '12px';
+      right.appendChild(r1);
+      row.appendChild(left); row.appendChild(right);
+      frag.appendChild(row);
+    }
+    el.appendChild(frag);
+  }
+
+  window.clearSkeleton = clearSkeleton;
+  window.showSkeletonCards = showSkeletonCards;
+  window.showSkeletonRows = showSkeletonRows;
+
+  // Auto-insert skeletons for known list/grid containers if empty
+  const autoTargets = [
+    { selector: '#products-grid', type: 'cards' },
+    { selector: '#all-rentals-list', type: 'rows', count: 4 },
+    { selector: '#active-rentals-list', type: 'rows', count: 3 },
+    { selector: '#pending-rentals-list', type: 'rows', count: 3 },
+    { selector: '#complete-rentals-list', type: 'rows', count: 3 }
+  ];
+
+  autoTargets.forEach(function (t) {
+    try {
+      const el = document.querySelector(t.selector);
+      if (!el) return;
+      if (el.children.length > 0) return;
+      if (t.type === 'cards') {
+        const count = (typeof getItemsPerPage === 'function') ? Math.max(4, getItemsPerPage()) : 8;
+        showSkeletonCards(el, count);
+      } else {
+        showSkeletonRows(el, t.count || 4);
+      }
+    } catch (e) {
+      // ignore failures
+    }
+  });
+
+})();
+</script>
+HTML;
+}
+
 function page_runtime_bundle($flash_script = '')
 {
-    return motion_runtime_script() . toast_runtime_script() . $flash_script;
+  return motion_runtime_script() . toast_runtime_script() . skeleton_runtime_script() . $flash_script;
 }
 
 function current_user()
