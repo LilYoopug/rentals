@@ -835,6 +835,16 @@ function skeleton_runtime_script()
     { selector: '#complete-rentals-list', type: 'rows', count: 3 }
   ];
 
+  // Admin page containers: ensure skeletons show on admin tables/grids
+  // so the UI doesn't appear empty while server-side data is fetched.
+  // Counts chosen to roughly match common page sizes.
+  autoTargets.push({ selector: '#users-table-body', type: 'rows', count: 5 });
+  autoTargets.push({ selector: '#borrowings-table-body', type: 'rows', count: 6 });
+  autoTargets.push({ selector: '#inventory-table-body', type: 'rows', count: 8 });
+  autoTargets.push({ selector: '#returns-table-body', type: 'rows', count: 6 });
+  autoTargets.push({ selector: '#categories-grid', type: 'cards', count: 6 });
+  autoTargets.push({ selector: '#activity-timeline', type: 'rows', count: 6 });
+
   autoTargets.forEach(function (t) {
     try {
       const el = document.querySelector(t.selector);
