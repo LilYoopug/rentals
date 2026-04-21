@@ -3,7 +3,8 @@
 require_once __DIR__ . '/../data/users/customer-data.php';
 require_once __DIR__ . '/../data/activity-data.php';
 
-if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+if ($_SERVER['REQUEST_METHOD'] !== 'POST' || !verify_csrf_request()) {
+    set_flash('error', 'Request tidak valid.');
     redirect_to('register.php');
 }
 
