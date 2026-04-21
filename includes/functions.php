@@ -405,6 +405,10 @@ function motion_runtime_script()
   if (motionMedia.matches) {
     return;
   }
+  // Timestamp marking when the motion runtime was initialized. Used to
+  // suppress reveal animations for elements that are already visible on
+  // first paint (prevents a perceived "double-refresh").
+  const LENSCRAFT_PRIME_TS = Date.now();
 
   const revealedElements = new WeakSet();
   const modalAnimationTimestamps = new WeakMap();
@@ -454,9 +458,12 @@ function motion_runtime_script()
       return { duration: 340, distance: 20, scale: 0.98 };
     }
     if (element.matches('body > nav, .floating-nav')) {
-      return { duration: 520, distance: 10, scale: 0.995 };
+      return { duration: 420, distance: 6, scale: 0.998 };
     }
-    return { duration: 640, distance: 18, scale: 0.985 };
+
+    // Default: smaller, faster reveals to make the effect feel subtle and
+    // avoid giving the impression of page refresh when data is inserted.
+    return { duration: 420, distance: 8, scale: 0.995 };
   }
 
   function playReveal(element, options) {
@@ -506,6 +513,22 @@ function motion_runtime_script()
     if (isPaginationTarget(element)) return;
     if (!isElementVisible(element)) return;
     if (element.closest('[data-lenscraft-motion="skip"]')) return;
+
+    // If this element is already visible during the very early prime phase
+    // of the runtime (i.e. just after the script loaded), treat it as
+    // already revealed so it won't animate and cause a perceived repaint.
+    try {
+      const rect = element.getBoundingClientRect();
+      const now = Date.now();
+      const isInViewport = rect.top < window.innerHeight && rect.bottom > 0;
+      if (isInViewport && (now - LENSCRAFT_PRIME_TS) < 600) {
+        revealedElements.add(element);
+        element.dataset.lenscraftMotion = 'revealed';
+        return;
+      }
+    } catch (e) {
+      // ignore measurement errors and fall through to normal reveal
+    }
 
     revealedElements.add(element);
     element.dataset.lenscraftMotion = 'queued';
