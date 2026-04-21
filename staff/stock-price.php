@@ -297,6 +297,22 @@ foreach ($product_rows as $row) {
         color: #fff;
         border-color: rgba(255, 255, 255, 0.16);
       }
+      @media (min-width: 640px) {
+        .stock-stepper-btn {
+          width: 1.6rem;
+          height: 1.6rem;
+        }
+        input[data-stock-total] {
+          width: 4ch;
+          min-width: 3ch;
+          max-width: 6ch;
+        }
+        input[data-stock-total]::-webkit-outer-spin-button,
+        input[data-stock-total]::-webkit-inner-spin-button {
+          -webkit-appearance: none;
+          margin: 0;
+        }
+      }
       .discount-switch {
         position: relative;
         width: 3.25rem;
@@ -328,11 +344,11 @@ foreach ($product_rows as $row) {
         opacity: 0.45;
       }
       .mobile-value {
-        text-align: right;
+        text-align: left;
       }
       .mobile-control {
-        width: 11rem;
-        margin-left: auto;
+        width: 100%;
+        margin-left: 0;
       }
       @media (max-width: 639px) {
         .floating-nav {
@@ -356,10 +372,12 @@ foreach ($product_rows as $row) {
           font-size: 0.49rem;
         }
         .mobile-value {
+          text-align: right;
           min-width: 8.5rem;
         }
         .mobile-control {
           width: min(11rem, 100%);
+          margin-left: auto;
         }
         .mobile-name-ellipsis {
           display: block;
@@ -554,11 +572,11 @@ foreach ($product_rows as $row) {
               <table class="w-full stock-price-table">
                 <thead class="hidden sm:table-header-group">
                   <tr class="border-b border-neutral-800 bg-neutral-800/30">
-                    <th class="px-6 py-4 text-left text-xs font-semibold text-neutral-400 uppercase tracking-wider">Produk</th>
-                    <th class="px-6 py-4 text-left text-xs font-semibold text-neutral-400 uppercase tracking-wider">Harga</th>
-                    <th class="px-6 py-4 text-left text-xs font-semibold text-neutral-400 uppercase tracking-wider">Diskon</th>
-                    <th class="px-6 py-4 text-left text-xs font-semibold text-neutral-400 uppercase tracking-wider">Stock Total</th>
-                    <th class="px-6 py-4 text-left text-xs font-semibold text-neutral-400 uppercase tracking-wider">Stock Tersedia</th>
+                    <th class="px-4 py-3 text-left text-xs font-semibold text-neutral-400 uppercase tracking-wider">Produk</th>
+                    <th class="px-4 py-3 text-left text-xs font-semibold text-neutral-400 uppercase tracking-wider">Harga</th>
+                    <th class="px-4 py-3 text-left text-xs font-semibold text-neutral-400 uppercase tracking-wider">Diskon</th>
+                    <th class="px-4 py-3 text-left text-xs font-semibold text-neutral-400 uppercase tracking-wider">Stock Total</th>
+                    <th class="px-4 py-3 text-left text-xs font-semibold text-neutral-400 uppercase tracking-wider">Stock Tersedia</th>
                   </tr>
                 </thead>
                 <tbody class="divide-y divide-neutral-800">
@@ -582,7 +600,7 @@ foreach ($product_rows as $row) {
                   <?php foreach ($inventory_items as $item): ?>
                     <?php $discount_enabled = $item['discount'] > 0; ?>
                     <tr class="table-row-hover transition-colors block sm:table-row p-4 sm:p-0" data-stock-row data-stock-name="<?= e(strtolower($item['name'])) ?>" data-stock-brand="<?= e(strtolower($item['brand'])) ?>" data-stock-category="<?= e((string) $item['category_slug']) ?>" data-reserved-count="<?= e((string) $item['reserved']) ?>">
-                      <td class="block sm:table-cell px-0 pb-4 sm:px-6 sm:py-5 align-top border-b border-neutral-800 sm:border-b-0">
+                      <td class="block sm:table-cell px-0 pb-4 sm:px-4 sm:py-3 align-top border-b border-neutral-800 sm:border-b-0">
                         <input type="hidden" name="product_ids[]" value="<?= $item['id'] ?>">
                         <div class="flex w-full min-w-0 items-center gap-4">
                           <img src="<?= e($item['image']) ?>" alt="<?= e($item['name']) ?>" class="w-16 h-16 rounded-2xl object-cover bg-neutral-800 border border-neutral-700 shrink-0">
@@ -593,14 +611,14 @@ foreach ($product_rows as $row) {
                           </div>
                         </div>
                       </td>
-                      <td class="block sm:table-cell px-0 py-3 sm:px-6 sm:py-5 align-top">
+                      <td class="block sm:table-cell px-0 py-3 sm:px-4 sm:py-3 align-top">
                         <div class="flex items-center justify-between gap-4 sm:block">
                           <span class="text-[11px] font-semibold uppercase tracking-[0.2em] text-neutral-500 sm:hidden">Harga</span>
                           <div class="flex-1 sm:block">
-                        <div data-view-only class="min-w-[10rem] text-sm font-medium text-white mobile-value">
+                        <div data-view-only class="min-w-[10rem] sm:min-w-0 text-sm font-medium text-white mobile-value">
                           <?= e(format_currency($item['price'])) ?> / hari
                         </div>
-                        <label data-edit-only class="block min-w-[10rem] hidden mobile-control">
+                        <label data-edit-only class="block min-w-[10rem] sm:min-w-0 hidden mobile-control">
                           <span class="field-shell rounded-2xl px-4 py-3 flex items-center gap-2">
                             <span class="text-neutral-500 text-sm">$</span>
                             <input class="field-input text-sm" type="number" name="price_per_day[<?= $item['id'] ?>]" min="0" step="0.01" value="<?= e(number_format($item['price'], 2, '.', '')) ?>" required data-editable-input data-initial-value="<?= e(number_format($item['price'], 2, '.', '')) ?>" disabled>
@@ -609,11 +627,11 @@ foreach ($product_rows as $row) {
                           </div>
                         </div>
                       </td>
-                      <td class="block sm:table-cell px-0 py-3 sm:px-6 sm:py-5 align-top">
+                      <td class="block sm:table-cell px-0 py-3 sm:px-4 sm:py-3 align-top">
                         <div class="flex items-start justify-between gap-4 sm:block">
                           <span class="text-[11px] font-semibold uppercase tracking-[0.2em] text-neutral-500 sm:hidden pt-2">Diskon</span>
                           <div class="flex-1 sm:block">
-                        <div data-view-only class="min-w-[11rem] mobile-value">
+                        <div data-view-only class="min-w-[11rem] sm:min-w-0 mobile-value">
                           <div class="text-sm font-medium text-white">
                             <?= $discount_enabled ? e((string) $item['discount']) . '%' : 'Nonaktif' ?>
                           </div>
@@ -621,7 +639,7 @@ foreach ($product_rows as $row) {
                             <?= $discount_enabled ? 'Aktif' : 'Nonaktif' ?>
                           </div>
                         </div>
-                        <div data-edit-only class="min-w-[11rem] hidden mobile-control">
+                        <div data-edit-only class="block min-w-[11rem] sm:min-w-0 hidden mobile-control">
                           <div class="flex items-center justify-between gap-3 mb-2">
                             <span class="text-xs uppercase tracking-[0.2em] text-neutral-500 block">Aktif</span>
                             <label class="inline-flex items-center gap-3 cursor-pointer">
@@ -639,14 +657,14 @@ foreach ($product_rows as $row) {
                           </div>
                         </div>
                       </td>
-                      <td class="block sm:table-cell px-0 py-3 sm:px-6 sm:py-5 align-top">
+                      <td class="block sm:table-cell px-0 py-3 sm:px-4 sm:py-3 align-top">
                         <div class="flex items-center justify-between gap-4 sm:block">
                           <span class="text-[11px] font-semibold uppercase tracking-[0.2em] text-neutral-500 sm:hidden">Stock Total</span>
                           <div class="flex-1 sm:block">
-                        <div data-view-only class="min-w-[11rem] text-sm font-medium text-white mobile-value">
+                        <div data-view-only class="min-w-[11rem] sm:min-w-0 text-sm font-medium text-white mobile-value">
                           <?= number_format($item['total']) ?> unit
                         </div>
-                        <label data-edit-only class="block min-w-[11rem] hidden mobile-control">
+                        <label data-edit-only class="block min-w-[11rem] sm:min-w-0 hidden mobile-control">
                           <span class="field-shell rounded-2xl px-4 py-3 flex items-center gap-2">
                             <button type="button" class="stock-stepper-btn" data-stock-adjust data-target="stock_total" data-direction="down" aria-label="Kurangi stock total" disabled>-</button>
                             <input class="field-input text-sm text-center" type="number" name="stock_total[<?= $item['id'] ?>]" min="0" step="1" value="<?= e((string) $item['total']) ?>" required data-stock-total data-initial-value="<?= e((string) $item['total']) ?>" disabled>
@@ -656,14 +674,14 @@ foreach ($product_rows as $row) {
                           </div>
                         </div>
                       </td>
-                      <td class="block sm:table-cell px-0 pt-3 pb-0 sm:px-6 sm:py-5 align-top">
+                      <td class="block sm:table-cell px-0 pt-3 pb-0 sm:px-4 sm:py-3 align-top">
                         <div class="flex items-center justify-between gap-4 sm:block">
                           <span class="text-[11px] font-semibold uppercase tracking-[0.2em] text-neutral-500 sm:hidden">Stock Tersedia</span>
                           <div class="flex-1 sm:block">
-                        <div data-view-only class="min-w-[11rem] text-sm font-medium text-white mobile-value" data-stock-available-text>
+                        <div data-view-only class="min-w-[11rem] sm:min-w-0 text-sm font-medium text-white mobile-value" data-stock-available-text>
                           <?= number_format($item['available']) ?> unit
                         </div>
-                        <div data-edit-only class="block min-w-[11rem] hidden mobile-control">
+                        <div data-edit-only class="block min-w-[11rem] sm:min-w-0 hidden mobile-control">
                           <div class="field-shell rounded-2xl px-4 py-3 text-sm text-white text-right" data-stock-available-text>
                             <?= number_format($item['available']) ?> unit
                           </div>
@@ -692,12 +710,6 @@ foreach ($product_rows as $row) {
         </section>
       </div>
     </main>
-
-    <footer class="border-t border-neutral-800 py-12 bg-neutral-900/50">
-      <div class="max-w-7xl mx-auto px-6 text-center text-neutral-500 text-sm">
-        <p>© 2026 LensCraft. Sistem Rental Kamera.</p>
-      </div>
-    </footer>
 
     <nav id="edit-mode-bar" class="floating-nav hidden" role="navigation" aria-label="Edit mode actions">
       <button id="edit-cancel-btn" type="button" class="floating-nav-btn secondary">
@@ -827,7 +839,12 @@ foreach ($product_rows as $row) {
         });
 
         document.querySelectorAll('[data-edit-only]').forEach(function (field) {
-          field.classList.toggle('hidden', !enabled);
+          if (enabled) {
+            field.classList.remove('hidden');
+          } else {
+            field.classList.add('hidden');
+            field.classList.remove('sm:inline-block');
+          }
         });
 
         document.querySelectorAll('[data-editable-input]').forEach(function (input) {
@@ -909,7 +926,11 @@ foreach ($product_rows as $row) {
             }
             const direction = button.dataset.direction === 'up' ? 1 : -1;
             const targetName = button.dataset.target;
-            const input = targetName === 'stock_total' ? totalInput : availableInput;
+            if (targetName !== 'stock_total') {
+              return;
+            }
+
+            const input = totalInput;
             const min = Number(input.min || 0);
             const max = Number(input.max || Number.MAX_SAFE_INTEGER);
             const nextValue = Math.min(max, Math.max(min, Number(input.value || 0) + direction));
