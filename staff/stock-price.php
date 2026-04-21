@@ -4,6 +4,10 @@ require_once __DIR__ . '/../data/categories-data.php';
 require_once __DIR__ . '/../data/products-data.php';
 require_once __DIR__ . '/../includes/flash.php';
 
+$staff_active_section = 'stock-price';
+$staff_active_href = 'stock-price.php';
+$staff_active_section_selector = preg_replace('/[^a-z0-9_-]/i', '', $staff_active_section) ?: 'overview';
+
 function staff_inventory_image_path($path)
 {
     $image_path = trim((string) $path);
@@ -459,7 +463,7 @@ foreach ($product_rows as $row) {
           <span>Memantau Pengembalian</span>
         </a>
 
-        <a href="stock-price.php" class="nav-item nav-item-active flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all hover:bg-white/5">
+        <a href="stock-price.php" class="nav-item <?= (isset($staff_active_section) && $staff_active_section === 'stock-price') ? 'nav-item-active' : 'text-neutral-400' ?> flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all hover:bg-white/5">
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-2.21 0-4 .895-4 2s1.79 2 4 2 4 .895 4 2-1.79 2-4 2m0-10V6m0 12v2m8-8a8 8 0 11-16 0 8 8 0 0116 0z" />
           </svg>

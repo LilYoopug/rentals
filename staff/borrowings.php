@@ -776,7 +776,7 @@ $staff_default_report_rows = $staff_report_tables['borrowings'];
           <span>Ringkasan</span>
         </a>
 
-        <a href="borrowings.php" class="nav-item nav-item-active flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all hover:bg-white/5" data-section="approve-borrowings">
+        <a href="borrowings.php" class="nav-item <?= (isset($staff_active_section) && $staff_active_section === 'approve-borrowings') ? 'nav-item-active' : 'text-neutral-400' ?> flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all hover:bg-white/5" data-section="approve-borrowings">
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
