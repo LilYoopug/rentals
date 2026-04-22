@@ -1,0 +1,19 @@
+flowchart TD
+    Start([mulai]) --> A[/user/profile.php/]
+    A --> B[scroll to "Pengaturan"]
+    B --> C[edit fields:<br/>data pribadi, avatar,<br/>settings]
+    C --> D[submit form]
+    D --> E{settings only?}
+    E -->|ya| F[save settings]
+    F -->|export data?| G[generate JSON]
+    G --> H[download data]
+    H --> I[log aktivitas]
+    I --> J[show success]
+    J --> K[/user/profile.php/]
+    E -->|tidak| L[update profil]
+    L -->|gagal| M[show error]
+    L -->|sukses| N[update session]
+    N --> O[log aktivitas]
+    O --> J
+    M --> K
+    K --> Selesai([selesai])

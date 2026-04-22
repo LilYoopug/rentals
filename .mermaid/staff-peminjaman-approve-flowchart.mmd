@@ -1,0 +1,11 @@
+flowchart TD
+    Start([mulai]) --> A[/staff/borrowings.php/]
+    A --> B[click setujui]
+    B --> C[konfirmasi]
+    C --> D[submit approve]
+    D --> E[update status<br/>membuat pembayaran pending]
+    E -->|gagal| F[show error]
+    E -->|sukses| G[show success]
+    F --> H[/staff/borrowings.php/]
+    G --> H
+    H --> Selesai([selesai])

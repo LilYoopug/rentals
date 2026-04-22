@@ -1,0 +1,14 @@
+flowchart TD
+    Start([mulai]) --> A[/admin/users.php/]
+    A --> B[click edit user]
+    B --> C[popup modal<br/>input: email, username,<br/>fullname, role, status,<br/>avatar]
+    C --> D[submit form]
+    D --> E[validasi data]
+    E -->|gagal| F[show error]
+    E -->|sukses| G[upload avatar]
+    G --> H[update user]
+    H -->|gagal| F
+    H -->|sukses| I[show success]
+    F --> J[/admin/users.php/]
+    I --> J
+    J --> Selesai([selesai])

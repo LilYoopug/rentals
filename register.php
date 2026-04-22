@@ -122,6 +122,7 @@ if (is_logged_in()) {
 
         <!-- Register Form -->
         <form class="space-y-5 auth-panel p-8 rounded-[1.75rem]" action="process/register-process.php" method="POST">
+          <?php echo csrf_input(); ?>
           <!-- Full Name -->
           <div>
             <label for="fullname" class="block text-sm font-medium text-neutral-300 mb-2">

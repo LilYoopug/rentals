@@ -1,0 +1,11 @@
+flowchart TD
+    Start([mulai]) --> A[/staff/borrowings.php/]
+    A --> B[click tolak]
+    B --> C[konfirmasi]
+    C --> D[submit reject]
+    D --> E[update status<br/>menolak peminjaman]
+    E -->|gagal| F[show error]
+    E -->|sukses| G[show success]
+    F --> H[/staff/borrowings.php/]
+    G --> H
+    H --> Selesai([selesai])

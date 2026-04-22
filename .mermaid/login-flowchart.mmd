@@ -1,0 +1,14 @@
+flowchart TD
+    Start([mulai]) --> A[login.php]
+    A --> B{logged in?}
+    B -->|ya| C{role}
+    C -->|admin| D[/admin/]
+    C -->|petugas| E[/staff/]
+    C -->|pelanggan| F[/produk/]
+    D --> Selesai([selesai])
+    E --> Selesai
+    F --> Selesai
+    B -->|tidak| G[input username & password]
+    G --> H{valid?}
+    H -->|tidak| G
+    H -->|ya| I[create session] --> C

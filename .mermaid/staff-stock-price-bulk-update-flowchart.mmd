@@ -1,0 +1,13 @@
+flowchart TD
+    Start([mulai]) --> A[/staff/stock-price.php/]
+    A --> B[select multiple produk]
+    B --> C[input bulk harga/disk/stok]
+    C --> D[submit bulk update]
+    D --> E[validasi data]
+    E -->|gagal| F[show error]
+    E -->|sukses| G[update semua produk]
+    G -->|gagal| F
+    G -->|sukses| H[show success count]
+    F --> I[/staff/stock-price.php/]
+    H --> I
+    I --> Selesai([selesai])

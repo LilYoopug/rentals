@@ -1,0 +1,17 @@
+flowchart TD
+    Start([mulai]) --> A[/product-detail.php/]
+    A --> B[select dates & delivery method]
+    B --> C[click "Buat Rental"]
+    C --> D[popup konfirmasi modal]
+    D --> E[confirm & submit]
+    E --> F[ajax POST<br/>rental-create-process.php]
+    F --> G{success?}
+    G -->|no| H[show error alert]
+    G -->|yes| I[close konfirmasi modal]
+    I --> J[show success modal<br/>(rental ID, total, dll)]
+    J --> K{user action}
+    K -->|view rentals| L[/user/rentals.php/]
+    K -->|close| M[/product-detail.php/]
+    H --> A
+    L --> Selesai([selesai])
+    M --> Selesai

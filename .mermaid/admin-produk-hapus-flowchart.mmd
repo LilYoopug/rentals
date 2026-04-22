@@ -1,0 +1,11 @@
+flowchart TD
+    Start([mulai]) --> A[/admin/products.php/]
+    A --> B[click hapus produk]
+    B --> C[konfirmasi hapus]
+    C --> D[submit delete]
+    D --> E[delete produk]
+    E -->|gagal| F[show error]
+    E -->|sukses| G[show success]
+    F --> H[/admin/products.php/]
+    G --> H
+    H --> Selesai([selesai])

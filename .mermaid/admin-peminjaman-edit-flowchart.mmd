@@ -1,0 +1,13 @@
+flowchart TD
+    Start([mulai]) --> A[/admin/borrowings.php/]
+    A --> B[click edit peminjaman]
+    B --> C[popup modal<br/>input: kode peminjaman,<br/>pelanggan, status, dll]
+    C --> D[submit form]
+    D --> E[validasi data]
+    E -->|gagal| F[show error]
+    E -->|sukses| G[update rental]
+    G -->|gagal| F
+    G -->|sukses| H[show success]
+    F --> I[/admin/borrowings.php/]
+    H --> I
+    I --> Selesai([selesai])

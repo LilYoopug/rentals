@@ -1,0 +1,13 @@
+flowchart TD
+    Start([mulai]) --> A[/admin/borrowings.php/]
+    A --> B[click tambah peminjaman]
+    B --> C[popup modal<br/>input: pelanggan, produk,<br/>tanggal, metode pengiriman]
+    C --> D[submit form]
+    D --> E[validasi data]
+    E -->|gagal| F[show error]
+    E -->|sukses| G[create rental]
+    G -->|gagal| F
+    G -->|sukses| H[show success]
+    F --> I[/admin/borrowings.php/]
+    H --> I
+    I --> Selesai([selesai])

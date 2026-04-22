@@ -1,0 +1,13 @@
+flowchart TD
+    Start([mulai]) --> A[/staff/returns.php/]
+    A --> B[click konfirmasi]
+    B --> C[popup modal<br/>input: status, catatan]
+    C --> D[submit form]
+    D --> E[validasi data]
+    E -->|gagal| F[show error]
+    E -->|sukses| G[konfirmasi pengembalian]
+    G -->|gagal| F
+    G -->|sukses| H[show success]
+    F --> I[/staff/returns.php/]
+    H --> I
+    I --> Selesai([selesai])

@@ -1,0 +1,15 @@
+flowchart TD
+    Start([mulai]) --> A[register.php]
+    A --> B{logged in?}
+    B -->|ya| C[redirect home]
+    C --> Selesai([selesai])
+    B -->|tidak| D[input data registrasi]
+    D --> E{valid?}
+    E -->|tidak| Z[register.php]
+    E -->|ya| F{email & username<br/>tersedia?}
+    F -->|tidak| Z
+    F -->|ya| G[create user]
+    G -->|gagal| Z
+    G -->|sukses| H[redirect login.php]
+    H --> Selesai
+    Z --> Selesai

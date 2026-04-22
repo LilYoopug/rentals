@@ -1,0 +1,11 @@
+flowchart TD
+    Start([mulai]) --> A[/admin/users.php/]
+    A --> B[click hapus user]
+    B --> C[konfirmasi hapus]
+    C --> D[submit delete]
+    D --> E[delete user]
+    E -->|gagal| F[show error]
+    E -->|sukses| G[show success]
+    F --> H[/admin/users.php/]
+    G --> H
+    H --> Selesai([selesai])

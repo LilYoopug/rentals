@@ -1,0 +1,14 @@
+flowchart TD
+    Start([mulai]) --> A[/admin/products.php/]
+    A --> B[click edit produk]
+    B --> C[popup modal<br/>input: nama, kategori,<br/>harga, stok, gambar]
+    C --> D[submit form]
+    D --> E[validasi data]
+    E -->|gagal| F[show error]
+    E -->|sukses| G[upload gambar]
+    G --> H[update produk]
+    H -->|gagal| F
+    H -->|sukses| I[show success]
+    F --> J[/admin/products.php/]
+    I --> J
+    J --> Selesai([selesai])

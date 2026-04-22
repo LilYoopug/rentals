@@ -142,6 +142,7 @@ $requestedProductId = trim((string) ($_GET['product_id'] ?? ''));
           <?php if ($requestedProductId !== ""): ?>
             <input type="hidden" name="product_id" value="<?= e($requestedProductId) ?>" />
           <?php endif; ?>
+          <?php echo csrf_input(); ?>
           <!-- Username -->
           <div>
             <label for="username" class="block text-sm font-medium text-neutral-300 mb-2">
