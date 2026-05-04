@@ -350,8 +350,10 @@ Menyimpan data pengguna (admin, staff, customer)
 | password | VARCHAR(255) | Hashed password |
 | role | ENUM | admin/petugas/pelanggan |
 | phone | VARCHAR(30) | Nomor telepon |
+| billing_info | JSON | Informasi billing |
 | avatar_path | VARCHAR(255) | Path foto profil |
 | created_at | DATETIME | Tanggal registrasi |
+| last_active | DATETIME | Terakhir aktif |
 
 #### `categories`
 Kategori produk
@@ -362,7 +364,10 @@ Kategori produk
 | name | VARCHAR(80) | Nama kategori |
 | slug | VARCHAR(80) | URL slug (unique) |
 | description | TEXT | Deskripsi |
+| icon | VARCHAR(60) | Icon kategori |
+| color | VARCHAR(30) | Warna kategori |
 | status | ENUM | aktif/nonaktif |
+| created_at | DATETIME | Tanggal dibuat |
 
 #### `products`
 Katalog produk rental
@@ -373,13 +378,16 @@ Katalog produk rental
 | category_id | INT | Foreign key ke categories |
 | name | VARCHAR(150) | Nama produk |
 | brand | VARCHAR(80) | Merek |
+| category_slug | VARCHAR(80) | Slug kategori |
 | price_per_day | DECIMAL(10,2) | Harga per hari |
 | discount_percentage | INT | Diskon (%) |
 | description | TEXT | Deskripsi produk |
 | image_path | VARCHAR(255) | Path gambar |
 | stock_total | INT | Total stok |
 | stock_available | INT | Stok tersedia |
+| in_stock | TINYINT(1) | Status stok tersedia |
 | status | ENUM | aktif/nonaktif |
+| created_at | DATETIME | Tanggal dibuat |
 
 #### `rentals`
 Transaksi rental
@@ -394,10 +402,16 @@ Transaksi rental
 | end_date | DATE | Tanggal selesai |
 | total_days | INT | Durasi (hari) |
 | daily_rate | DECIMAL(10,2) | Tarif harian |
+| discount_percentage | INT | Diskon (%) |
 | delivery_method | ENUM | ambil_sendiri/diantar |
 | delivery_fee | DECIMAL(10,2) | Biaya antar |
 | total_price | DECIMAL(10,2) | Total harga |
 | status | ENUM | menunggu/disetujui/mendatang/aktif/selesai/dibatalkan/ditolak |
+| cancel_reason | VARCHAR(255) | Alasan pembatalan |
+| created_at | DATETIME | Tanggal dibuat |
+| approved_at | DATETIME | Tanggal disetujui |
+| completed_at | DATETIME | Tanggal selesai |
+| cancelled_at | DATETIME | Tanggal dibatalkan |
 
 #### `payments`
 Data pembayaran
@@ -405,12 +419,18 @@ Data pembayaran
 | Field | Type | Description |
 |-------|------|-------------|
 | id | INT | Primary key |
-| payment_code | VARCHAR(30) | Kode pembayaran |
-| rental_id | INT | Foreign key ke rentals |
+| payment_code | VARCHAR(30) | Kode pembayaran (unique) |
+| rental_id | INT | Foreign key ke rentals (unique) |
 | amount | DECIMAL(10,2) | Jumlah bayar |
 | method | VARCHAR(50) | Metode pembayaran |
 | status | ENUM | pending/paid |
+| payer_name | VARCHAR(120) | Nama pembayar |
+| payer_email | VARCHAR(120) | Email pembayar |
+| payer_phone | VARCHAR(30) | Telepon pembayar |
+| reference_code | VARCHAR(60) | Kode referensi transfer |
 | paid_at | DATETIME | Tanggal bayar |
+| created_at | DATETIME | Tanggal dibuat |
+| updated_at | DATETIME | Tanggal diupdate |
 
 #### `returns`
 Data pengembalian
@@ -418,13 +438,14 @@ Data pengembalian
 | Field | Type | Description |
 |-------|------|-------------|
 | id | INT | Primary key |
-| return_code | VARCHAR(30) | Kode pengembalian |
-| rental_id | INT | Foreign key ke rentals |
-| processed_by | INT | Staff yang memproses |
+| return_code | VARCHAR(30) | Kode pengembalian (unique) |
+| rental_id | INT | Foreign key ke rentals (unique) |
+| processed_by | INT | Foreign key ke users (staff) |
 | notes | TEXT | Catatan kondisi |
 | fine_amount | DECIMAL(10,2) | Denda (jika ada) |
 | status | ENUM | menunggu/selesai |
 | returned_at | DATETIME | Tanggal kembali |
+| created_at | DATETIME | Tanggal dibuat |
 
 #### `activity_logs`
 Log aktivitas sistem
