@@ -426,6 +426,19 @@ Data pengembalian
 | status | ENUM | menunggu/selesai |
 | returned_at | DATETIME | Tanggal kembali |
 
+#### `activity_logs`
+Log aktivitas sistem
+
+| Field | Type | Description |
+|-------|------|-------------|
+| id | INT | Primary key |
+| user_id | INT | Foreign key ke users |
+| actor_name | VARCHAR(120) | Nama pelaku |
+| actor_role | VARCHAR(30) | Role pelaku |
+| activity_type | VARCHAR(50) | Tipe aktivitas |
+| message | TEXT | Pesan log |
+| created_at | DATETIME | Waktu aktivitas |
+
 ---
 
 ## 🔄 Workflow Sistem
@@ -626,6 +639,12 @@ git push origin feature/nama-fitur
 - [Google Fonts](https://fonts.google.com/) - Inter & Playfair Display
 - [PHP](https://www.php.net/) - Server-side scripting language
 - [MySQL](https://www.mysql.com/) - Relational database management system
+
+---
+
+## ⭐ Star History
+
+[![Star History Chart](https://api.star-history.com/svg?repos=LilYoopug/rentals&type=Date)](https://star-history.com/#LilYoopug/rentals&Date)
 
 ---
 
