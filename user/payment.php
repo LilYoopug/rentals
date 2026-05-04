@@ -277,6 +277,7 @@ $payment_rental_json = json_encode($payment_rental, JSON_UNESCAPED_SLASHES | JSO
                           alt="Kode QR pembayaran QRIS"
                           class="w-full h-auto object-contain"
                           referrerpolicy="no-referrer"
+                          onerror="this.src='../images/gear-placeholder.svg'"
                         >
                       </div>
                       <div class="space-y-4">
@@ -456,7 +457,6 @@ $payment_rental_json = json_encode($payment_rental, JSON_UNESCAPED_SLASHES | JSO
         submitButton.textContent = 'Memproses Pembayaran...';
 
         const payload = new URLSearchParams(new FormData(paymentForm));
-        payload.set('csrf_token', window.csrfToken);
 
         try {
           const response = await fetch('../process/rental-payment-process.php', {
@@ -491,7 +491,6 @@ $payment_rental_json = json_encode($payment_rental, JSON_UNESCAPED_SLASHES | JSO
       });
     </script>
     <script>window.currentUser = <?= $current_user_json ?>;</script>
-    <script>window.csrfToken = <?= json_encode(csrf_token()) ?>;</script>
     <?= page_runtime_bundle($flash_script) ?>
   </body>
 </html>

@@ -7,7 +7,7 @@ require_once __DIR__ . '/../data/users/admin-data.php';
 $customer = find_user_record_by_fullname((string) ($_POST['customer'] ?? ''));
 $user_id = (int) ($_POST['user_id'] ?? ($customer['id'] ?? 0));
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && verify_csrf_request() && $user_id > 0 && create_rental_request($user_id, [
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && $user_id > 0 && create_rental_request($user_id, [
     'product_id' => $_POST['product_id'] ?? 0,
     'start_date' => $_POST['start_date'] ?? date('Y-m-d'),
     'end_date' => $_POST['end_date'] ?? date('Y-m-d'),

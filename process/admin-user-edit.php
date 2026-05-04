@@ -11,7 +11,7 @@ $payload['email'] = $email;
 $payload['username'] = $username;
 $payload['avatar_path'] = save_uploaded_user_avatar('avatar_file', (string) ($_POST['existing_avatar_path'] ?? ''));
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && verify_csrf_request() && update_user_record((int) ($_POST['id'] ?? 0), $payload)) {
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && update_user_record((int) ($_POST['id'] ?? 0), $payload)) {
     set_flash('success', 'User berhasil diperbarui.');
 } else {
     set_flash('error', 'Gagal memperbarui user.');

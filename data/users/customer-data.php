@@ -40,6 +40,15 @@ function build_session_user_payload($user)
         return null;
     }
 
+    // Parse billing_info JSON
+    $billing_info = [];
+    if (!empty($user['billing_info'])) {
+        $decoded = json_decode((string) $user['billing_info'], true);
+        if (is_array($decoded)) {
+            $billing_info = $decoded;
+        }
+    }
+
     return [
         'id' => (int) ($user['id'] ?? 0),
         'fullname' => (string) ($user['fullname'] ?? ''),
@@ -48,13 +57,15 @@ function build_session_user_payload($user)
         'role' => normalize_role_value((string) ($user['role'] ?? 'pelanggan')),
         'avatar_path' => (string) ($user['avatar_path'] ?? ''),
         'phone' => (string) ($user['phone'] ?? ''),
-        'address_line1' => (string) ($user['address_line1'] ?? ''),
-        'address_line2' => (string) ($user['address_line2'] ?? ''),
-        'city' => (string) ($user['city'] ?? ''),
-        'province' => (string) ($user['province'] ?? ''),
-        'zip_code' => (string) ($user['zip_code'] ?? ''),
-        'country' => (string) ($user['country'] ?? ''),
-        'bio' => (string) ($user['bio'] ?? ''),
+        'billing_info' => $billing_info,
+        // Legacy fields for backward compatibility
+        'address_line1' => (string) ($billing_info['address_line1'] ?? ''),
+        'address_line2' => (string) ($billing_info['address_line2'] ?? ''),
+        'city' => (string) ($billing_info['city'] ?? ''),
+        'province' => (string) ($billing_info['province'] ?? ''),
+        'zip_code' => (string) ($billing_info['zip_code'] ?? ''),
+        'country' => (string) ($billing_info['country'] ?? ''),
+        'bio' => (string) ($billing_info['bio'] ?? ''),
     ];
 }
 
@@ -65,7 +76,7 @@ function create_customer_user($data)
     }
 
     $saved = db_execute(
-        'INSERT INTO users (fullname, email, username, password, role, status, created_at) VALUES (?, ?, ?, ?, "pelanggan", "menunggu", NOW())',
+        'INSERT INTO users (fullname, email, username, password, role, created_at) VALUES (?, ?, ?, ?, "pelanggan", NOW())',
         [
             trim((string) ($data['fullname'] ?? '')),
             trim((string) ($data['email'] ?? '')),
@@ -74,9 +85,7 @@ function create_customer_user($data)
         ]
     );
 
-    if ($saved) {
-        db_execute('INSERT INTO user_settings (user_id, language, timezone, theme, is_profile_public, allow_marketing, allow_data_export, updated_at) VALUES (?, "id", "Asia/Jakarta", "dark", 0, 0, 1, NOW())', [db_insert_id()]);
-    }
+    // User settings are now stored in browser localStorage, not database
 
     return $saved;
 }
@@ -87,19 +96,24 @@ function update_customer_profile($id, $data)
         return false;
     }
 
+    // Build billing_info JSON
+    $billing_info = [
+        'address_line1' => trim((string) ($data['address_line1'] ?? '')),
+        'address_line2' => trim((string) ($data['address_line2'] ?? '')),
+        'city' => trim((string) ($data['city'] ?? '')),
+        'province' => trim((string) ($data['province'] ?? '')),
+        'zip_code' => trim((string) ($data['zip_code'] ?? '')),
+        'country' => trim((string) ($data['country'] ?? 'ID')),
+        'bio' => trim((string) ($data['bio'] ?? '')),
+    ];
+
     return db_execute(
-        'UPDATE users SET fullname = ?, email = ?, phone = ?, address_line1 = ?, address_line2 = ?, city = ?, province = ?, zip_code = ?, country = ?, bio = ?, avatar_path = ? WHERE id = ?',
+        'UPDATE users SET fullname = ?, email = ?, phone = ?, billing_info = ?, avatar_path = ? WHERE id = ?',
         [
             trim((string) ($data['first_name'] ?? '') . ' ' . (string) ($data['last_name'] ?? '')),
             trim((string) ($data['email'] ?? '')),
             trim((string) ($data['phone'] ?? '')),
-            trim((string) ($data['address_line1'] ?? '')),
-            trim((string) ($data['address_line2'] ?? '')),
-            trim((string) ($data['city'] ?? '')),
-            trim((string) ($data['province'] ?? '')),
-            trim((string) ($data['zip_code'] ?? '')),
-            trim((string) ($data['country'] ?? 'ID')),
-            trim((string) ($data['bio'] ?? '')),
+            json_encode($billing_info, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
             trim((string) ($data['avatar_path'] ?? '')),
             (int) $id,
         ]

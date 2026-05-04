@@ -11,7 +11,6 @@ $stock_available = (int) ($_POST['stock_available'] ?? 0);
 
 if (
     $_SERVER['REQUEST_METHOD'] === 'POST'
-    && verify_csrf_request()
     && update_product_stock_and_price($product_id, $price_per_day, $discount_percentage, $stock_total, $stock_available)
 ) {
     set_flash('success', 'Harga, diskon, dan stok produk berhasil diperbarui.');

@@ -201,6 +201,7 @@ $popular_products = array_slice(get_all_products(), 0, 3);
                   src="images/hero-camera.jpg"
                   alt="Premium Camera"
                   class="w-full h-full object-cover hero-image hidden md:block"
+                  onerror="this.src='images/gear-placeholder.svg'"
                 />
               </div>
             </div>

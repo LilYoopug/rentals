@@ -1305,7 +1305,7 @@ $current_user_json = json_encode(current_user(), JSON_UNESCAPED_SLASHES | JSON_U
         fetch('../process/rental-return-process.php', {
           method: 'POST',
           headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-          body: new URLSearchParams({ csrf_token: window.csrfToken, rental_code: pendingReturnRentalId }).toString()
+          body: new URLSearchParams({ rental_code: pendingReturnRentalId }).toString()
         })
         .then(response => response.json())
         .then(result => {
@@ -1387,7 +1387,7 @@ $current_user_json = json_encode(current_user(), JSON_UNESCAPED_SLASHES | JSON_U
         fetch('../process/rental-cancel-process.php', {
           method: 'POST',
           headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-          body: new URLSearchParams({ csrf_token: window.csrfToken, rental_code: rentalId }).toString()
+          body: new URLSearchParams({ rental_code: rentalId }).toString()
         })
         .then(response => response.json())
         .then(result => {
@@ -1499,7 +1499,6 @@ $current_user_json = json_encode(current_user(), JSON_UNESCAPED_SLASHES | JSON_U
       });
     </script>
   <script>window.currentUser = <?= $current_user_json ?>;</script>
-  <script>window.csrfToken = <?= json_encode(csrf_token()) ?>;</script>
     <?= page_runtime_bundle($flash_script) ?>
   </body>
 </html>

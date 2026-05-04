@@ -4,7 +4,7 @@ require_once __DIR__ . '/../includes/staff-check.php';
 require_once __DIR__ . '/../data/rentals-data.php';
 require_once __DIR__ . '/../data/payments-data.php';
 
-if ($_SERVER['REQUEST_METHOD'] !== 'POST' || !verify_csrf_request()) {
+if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     set_flash('error', 'Gagal menyetujui peminjaman.');
     redirect_to('staff/borrowings.php');
 }

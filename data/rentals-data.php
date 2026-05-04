@@ -1,6 +1,7 @@
 <?php
 
 require_once __DIR__ . '/products-data.php';
+require_once __DIR__ . '/../includes/trigger-functions.php';
 
 function normalize_rental_status_input($status)
 {
@@ -187,9 +188,15 @@ function create_rental_request($user_id, $data)
     $delivery_fee = $delivery_method === 'diantar' ? 50000 : 0;
     $daily_rate = product_daily_rate($product);
     $total_price = ($daily_rate * $total_days) + $delivery_fee;
+    $status = 'menunggu';
 
-    return db_execute(
-        'INSERT INTO rentals (rental_code, user_id, product_id, start_date, end_date, total_days, daily_rate, discount_percentage, delivery_method, delivery_fee, total_price, status, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, "menunggu", NOW())',
+    // Call trigger function before insert
+    if (!trigger_rental_before_insert((int) $product['id'], $status)) {
+        return false;
+    }
+
+    $result = db_execute(
+        'INSERT INTO rentals (rental_code, user_id, product_id, start_date, end_date, total_days, daily_rate, discount_percentage, delivery_method, delivery_fee, total_price, status, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())',
         [
             build_rental_code(),
             (int) $user_id,
@@ -202,8 +209,11 @@ function create_rental_request($user_id, $data)
             $delivery_method,
             $delivery_fee,
             $total_price,
+            $status,
         ]
     );
+
+    return $result;
 }
 
 function update_rental_status($rental_code, $status, $extra = [])
@@ -219,6 +229,15 @@ function update_rental_status($rental_code, $status, $extra = [])
 
     $new_status = normalize_rental_status_input($status);
     $metadata = rental_transition_metadata($new_status, $rental, $extra);
+
+    // Prepare new rental data for trigger
+    $new_rental = $rental;
+    $new_rental['status'] = $new_status;
+
+    // Call trigger function before update
+    if (!trigger_rental_before_update($rental, $new_rental)) {
+        return false;
+    }
 
     return db_execute(
         'UPDATE rentals SET status = ?, approved_at = ?, completed_at = ?, cancelled_at = ?, cancel_reason = ? WHERE rental_code = ?',
@@ -264,6 +283,17 @@ function update_rental_record($rental_code, $data)
     $total_price = ($daily_rate * $total_days) + $delivery_fee;
     $metadata = rental_transition_metadata($status, $rental, $data);
 
+    // Prepare new rental data for trigger
+    $new_rental = [
+        'product_id' => $product_id,
+        'status' => $status,
+    ];
+
+    // Call trigger function before update
+    if (!trigger_rental_before_update($rental, $new_rental)) {
+        return false;
+    }
+
     return db_execute(
         'UPDATE rentals
          SET user_id = ?, product_id = ?, start_date = ?, end_date = ?, total_days = ?, daily_rate = ?, discount_percentage = ?, delivery_method = ?, delivery_fee = ?, total_price = ?, status = ?, approved_at = ?, completed_at = ?, cancelled_at = ?, cancel_reason = ?
@@ -299,6 +329,9 @@ function delete_rental_record($rental_code)
     if (!$rental) {
         return false;
     }
+
+    // Call trigger function before delete
+    trigger_rental_before_delete($rental);
 
     return db_execute('DELETE FROM rentals WHERE rental_code = ?', [$rental_code]);
 }

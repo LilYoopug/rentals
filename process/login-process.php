@@ -2,7 +2,7 @@
 
 require_once __DIR__ . '/../data/users/customer-data.php';
 
-if ($_SERVER['REQUEST_METHOD'] !== 'POST' || !verify_csrf_request()) {
+if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     set_flash('error', 'Request tidak valid.');
     redirect_to('login.php');
 }
@@ -12,20 +12,14 @@ $password = (string) ($_POST['password'] ?? '');
 $user = find_user_by_login($login);
 
 if (!$user || !password_verify($password, (string) $user['password'])) {
+    $_SESSION['old_input'] = ['username' => $login];
     set_flash('error', 'Username atau kata sandi tidak valid.');
-    redirect_to('login.php');
-}
-
-if (normalize_user_status_value((string) ($user['status'] ?? 'nonaktif')) !== 'aktif') {
-    set_flash('error', 'Akun Anda belum aktif. Silakan tunggu persetujuan admin.');
     redirect_to('login.php');
 }
 
 session_regenerate_id(true);
 
 $_SESSION['current_user'] = build_session_user_payload($user);
-
-csrf_token();
 
 if (db_ready()) {
     db_execute('UPDATE users SET last_active = NOW() WHERE id = ?', [(int) $user['id']]);

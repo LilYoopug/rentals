@@ -124,9 +124,9 @@ foreach ($admin_user_rows as $row) {
         'id' => (int) ($row['id'] ?? 0),
         'name' => (string) ($row['fullname'] ?? ''),
         'email' => (string) ($row['email'] ?? ''),
+        'username' => (string) ($row['username'] ?? ''),
         'avatar' => admin_media_path((string) ($row['avatar_path'] ?? '')),
         'role' => normalize_role_value((string) ($row['role'] ?? 'pelanggan')),
-        'status' => (string) ($row['status'] ?? 'aktif'),
         'joined' => !empty($row['created_at']) ? date('Y-m-d', strtotime((string) $row['created_at'])) : '',
         'lastAktif' => !empty($row['last_active']) ? date('Y-m-d H:i', strtotime((string) $row['last_active'])) : 'Never',
     ];
@@ -920,7 +920,7 @@ $admin_activities_json = json_encode($admin_activities, JSON_UNESCAPED_SLASHES |
           <!-- User Modal -->
           <div id="user-modal" class="fixed inset-0 z-50 hidden flex items-center justify-center p-4 modal-overlay">
             <div class="modal-panel rounded-3xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
-              <div class="modal-header p-6 border-b border-neutral-800 flex items-center justify-between">
+              <div class="modal-header p-6 border-b border-neutral-800 flex items-center justify-between sticky top-0 bg-neutral-900 z-10">
                 <h3 class="text-xl font-semibold text-white" id="user-modal-title">Tambah Pengguna</h3>
                 <button onclick="closeUserModal()" class="modal-close text-neutral-400 hover:text-white transition-colors">
                   <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -928,37 +928,74 @@ $admin_activities_json = json_encode($admin_activities, JSON_UNESCAPED_SLASHES |
                   </svg>
                 </button>
               </div>
-              <form id="user-form" class="p-6 space-y-4 modal-body-shell">
-                <input type="hidden" id="user-id">
-                <div>
-                  <label class="block text-sm font-medium text-neutral-400 mb-2">Nama Lengkap</label>
-                  <input type="text" id="user-name" required maxlength="100" placeholder="Masukkan nama lengkap" class="w-full px-4 py-3 bg-neutral-800 border border-neutral-700 rounded-lg text-neutral-100 focus:outline-none focus:ring-2 focus:ring-neutral-700">
+              <form id="user-form" class="p-6 space-y-5" method="POST" enctype="multipart/form-data" action="">
+                <input type="hidden" id="user-id" name="id">
+                <input type="hidden" id="user-existing-avatar" name="existing_avatar_path">
+                
+                <!-- Profile Picture Upload -->
+                <div class="bg-neutral-900/60 border border-neutral-800 rounded-xl p-4">
+                  <label class="block text-sm font-medium text-neutral-300 mb-3">Foto Profil</label>
+                  <div class="flex items-center gap-4">
+                    <div class="w-20 h-20 bg-neutral-800 rounded-full flex items-center justify-center border-2 border-neutral-700 overflow-hidden flex-shrink-0 ring-2 ring-neutral-800">
+                      <img id="user-avatar-preview" src="" alt="Avatar preview" class="w-full h-full object-cover hidden">
+                      <svg class="w-8 h-8 text-neutral-600" id="user-avatar-placeholder" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                      </svg>
+                    </div>
+                    <div class="flex-1">
+                      <label for="user-avatar-file" class="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-neutral-800 border border-neutral-700 rounded-lg text-neutral-200 hover:bg-neutral-700 hover:border-neutral-600 transition-all cursor-pointer text-sm font-medium">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                        </svg>
+                        Pilih Foto
+                      </label>
+                      <input type="file" id="user-avatar-file" name="avatar_file" accept="image/*" class="hidden">
+                      <p class="text-xs text-neutral-500 mt-2">JPG, PNG atau GIF (Max 2MB)</p>
+                    </div>
+                  </div>
                 </div>
+
                 <div>
-                  <label class="block text-sm font-medium text-neutral-400 mb-2">Alamat Email</label>
-                  <input type="email" id="user-email" required maxlength="255" placeholder="contoh@email.com" class="w-full px-4 py-3 bg-neutral-800 border border-neutral-700 rounded-lg text-neutral-100 focus:outline-none focus:ring-2 focus:ring-neutral-700">
+                  <label class="block text-sm font-medium text-neutral-300 mb-2">Nama Lengkap</label>
+                  <input type="text" id="user-name" name="fullname" required maxlength="100" placeholder="Masukkan nama lengkap" class="w-full px-4 py-3 bg-neutral-800/90 border border-neutral-700 rounded-xl text-neutral-100 placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-[var(--accent-brass)] focus:border-[var(--accent-brass)] transition-all">
                 </div>
+                
                 <div>
-                  <label class="block text-sm font-medium text-neutral-400 mb-2">Role</label>
-                  <select id="user-role" required class="w-full px-4 py-3 bg-neutral-800 border border-neutral-700 rounded-lg text-neutral-100 focus:outline-none focus:ring-2 focus:ring-neutral-700">
+                  <label class="block text-sm font-medium text-neutral-300 mb-2">Username</label>
+                  <input type="text" id="user-username" name="username" required maxlength="50" placeholder="Pilih username" class="w-full px-4 py-3 bg-neutral-800/90 border border-neutral-700 rounded-xl text-neutral-100 placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-[var(--accent-brass)] focus:border-[var(--accent-brass)] transition-all">
+                </div>
+                
+                <div>
+                  <label class="block text-sm font-medium text-neutral-300 mb-2">Alamat Email</label>
+                  <input type="email" id="user-email" name="email" required maxlength="255" placeholder="contoh@email.com" class="w-full px-4 py-3 bg-neutral-800/90 border border-neutral-700 rounded-xl text-neutral-100 placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-[var(--accent-brass)] focus:border-[var(--accent-brass)] transition-all">
+                </div>
+                
+                <div>
+                  <label class="block text-sm font-medium text-neutral-300 mb-2">Kata Sandi <span id="password-optional-label" class="text-neutral-500 text-xs hidden">(Biarkan kosong jika tidak ingin diubah)</span></label>
+                  <div class="relative">
+                    <input type="password" id="user-password" name="password" minlength="6" placeholder="Minimal 6 karakter" class="w-full px-4 py-3 pr-12 bg-neutral-800/90 border border-neutral-700 rounded-xl text-neutral-100 placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-[var(--accent-brass)] focus:border-[var(--accent-brass)] transition-all">
+                    <button type="button" onclick="togglePasswordVisibility('user-password', this)" class="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-white transition-colors p-1">
+                      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                      </svg>
+                    </button>
+                  </div>
+                </div>
+                
+                <div>
+                  <label class="block text-sm font-medium text-neutral-300 mb-2">Role</label>
+                  <select id="user-role" name="role" required class="w-full px-4 py-3 bg-neutral-800/90 border border-neutral-700 rounded-xl text-neutral-100 focus:outline-none focus:ring-2 focus:ring-[var(--accent-brass)] focus:border-[var(--accent-brass)] transition-all">
                     <option value="pelanggan">User</option>
                     <option value="petugas">Staff</option>
                     <option value="admin">Admin</option>
                   </select>
                 </div>
-                <div>
-                  <label class="block text-sm font-medium text-neutral-400 mb-2">Status</label>
-                  <select id="user-status" required class="w-full px-4 py-3 bg-neutral-800 border border-neutral-700 rounded-lg text-neutral-100 focus:outline-none focus:ring-2 focus:ring-neutral-700">
-                    <option value="aktif">Aktif</option>
-                    <option value="nonaktif">Nonaktif</option>
-                    <option value="menunggu">Menunggu</option>
-                  </select>
-                </div>
-                <div class="modal-actions">
-                  <button type="button" onclick="closeUserModal()" class="flex-1 px-4 py-3 bg-neutral-800 border border-neutral-700 rounded-lg text-neutral-300 hover:bg-neutral-700 transition-colors">
+                <div class="flex gap-3 pt-4 border-t border-neutral-800">
+                  <button type="button" onclick="closeUserModal()" class="flex-1 px-4 py-3 bg-neutral-800 border border-neutral-700 rounded-xl text-neutral-300 hover:bg-neutral-700 hover:border-neutral-600 transition-all font-medium">
                     Batal
                   </button>
-                  <button type="submit" class="flex-1 px-4 py-3 bg-white text-black font-semibold rounded-lg hover:bg-neutral-200 transition-colors">
+                  <button type="submit" class="flex-1 px-4 py-3 bg-white text-black font-semibold rounded-xl hover:bg-neutral-200 transition-all shadow-lg hover:shadow-xl">
                     Simpan Pengguna
                   </button>
                 </div>
@@ -1725,7 +1762,7 @@ $admin_activities_json = json_encode($admin_activities, JSON_UNESCAPED_SLASHES |
                   <div class="flex items-start justify-between gap-3 mb-3">
                     <div class="flex items-center gap-3 min-w-0 flex-1">
                       <div class="w-12 h-12 bg-neutral-800 rounded-lg overflow-hidden flex-shrink-0">
-                        <img src="${escapeHtml(trx.image || '../images/gear-placeholder.svg')}" alt="${escapeHtml(trx.equipment)}" class="w-full h-full object-cover">
+                        <img src="${escapeHtml(trx.image || '../images/gear-placeholder.svg')}" alt="${escapeHtml(trx.equipment)}" class="w-full h-full object-cover" onerror="this.src='../images/gear-placeholder.svg'">
                       </div>
                       <div class="min-w-0">
                         <h4 class="text-sm font-semibold text-white truncate mobile-name-ellipsis mobile-card-title-ellipsis">${escapeHtml(trx.equipment)}</h4>
@@ -1773,7 +1810,7 @@ $admin_activities_json = json_encode($admin_activities, JSON_UNESCAPED_SLASHES |
               <td class="px-6 py-4">
                 <div class="flex items-center gap-2">
                   <div class="w-10 h-10 bg-neutral-800 rounded overflow-hidden flex-shrink-0">
-                    <img src="${escapeHtml(trx.image || '../images/gear-placeholder.svg')}" alt="${escapeHtml(trx.equipment)}" class="w-full h-full object-cover">
+                    <img src="${escapeHtml(trx.image || '../images/gear-placeholder.svg')}" alt="${escapeHtml(trx.equipment)}" class="w-full h-full object-cover" onerror="this.src='../images/gear-placeholder.svg'">
                   </div>
                   <span class="text-sm text-neutral-300 truncate max-w-[150px]">${escapeHtml(trx.equipment)}</span>
                 </div>
@@ -1942,7 +1979,7 @@ $admin_activities_json = json_encode($admin_activities, JSON_UNESCAPED_SLASHES |
                   <div class="flex items-start justify-between gap-3 mb-3">
                     <div class="flex items-center gap-3 min-w-0 flex-1">
                       <div class="w-12 h-12 bg-neutral-800 rounded-lg overflow-hidden flex-shrink-0">
-                        <img src="${escapeHtml(trx.image || '../images/gear-placeholder.svg')}" alt="${escapeHtml(trx.equipment)}" class="w-full h-full object-cover">
+                        <img src="${escapeHtml(trx.image || '../images/gear-placeholder.svg')}" alt="${escapeHtml(trx.equipment)}" class="w-full h-full object-cover" onerror="this.src='../images/gear-placeholder.svg'">
                       </div>
                       <div class="min-w-0">
                         <h4 class="text-sm font-semibold text-white truncate mobile-name-ellipsis mobile-card-title-ellipsis">${escapeHtml(trx.equipment)}</h4>
@@ -1986,7 +2023,7 @@ $admin_activities_json = json_encode($admin_activities, JSON_UNESCAPED_SLASHES |
               <td class="px-6 py-4">
                 <div class="flex items-center gap-2">
                   <div class="w-10 h-10 bg-neutral-800 rounded overflow-hidden flex-shrink-0">
-                    <img src="${escapeHtml(trx.image || '../images/gear-placeholder.svg')}" alt="${escapeHtml(trx.equipment)}" class="w-full h-full object-cover">
+                    <img src="${escapeHtml(trx.image || '../images/gear-placeholder.svg')}" alt="${escapeHtml(trx.equipment)}" class="w-full h-full object-cover" onerror="this.src='../images/gear-placeholder.svg'">
                   </div>
                   <span class="text-sm text-neutral-300 truncate max-w-[150px]">${escapeHtml(trx.equipment)}</span>
                 </div>
@@ -2323,9 +2360,21 @@ $admin_activities_json = json_encode($admin_activities, JSON_UNESCAPED_SLASHES |
         const modal = document.getElementById('user-modal');
         const form = document.getElementById('user-form');
         const title = document.getElementById('user-modal-title');
+        const avatarPreview = document.getElementById('user-avatar-preview');
+        const avatarPlaceholder = document.getElementById('user-avatar-placeholder');
+        const existingAvatarInput = document.getElementById('user-existing-avatar');
+        const avatarFileInput = document.getElementById('user-avatar-file');
+        const passwordInput = document.getElementById('user-password');
+        const passwordOptionalLabel = document.getElementById('password-optional-label');
         
         form.reset();
         document.getElementById('user-id').value = '';
+        document.getElementById('user-username').value = '';
+        existingAvatarInput.value = '';
+        avatarPreview.src = '';
+        avatarPreview.classList.add('hidden');
+        if (avatarPlaceholder) avatarPlaceholder.classList.remove('hidden');
+        avatarFileInput.value = '';
 
         if (userId) {
           const user = users.find(u => u.id === userId);
@@ -2334,11 +2383,30 @@ $admin_activities_json = json_encode($admin_activities, JSON_UNESCAPED_SLASHES |
             document.getElementById('user-id').value = user.id;
             document.getElementById('user-name').value = user.name;
             document.getElementById('user-email').value = user.email;
+            document.getElementById('user-username').value = user.username || user.email.split('@')[0] || 'pelanggan';
             document.getElementById('user-role').value = user.role;
-            document.getElementById('user-status').value = user.status;
+            existingAvatarInput.value = user.avatar || '';
+            
+            if (user.avatar) {
+              avatarPreview.src = user.avatar;
+              avatarPreview.classList.remove('hidden');
+              if (avatarPlaceholder) avatarPlaceholder.classList.add('hidden');
+            }
+            
+            // Password optional for edit
+            passwordInput.removeAttribute('required');
+            if (passwordOptionalLabel) passwordOptionalLabel.classList.remove('hidden');
+            
+            form.action = '../process/admin-user-edit.php';
           }
         } else {
           title.textContent = 'Tambah Pengguna';
+          
+          // Password required for new user
+          passwordInput.setAttribute('required', 'required');
+          if (passwordOptionalLabel) passwordOptionalLabel.classList.add('hidden');
+          
+          form.action = '../process/admin-user-tambah.php';
         }
 
         modal.classList.remove('hidden');
@@ -2349,44 +2417,43 @@ $admin_activities_json = json_encode($admin_activities, JSON_UNESCAPED_SLASHES |
         document.getElementById('user-modal').classList.add('hidden');
       }
 
-      // Save user
-      bindById('user-form', 'submit', function(e) {
-        e.preventDefault();
+      // Toggle password visibility
+      function togglePasswordVisibility(inputId, button) {
+        const input = document.getElementById(inputId);
+        const icon = button.querySelector('svg');
         
-        const id = document.getElementById('user-id').value;
-        const name = document.getElementById('user-name').value;
-        const email = document.getElementById('user-email').value;
-        const role = document.getElementById('user-role').value;
-        const status = document.getElementById('user-status').value;
-
-        if (id) {
-          // Edit existing user
-          const user = users.find(u => u.id === parseInt(id));
-          if (user) {
-            user.name = name;
-            user.email = email;
-            user.role = role;
-            user.status = status;
-            logActivity('pelanggan', 'Admin', 'Pengguna diperbarui', name, `Role: ${role}, Status: ${status}`);
-          }
+        if (input.type === 'password') {
+          input.type = 'text';
+          // Change to eye-off icon
+          icon.innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />';
         } else {
-          // Add new user
-          const newUser = {
-            id: generateId(users),
-            name: name,
-            email: email,
-            role: role,
-            status: status,
-            joined: new Date().toISOString().split('T')[0],
-            lastAktif: 'Never'
-          };
-          users.push(newUser);
-          logActivity('pelanggan', 'Admin', 'Pengguna dibuat', name, `Role: ${role}, Status: ${status}`);
+          input.type = 'password';
+          // Change back to eye icon
+          icon.innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />';
         }
+      }
 
-        closeUserModal();
-        renderPenggunaTable();
-      });
+      // Avatar file preview - exactly like product image preview
+      const userAvatarInput = document.getElementById('user-avatar-file');
+      if (userAvatarInput) {
+        userAvatarInput.addEventListener('change', function(event) {
+          const file = event.target.files && event.target.files[0];
+          const avatarPreview = document.getElementById('user-avatar-preview');
+          const avatarPlaceholder = document.getElementById('user-avatar-placeholder');
+          if (!file || !avatarPreview) return;
+
+          const reader = new FileReader();
+          reader.onload = function(readerEvent) {
+            avatarPreview.src = readerEvent.target && readerEvent.target.result ? readerEvent.target.result : '../images/gear-placeholder.svg';
+            avatarPreview.classList.remove('hidden');
+            if (avatarPlaceholder) avatarPlaceholder.classList.add('hidden');
+          };
+          reader.readAsDataURL(file);
+        });
+      }
+
+      // Form submit handler - let it submit normally to backend
+      // The form action is already set in openUserModal()
 
       function editUser(userId) {
         openUserModal(userId);
@@ -2762,7 +2829,6 @@ $admin_activities_json = json_encode($admin_activities, JSON_UNESCAPED_SLASHES |
         const form = document.createElement('form');
         form.method = 'POST';
         form.action = action;
-        payload.csrf_token = <?= json_encode(csrf_token()) ?>;
 
         Object.keys(payload).forEach(function (key) {
           if (payload[key] === undefined || payload[key] === null) return;
@@ -2781,20 +2847,8 @@ $admin_activities_json = json_encode($admin_activities, JSON_UNESCAPED_SLASHES |
         const userForm = document.getElementById('user-form');
         if (userForm) {
           userForm.addEventListener('submit', function (event) {
-            event.preventDefault();
-            event.stopImmediatePropagation();
-
-            const id = document.getElementById('user-id').value;
-            const email = document.getElementById('user-email').value;
-
-            postAdminForm(id ? '../process/admin-user-edit.php' : '../process/admin-user-tambah.php', {
-              id: id,
-              fullname: document.getElementById('user-name').value,
-              email: email,
-              username: email.split('@')[0] || 'pelanggan',
-              role: document.getElementById('user-role').value,
-              status: document.getElementById('user-status').value
-            });
+            // Don't prevent default - let the form submit naturally with file upload
+            // The form already has the correct action, method="POST", and enctype="multipart/form-data"
           }, true);
         }
 

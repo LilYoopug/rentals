@@ -791,13 +791,15 @@ $avatar_url = $is_logged_in && !empty(current_user()['avatar_path']) ? ltrim((st
           return 'Alamat belum diisi';
         }
 
+        // Handle both legacy fields and billing_info
+        const billing = user.billing_info || {};
         const parts = [
-          user.address_line1,
-          user.address_line2,
-          user.city,
-          user.province,
-          user.zip_code,
-          user.country
+          user.address_line1 || billing.address_line1,
+          user.address_line2 || billing.address_line2,
+          user.city || billing.city,
+          user.province || billing.province,
+          user.zip_code || billing.zip_code,
+          user.country || billing.country
         ]
           .map(value => String(value || '').trim())
           .filter(Boolean);
@@ -922,7 +924,6 @@ $avatar_url = $is_logged_in && !empty(current_user()['avatar_path']) ? ltrim((st
         if (!pendingRental) return;
 
         const payload = new URLSearchParams({
-          csrf_token: window.csrfToken,
           product_id: String(pendingRental.productId),
           start_date: pendingRental.startDate,
           end_date: pendingRental.endDate,
@@ -1009,7 +1010,6 @@ $avatar_url = $is_logged_in && !empty(current_user()['avatar_path']) ? ltrim((st
       }
     </script>
   <script>window.currentUser = <?= $current_user_json ?>;</script>
-  <script>window.csrfToken = <?= json_encode(csrf_token()) ?>;</script>
     <?php if ($is_user_catalog): ?>
     <nav class="floating-nav" role="navigation" aria-label="Quick navigation">
       <button class="floating-nav-btn active" data-nav="home" aria-label="Beranda">

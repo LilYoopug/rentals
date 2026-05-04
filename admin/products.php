@@ -928,7 +928,6 @@ $admin_activities_json = json_encode($admin_activities, JSON_UNESCAPED_SLASHES |
                 </button>
               </div>
               <form id="inventory-form" class="p-6 modal-body-shell inventory-editor" method="POST" enctype="multipart/form-data">
-                <?= csrf_input() ?>
                 <input type="hidden" id="inventory-id" name="id">
                 <input type="hidden" id="inventory-existing-image" name="existing_image_path" value="../images/gear-placeholder.svg">
                 <div class="inventory-preview-card">
@@ -1785,7 +1784,7 @@ $admin_activities_json = json_encode($admin_activities, JSON_UNESCAPED_SLASHES |
                   <div class="flex items-start justify-between gap-3 mb-3">
                     <div class="flex items-center gap-3 min-w-0 flex-1">
                       <div class="w-12 h-12 bg-neutral-800 rounded-lg overflow-hidden flex-shrink-0">
-                        <img src="${escapeHtml(trx.image || '../images/gear-placeholder.svg')}" alt="${escapeHtml(trx.equipment)}" class="w-full h-full object-cover">
+                        <img src="${escapeHtml(trx.image || '../images/gear-placeholder.svg')}" alt="${escapeHtml(trx.equipment)}" class="w-full h-full object-cover" onerror="this.src='../images/gear-placeholder.svg'">
                       </div>
                       <div class="min-w-0">
                         <h4 class="text-sm font-semibold text-white truncate mobile-name-ellipsis mobile-card-title-ellipsis">${escapeHtml(trx.equipment)}</h4>
@@ -1833,7 +1832,7 @@ $admin_activities_json = json_encode($admin_activities, JSON_UNESCAPED_SLASHES |
               <td class="px-6 py-4">
                 <div class="flex items-center gap-2">
                   <div class="w-10 h-10 bg-neutral-800 rounded overflow-hidden flex-shrink-0">
-                    <img src="${escapeHtml(trx.image || '../images/gear-placeholder.svg')}" alt="${escapeHtml(trx.equipment)}" class="w-full h-full object-cover">
+                    <img src="${escapeHtml(trx.image || '../images/gear-placeholder.svg')}" alt="${escapeHtml(trx.equipment)}" class="w-full h-full object-cover" onerror="this.src='../images/gear-placeholder.svg'">
                   </div>
                   <span class="text-sm text-neutral-300 truncate max-w-[150px]">${escapeHtml(trx.equipment)}</span>
                 </div>
@@ -2002,7 +2001,7 @@ $admin_activities_json = json_encode($admin_activities, JSON_UNESCAPED_SLASHES |
                   <div class="flex items-start justify-between gap-3 mb-3">
                     <div class="flex items-center gap-3 min-w-0 flex-1">
                       <div class="w-12 h-12 bg-neutral-800 rounded-lg overflow-hidden flex-shrink-0">
-                        <img src="${escapeHtml(trx.image || '../images/gear-placeholder.svg')}" alt="${escapeHtml(trx.equipment)}" class="w-full h-full object-cover">
+                        <img src="${escapeHtml(trx.image || '../images/gear-placeholder.svg')}" alt="${escapeHtml(trx.equipment)}" class="w-full h-full object-cover" onerror="this.src='../images/gear-placeholder.svg'">
                       </div>
                       <div class="min-w-0">
                         <h4 class="text-sm font-semibold text-white truncate mobile-name-ellipsis mobile-card-title-ellipsis">${escapeHtml(trx.equipment)}</h4>
@@ -2046,7 +2045,7 @@ $admin_activities_json = json_encode($admin_activities, JSON_UNESCAPED_SLASHES |
               <td class="px-6 py-4">
                 <div class="flex items-center gap-2">
                   <div class="w-10 h-10 bg-neutral-800 rounded overflow-hidden flex-shrink-0">
-                    <img src="${escapeHtml(trx.image || '../images/gear-placeholder.svg')}" alt="${escapeHtml(trx.equipment)}" class="w-full h-full object-cover">
+                    <img src="${escapeHtml(trx.image || '../images/gear-placeholder.svg')}" alt="${escapeHtml(trx.equipment)}" class="w-full h-full object-cover" onerror="this.src='../images/gear-placeholder.svg'">
                   </div>
                   <span class="text-sm text-neutral-300 truncate max-w-[150px]">${escapeHtml(trx.equipment)}</span>
                 </div>
@@ -2822,7 +2821,6 @@ $admin_activities_json = json_encode($admin_activities, JSON_UNESCAPED_SLASHES |
         const form = document.createElement('form');
         form.method = 'POST';
         form.action = action;
-        payload.csrf_token = <?= json_encode(csrf_token()) ?>;
 
         Object.keys(payload).forEach(function (key) {
           if (payload[key] === undefined || payload[key] === null) return;

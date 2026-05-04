@@ -103,6 +103,14 @@ foreach ($staff_return_rows as $row) {
         'image' => public_media_path((string) ($row['image_path'] ?? 'images/gear-placeholder.svg')),
         'fineAmount' => (float) ($row['fine_amount'] ?? 0),
         'returnDate' => !empty($row['returned_at']) ? date('Y-m-d', strtotime((string) $row['returned_at'])) : (string) ($row['end_date'] ?? ''),
+        'startDate' => (string) ($row['start_date'] ?? ''),
+        'endDate' => (string) ($row['end_date'] ?? ''),
+        'days' => (int) ($row['total_days'] ?? 0),
+        'dailyRate' => (float) ($row['daily_rate'] ?? 0),
+        'discount' => (int) ($row['discount_percentage'] ?? 0),
+        'amount' => (float) ($row['total_price'] ?? 0),
+        'deliveryMethod' => (string) ($row['delivery_method'] ?? 'ambil_sendiri'),
+        'deliveryFee' => (float) ($row['delivery_fee'] ?? 0),
         'notes' => (string) ($row['notes'] ?? ''),
         'status' => $status,
     ];
@@ -1005,34 +1013,119 @@ $staff_default_report_rows = $staff_report_tables['borrowings'];
 
 
 
-    <div id="staff-action-modal" class="fixed inset-0 z-50 hidden flex items-center justify-center p-4 modal-overlay">
-      <div class="modal-panel rounded-3xl w-full max-w-md">
-        <div class="modal-header p-6 border-b border-neutral-800 flex items-center justify-between">
-          <h3 class="text-xl font-semibold text-white" id="staff-action-modal-title">Konfirmasi</h3>
+    <div id="staff-action-modal" class="fixed inset-0 z-50 hidden opacity-0 flex items-center justify-center p-4 transition-opacity duration-200">
+      <div class="absolute inset-0 bg-neutral-950/80 backdrop-blur-sm" onclick="closeStaffActionModal()"></div>
+      <div class="relative bg-neutral-900 border border-neutral-800 rounded-2xl shadow-2xl w-full max-w-3xl max-h-[90vh] overflow-y-auto transform scale-95 opacity-0 transition-all duration-200" id="staff-action-modal-content">
+        <div class="modal-header p-6 border-b border-blue-800/30 flex items-center justify-between sticky top-0 z-10 bg-gradient-to-b from-neutral-900 to-neutral-900/95 backdrop-blur-sm">
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-xl bg-blue-900/30 border border-blue-800/50 flex items-center justify-center">
+              <svg class="w-5 h-5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </div>
+            <div>
+              <h3 class="text-lg font-semibold text-white" id="staff-action-modal-title">Konfirmasi Pengembalian</h3>
+              <p class="text-xs text-blue-400/70">Tinjau detail sebelum mengkonfirmasi</p>
+            </div>
+          </div>
           <button type="button" onclick="closeStaffActionModal()" class="modal-close text-neutral-400 hover:text-white transition-colors">
             <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
             </svg>
           </button>
         </div>
-        <div class="p-6 modal-body-shell mx-6 mt-6">
-          <div class="action-sheet">
-            <div class="action-sheet-icon" id="staff-action-modal-icon">
-              <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
+        <div class="p-6">
+          <!-- Product Detail Section -->
+          <div id="staff-action-modal-product-section" class="hidden mb-6">
+            <div class="detail-sheet">
+              <!-- Product Image -->
+              <div class="detail-media-panel">
+                <div class="detail-media-frame" style="min-height: 16rem;">
+                  <img id="staff-action-modal-product-image" src="../images/gear-placeholder.svg" alt="Product" class="detail-media-image" style="min-height: 16rem;" onerror="this.src='../images/gear-placeholder.svg'">
+                </div>
+              </div>
+              
+              <!-- Product Info -->
+              <div class="detail-content">
+                <div class="detail-kicker text-blue-400" id="staff-action-modal-product-category">KATEGORI</div>
+                <h2 class="detail-title" id="staff-action-modal-product-name">Nama Produk</h2>
+                <p class="detail-subtitle" id="staff-action-modal-product-brand">Brand</p>
+                
+                <!-- Rental Details -->
+                <div class="space-y-0 pt-4 rounded-xl border border-neutral-800 bg-neutral-900/40 p-4">
+                  <div class="flex items-center justify-between py-2.5 border-b border-neutral-800/50">
+                    <span class="text-xs text-neutral-500 uppercase tracking-wider">Kode Rental</span>
+                    <span class="text-sm font-semibold text-white" id="staff-action-modal-rental-code">-</span>
+                  </div>
+                  <div class="flex items-center justify-between py-2.5 border-b border-neutral-800/50">
+                    <span class="text-xs text-neutral-500 uppercase tracking-wider">Pelanggan</span>
+                    <span class="text-sm font-semibold text-white" id="staff-action-modal-customer">-</span>
+                  </div>
+                  <div class="flex items-center justify-between py-2.5 border-b border-neutral-800/50">
+                    <span class="text-xs text-neutral-500 uppercase tracking-wider">Periode</span>
+                    <span class="text-sm font-semibold text-white" id="staff-action-modal-period">-</span>
+                  </div>
+                  <div class="flex items-center justify-between py-2.5 border-b border-neutral-800/50">
+                    <span class="text-xs text-neutral-500 uppercase tracking-wider">Durasi</span>
+                    <span class="text-sm font-semibold text-blue-400" id="staff-action-modal-duration">-</span>
+                  </div>
+                  <div class="flex items-center justify-between py-2.5">
+                    <span class="text-xs text-neutral-500 uppercase tracking-wider">Pengambilan</span>
+                    <span class="text-sm font-semibold text-white" id="staff-action-modal-delivery">-</span>
+                  </div>
+                </div>
+                
+                <!-- Pricing -->
+                <div class="grid grid-cols-2 gap-3 mt-3">
+                  <div class="rounded-xl border border-neutral-800 bg-neutral-900/40 p-3">
+                    <div class="text-xs text-neutral-500 mb-1 uppercase tracking-wider">Harga/Hari</div>
+                    <div class="text-base font-bold text-white" id="staff-action-modal-price">-</div>
+                  </div>
+                  <div class="rounded-xl border border-neutral-800 bg-neutral-900/40 p-3">
+                    <div class="text-xs text-neutral-500 mb-1 uppercase tracking-wider">Diskon</div>
+                    <div class="text-base font-bold text-white" id="staff-action-modal-discount">-</div>
+                  </div>
+                </div>
+                
+                <!-- Total Amount -->
+                <div class="mt-3 rounded-xl border border-neutral-800 bg-neutral-900/40 p-4">
+                  <div class="flex items-center justify-between mb-1">
+                    <span class="text-xs font-semibold text-neutral-500 uppercase tracking-wider">Total Pembayaran</span>
+                  </div>
+                  <div class="text-2xl font-bold text-white" id="staff-action-modal-total">-</div>
+                  <div id="staff-action-modal-delivery-fee-section" class="hidden mt-3 pt-3 border-t border-neutral-800">
+                    <div class="flex items-center justify-between text-xs">
+                      <span class="text-neutral-500 uppercase tracking-wider">Biaya Pengiriman</span>
+                      <span class="font-semibold text-white" id="staff-action-modal-delivery-fee">-</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
-            <div class="space-y-2">
-              <div class="action-sheet-eyebrow">Mohon konfirmasi</div>
-              <p class="action-sheet-copy" id="staff-action-modal-message"></p>
+          </div>
+          
+          <!-- Simple Message Section -->
+          <div id="staff-action-modal-simple-section" class="">
+            <div class="action-sheet">
+              <div class="action-sheet-icon" id="staff-action-modal-icon">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </div>
+              <div class="space-y-2">
+                <div class="action-sheet-eyebrow">Mohon konfirmasi</div>
+                <p class="action-sheet-copy" id="staff-action-modal-message"></p>
+              </div>
             </div>
           </div>
         </div>
-        <div class="px-6 pb-6 action-sheet-actions">
-          <button type="button" onclick="closeStaffActionModal()" class="flex-1 px-4 py-3 bg-neutral-800 border border-neutral-700 rounded-lg text-neutral-300 hover:bg-neutral-700 transition-colors">Batal</button>
-          <button type="button" id="staff-action-confirm-btn" class="flex-1 px-4 py-3 bg-white text-black font-semibold rounded-lg hover:bg-neutral-200 transition-colors">Lanjutkan</button>
+        
+        <div class="px-6 pb-6 flex gap-3 border-t border-blue-800/20 pt-6 bg-gradient-to-t from-neutral-900/50 to-transparent">
+          <button type="button" onclick="closeStaffActionModal()" class="flex-1 px-4 py-3 bg-neutral-800 border border-neutral-700 rounded-xl text-neutral-300 hover:bg-neutral-700 transition-all font-medium">Batal</button>
+          <button type="button" id="staff-action-confirm-btn" class="flex-1 px-4 py-3 bg-gradient-to-br from-blue-500 to-blue-600 text-white font-semibold rounded-xl hover:from-blue-400 hover:to-blue-500 transition-all shadow-lg shadow-blue-900/40">Konfirmasi Pengembalian</button>
         </div>
       </div>
+    </div>
     </div>
 
     <script>
@@ -1161,6 +1254,10 @@ if (sectionId === 'monitor-returns') {
       function formatDate(dateStr) {
         const date = new Date(dateStr);
         return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+      }
+
+      function formatCurrency(amount) {
+        return 'Rp ' + Number(amount).toLocaleString('id-ID');
       }
 
       function getStatusBadgeClass(status) {
@@ -1552,32 +1649,81 @@ if (sectionId === 'monitor-returns') {
 
 
 
-      function openStaffActionModal(title, message, onConfirm) {
+      function openStaffActionModal(title, message, onConfirm, productMeta) {
         const confirmBtn = document.getElementById('staff-action-confirm-btn');
         const iconWrap = document.getElementById('staff-action-modal-icon');
         const eyebrow = document.querySelector('.action-sheet-eyebrow');
+        const productSection = document.getElementById('staff-action-modal-product-section');
+        const simpleSection = document.getElementById('staff-action-modal-simple-section');
+        
         document.getElementById('staff-action-modal-title').textContent = title;
         document.getElementById('staff-action-modal-message').textContent = message;
+        
+        // Show/hide sections based on productMeta
+        if (productMeta) {
+          productSection.classList.remove('hidden');
+          simpleSection.classList.add('hidden');
+          
+          // Fill product details
+          document.getElementById('staff-action-modal-product-image').src = productMeta.image || '../images/gear-placeholder.svg';
+          document.getElementById('staff-action-modal-product-name').textContent = productMeta.name || '-';
+          document.getElementById('staff-action-modal-product-brand').textContent = productMeta.brand || '-';
+          document.getElementById('staff-action-modal-product-category').textContent = (productMeta.category || 'equipment').toUpperCase();
+          document.getElementById('staff-action-modal-rental-code').textContent = productMeta.rentalCode || '-';
+          document.getElementById('staff-action-modal-customer').textContent = productMeta.customer || '-';
+          document.getElementById('staff-action-modal-period').textContent = productMeta.period || '-';
+          document.getElementById('staff-action-modal-duration').textContent = productMeta.duration || '-';
+          document.getElementById('staff-action-modal-delivery').textContent = productMeta.delivery || '-';
+          document.getElementById('staff-action-modal-price').textContent = productMeta.price || '-';
+          document.getElementById('staff-action-modal-discount').textContent = productMeta.discount || '-';
+          document.getElementById('staff-action-modal-total').textContent = productMeta.total || '-';
+          
+          // Show delivery fee if applicable
+          var deliveryFeeSection = document.getElementById('staff-action-modal-delivery-fee-section');
+          if (productMeta.deliveryFee) {
+            deliveryFeeSection.classList.remove('hidden');
+            document.getElementById('staff-action-modal-delivery-fee').textContent = productMeta.deliveryFee;
+          } else {
+            deliveryFeeSection.classList.add('hidden');
+          }
+        } else {
+          productSection.classList.add('hidden');
+          simpleSection.classList.remove('hidden');
+        }
+        
         if (/tolak|rusak/i.test(title)) {
           if (eyebrow) eyebrow.textContent = 'High impact action';
           confirmBtn.textContent = 'Ya, lanjutkan';
-          confirmBtn.className = 'flex-1 px-4 py-3 bg-red-500 text-white font-semibold rounded-lg hover:bg-red-400 transition-colors';
+          confirmBtn.className = 'flex-1 px-4 py-3 bg-gradient-to-br from-red-600 to-red-700 text-white font-semibold rounded-xl hover:from-red-500 hover:to-red-600 transition-all shadow-lg shadow-red-900/30';
           iconWrap.innerHTML = `<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-7.938 4h15.876c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>`;
         } else {
-          if (eyebrow) eyebrow.textContent = 'Action confirmation';
-          confirmBtn.textContent = 'Konfirmasi';
-          confirmBtn.className = 'flex-1 px-4 py-3 bg-white text-black font-semibold rounded-lg hover:bg-neutral-200 transition-colors';
-          iconWrap.innerHTML = `<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>`;
+          if (eyebrow) eyebrow.textContent = 'Mohon konfirmasi';
+          confirmBtn.textContent = 'Konfirmasi Pengembalian';
+          confirmBtn.className = 'flex-1 px-4 py-3 bg-gradient-to-br from-blue-500 to-blue-600 text-white font-semibold rounded-xl hover:from-blue-400 hover:to-blue-500 transition-all shadow-lg shadow-blue-900/40';
+          iconWrap.innerHTML = `<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>`;
         }
         confirmBtn.onclick = function () {
           closeStaffActionModal();
           onConfirm();
         };
-        document.getElementById('staff-action-modal').classList.remove('hidden');
+        
+        const modal = document.getElementById('staff-action-modal');
+        const modalContent = document.getElementById('staff-action-modal-content');
+        modal.classList.remove('hidden');
+        setTimeout(() => {
+          modal.classList.remove('opacity-0');
+          modalContent.classList.remove('opacity-0', 'scale-95');
+        }, 10);
       }
 
       function closeStaffActionModal() {
-        document.getElementById('staff-action-modal').classList.add('hidden');
+        const modal = document.getElementById('staff-action-modal');
+        const modalContent = document.getElementById('staff-action-modal-content');
+        modal.classList.add('opacity-0');
+        modalContent.classList.add('opacity-0', 'scale-95');
+        setTimeout(() => {
+          modal.classList.add('hidden');
+        }, 200);
       }
 
       function viewReturn(id) {
@@ -1604,15 +1750,36 @@ if (sectionId === 'monitor-returns') {
       }
 
       function markReturned(id) {
-        openStaffActionModal('Konfirmasi Pengembalian', `Tandai pengembalian ${id} sebagai selesai?`, function () {
-          postStaffAction('../process/staff-pengembalian-konfirmasi.php', { return_code: id, status: 'selesai' });
-        });
+        const returnItem = returns.find((entry) => entry.id === id);
+        if (!returnItem) return;
+        
+        openStaffActionModal(
+          'Konfirmasi Pengembalian',
+          'Anda akan mengkonfirmasi pengembalian ini. Pastikan barang sudah diterima dalam kondisi baik.',
+          function () {
+            postStaffAction('../process/staff-pengembalian-konfirmasi.php', { return_code: id, status: 'selesai' });
+          },
+          {
+            image: returnItem.image,
+            category: returnItem.category,
+            name: returnItem.equipment,
+            brand: returnItem.brand || 'LensCraft',
+            rentalCode: returnItem.id,
+            customer: returnItem.customer,
+            period: (returnItem.startDate ? formatDate(returnItem.startDate) : '-') + ' - ' + (returnItem.endDate ? formatDate(returnItem.endDate) : '-'),
+            duration: returnItem.days ? returnItem.days + ' hari' : '-',
+            delivery: returnItem.deliveryMethod === 'diantar' ? 'Diantar' : 'Ambil Sendiri',
+            price: formatCurrency(returnItem.dailyRate || 0),
+            discount: returnItem.discount ? returnItem.discount + '%' : '0%',
+            total: formatCurrency(returnItem.amount || 0),
+            deliveryFee: returnItem.deliveryMethod === 'diantar' && returnItem.deliveryFee ? formatCurrency(returnItem.deliveryFee) : null
+          }
+        );
       }
       function postStaffAction(action, payload) {
         const form = document.createElement('form');
         form.method = 'POST';
         form.action = action;
-        payload.csrf_token = <?= json_encode(csrf_token()) ?>;
 
         Object.keys(payload).forEach(function (key) {
           const input = document.createElement('input');

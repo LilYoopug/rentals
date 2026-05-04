@@ -12,6 +12,10 @@ if (is_logged_in()) {
     redirect_to('products.php');
 }
 
+// Get old input values if validation failed
+$old_input = $_SESSION['old_input'] ?? [];
+unset($_SESSION['old_input']);
+
 $requestedProductId = trim((string) ($_GET['product_id'] ?? ''));
 ?>
 <!doctype html>
@@ -127,18 +131,18 @@ $requestedProductId = trim((string) ($_GET['product_id'] ?? ''));
     </nav>
 
     <!-- Main Content -->
-    <main class="flex-1 flex items-center justify-center pt-24 pb-12 px-6">
-      <div class="max-w-md w-full space-y-8 animate-fade-in">
+    <main class="flex-1 flex items-center justify-center py-12 px-6">
+      <div class="max-w-md w-full space-y-6 animate-fade-in">
         <!-- Header -->
         <div class="text-center space-y-4">
-          <h1 class="text-4xl font-serif mt-4">Masuk kembali</h1>
+          <h1 class="text-3xl font-serif mt-2">Masuk kembali</h1>
           <p class="text-neutral-400 text-sm leading-relaxed max-w-sm mx-auto">
             Lanjutkan ke katalog, kelola rental aktif, dan pantau permintaan dari satu ruang kerja yang sama.
           </p>
         </div>
 
         <!-- Login Form -->
-        <form class="space-y-6 auth-panel p-8 rounded-[1.75rem]" id="login-form" action="process/login-process.php" method="POST">
+        <form class="space-y-4 auth-panel p-6 rounded-[1.75rem]" id="login-form" action="process/login-process.php" method="POST">
           <?php if ($requestedProductId !== ""): ?>
             <input type="hidden" name="product_id" value="<?= e($requestedProductId) ?>" />
           <?php endif; ?>
@@ -153,6 +157,7 @@ $requestedProductId = trim((string) ($_GET['product_id'] ?? ''));
               id="username"
               name="username"
               required
+              value="<?= htmlspecialchars($old_input['username'] ?? '', ENT_QUOTES, 'UTF-8') ?>"
               class="w-full px-4 py-3 bg-neutral-800/90 border border-neutral-700 rounded-xl text-neutral-100 placeholder-neutral-500 input-focus outline-none"
               placeholder="Masukkan username atau email"
             />
@@ -206,24 +211,16 @@ $requestedProductId = trim((string) ($_GET['product_id'] ?? ''));
             <a href="register.php" class="subtle-link hover:text-white font-medium">Buat akun</a>
           </div>
         </form>
-
-        <!-- Demo Accounts Notice -->
-        <div class="helper-panel p-6 rounded-2xl text-center">
-          <h3 class="text-sm font-semibold text-neutral-200 mb-2">Akses Demo</h3>
-          <div class="text-xs text-neutral-500 space-y-1">
-            <div><span class="text-neutral-400">Admin:</span> admin / admin123</div>
-            <div><span class="text-neutral-400">Petugas:</span> petugas / staff123</div>
-            <div><span class="text-neutral-400">Pelanggan:</span> pelanggan / user123</div>
-          </div>
-        </div>
-
-        <!-- Footer -->
-        <div class="text-center text-xs text-neutral-500 pt-4">
-          <p>© 2026 LensCraft. Sistem Rental Kamera.</p>
-          <p class="mt-1">Antarmuka alur login dan katalog LensCraft.</p>
-        </div>
       </div>
     </main>
+
+    <!-- Footer -->
+    <footer class="py-4 border-t border-neutral-800">
+      <div class="text-center text-xs text-neutral-500">
+        <p>© 2026 LensCraft. Sistem Rental Kamera.</p>
+        <p class="mt-1">Antarmuka alur login dan katalog LensCraft.</p>
+      </div>
+    </footer>
 
     <script>
       function togglePassword(inputId, button) {

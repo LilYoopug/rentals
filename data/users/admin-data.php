@@ -30,14 +30,13 @@ function create_user_record($data)
     }
 
     return db_execute(
-        'INSERT INTO users (fullname, email, username, password, role, status, avatar_path, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, NOW())',
+        'INSERT INTO users (fullname, email, username, password, role, avatar_path, created_at) VALUES (?, ?, ?, ?, ?, ?, NOW())',
         [
             trim((string) ($data['fullname'] ?? '')),
             trim((string) ($data['email'] ?? '')),
             trim((string) ($data['username'] ?? '')),
             (string) ($data['password'] ?? password_hash('user123', PASSWORD_DEFAULT)),
             normalize_role_value((string) ($data['role'] ?? 'pelanggan')),
-            normalize_user_status_value((string) ($data['status'] ?? 'aktif')),
             trim((string) ($data['avatar_path'] ?? '')),
         ]
     );
@@ -49,18 +48,37 @@ function update_user_record($id, $data)
         return false;
     }
 
-    return db_execute(
-        'UPDATE users SET fullname = ?, email = ?, username = ?, role = ?, status = ?, avatar_path = ? WHERE id = ?',
-        [
-            trim((string) ($data['fullname'] ?? '')),
-            trim((string) ($data['email'] ?? '')),
-            trim((string) ($data['username'] ?? '')),
-            normalize_role_value((string) ($data['role'] ?? 'pelanggan')),
-            normalize_user_status_value((string) ($data['status'] ?? 'aktif')),
-            trim((string) ($data['avatar_path'] ?? '')),
-            (int) $id,
-        ]
-    );
+    // Check if password needs to be updated
+    $password = trim((string) ($data['password'] ?? ''));
+    
+    if (!empty($password)) {
+        // Update with password
+        return db_execute(
+            'UPDATE users SET fullname = ?, email = ?, username = ?, password = ?, role = ?, avatar_path = ? WHERE id = ?',
+            [
+                trim((string) ($data['fullname'] ?? '')),
+                trim((string) ($data['email'] ?? '')),
+                trim((string) ($data['username'] ?? '')),
+                password_hash($password, PASSWORD_DEFAULT),
+                normalize_role_value((string) ($data['role'] ?? 'pelanggan')),
+                trim((string) ($data['avatar_path'] ?? '')),
+                (int) $id,
+            ]
+        );
+    } else {
+        // Update without password
+        return db_execute(
+            'UPDATE users SET fullname = ?, email = ?, username = ?, role = ?, avatar_path = ? WHERE id = ?',
+            [
+                trim((string) ($data['fullname'] ?? '')),
+                trim((string) ($data['email'] ?? '')),
+                trim((string) ($data['username'] ?? '')),
+                normalize_role_value((string) ($data['role'] ?? 'pelanggan')),
+                trim((string) ($data['avatar_path'] ?? '')),
+                (int) $id,
+            ]
+        );
+    }
 }
 
 function delete_user_record($id)

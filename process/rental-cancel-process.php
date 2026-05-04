@@ -6,7 +6,7 @@ require_once __DIR__ . '/../data/activity-data.php';
 
 header('Content-Type: application/json');
 
-if ($_SERVER['REQUEST_METHOD'] !== 'POST' || !verify_csrf_request()) {
+if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     echo json_encode(['success' => false, 'message' => 'Request tidak valid.']);
     exit;
 }

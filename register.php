@@ -4,6 +4,10 @@ require_once __DIR__ . '/includes/flash.php';
 if (is_logged_in()) {
     redirect_logged_in_user_home();
 }
+
+// Get old input values if validation failed
+$old_input = $_SESSION['old_input'] ?? [];
+unset($_SESSION['old_input']);
 ?>
 <!doctype html>
 <html lang="id">
@@ -111,10 +115,10 @@ if (is_logged_in()) {
 
     <!-- Main Content -->
     <main class="flex-1 flex items-center justify-center pt-24 pb-12 px-6">
-      <div class="max-w-md w-full space-y-8 animate-fade-in">
+      <div class="max-w-md w-full space-y-6 animate-fade-in">
         <!-- Header -->
         <div class="text-center space-y-4">
-          <h1 class="text-4xl font-serif mt-4">Buat akun LensCraft</h1>
+          <h1 class="text-3xl font-serif mt-2">Buat akun LensCraft</h1>
           <p class="text-neutral-400 text-sm leading-relaxed max-w-sm mx-auto">
             Daftar untuk menyewa peralatan, mengelola booking, dan menerima pembaruan status rental dalam satu tempat.
           </p>
@@ -122,7 +126,6 @@ if (is_logged_in()) {
 
         <!-- Register Form -->
         <form class="space-y-5 auth-panel p-8 rounded-[1.75rem]" action="process/register-process.php" method="POST">
-          <?php echo csrf_input(); ?>
           <!-- Full Name -->
           <div>
             <label for="fullname" class="block text-sm font-medium text-neutral-300 mb-2">
@@ -133,6 +136,7 @@ if (is_logged_in()) {
               id="fullname"
               name="fullname"
               required
+              value="<?= htmlspecialchars($old_input['fullname'] ?? '', ENT_QUOTES, 'UTF-8') ?>"
               class="w-full px-4 py-3 bg-neutral-800/90 border border-neutral-700 rounded-xl text-neutral-100 placeholder-neutral-500 input-focus outline-none"
               placeholder="Masukkan nama lengkap"
             />
@@ -148,6 +152,7 @@ if (is_logged_in()) {
               id="email"
               name="email"
               required
+              value="<?= htmlspecialchars($old_input['email'] ?? '', ENT_QUOTES, 'UTF-8') ?>"
               class="w-full px-4 py-3 bg-neutral-800/90 border border-neutral-700 rounded-xl text-neutral-100 placeholder-neutral-500 input-focus outline-none"
               placeholder="your.email@example.com"
             />
@@ -163,6 +168,7 @@ if (is_logged_in()) {
               id="username"
               name="username"
               required
+              value="<?= htmlspecialchars($old_input['username'] ?? '', ENT_QUOTES, 'UTF-8') ?>"
               class="w-full px-4 py-3 bg-neutral-800/90 border border-neutral-700 rounded-xl text-neutral-100 placeholder-neutral-500 input-focus outline-none"
               placeholder="Pilih username"
             />
@@ -245,14 +251,16 @@ if (is_logged_in()) {
             <a href="login.php" class="subtle-link hover:text-white font-medium">Masuk</a>
           </div>
         </form>
-
-        <!-- Footer -->
-        <div class="text-center text-xs text-neutral-500 pt-4">
-          <p>© 2026 LensCraft. Sistem Rental Kamera.</p>
-          <p class="mt-1">Semua akun baru ditinjau dalam 24 jam.</p>
-        </div>
       </div>
     </main>
+
+    <!-- Footer -->
+    <footer class="py-4 border-t border-neutral-800">
+      <div class="text-center text-xs text-neutral-500">
+        <p>© 2026 LensCraft. Sistem Rental Kamera.</p>
+        <p class="mt-1">Akun baru dapat langsung login setelah registrasi.</p>
+      </div>
+    </footer>
 
     <!-- TOS/PP Modal -->
     <div id="modal-overlay" class="fixed inset-0 z-50 bg-neutral-950/80 backdrop-blur-sm hidden flex items-center justify-center p-4">

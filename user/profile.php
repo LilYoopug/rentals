@@ -559,7 +559,6 @@ body.light-mode .bg-neutral-900 .text-sm.text-neutral-400 {
                 </div>
 
                 <form id="profile-form" class="space-y-5" action="../process/profile-update-process.php" method="POST" enctype="multipart/form-data">
-                <?= csrf_input() ?>
                 <input type="hidden" name="existing_avatar_path" id="existing-avatar-path" value="<?= e((string) ($user['avatar_path'] ?? '')) ?>">
                 <div class="bg-neutral-900 border border-neutral-800 rounded-2xl p-6">
                   <h3 class="text-lg font-semibold text-white mb-4">Informasi Pribadi</h3>
@@ -673,7 +672,6 @@ body.light-mode .bg-neutral-900 .text-sm.text-neutral-400 {
                   <span class="badge badge-success" id="password-status">Terkini</span>
                 </div>
                 <form id="password-form" class="space-y-5" action="../process/password-update-process.php" method="POST">
-                  <?= csrf_input() ?>
                   <div>
                     <label for="current-password" class="block text-sm font-medium text-neutral-400 mb-2">Kata Sandi Saat Ini</label>
                     <div class="relative">
@@ -780,15 +778,6 @@ body.light-mode .bg-neutral-900 .text-sm.text-neutral-400 {
                       <option value="Asia/Jayapura">(GMT+9) Asia/Jayapura</option>
                     </select>
                     <p class="text-xs text-neutral-500 mt-2">Semua tanggal dan waktu akan ditampilkan menggunakan zona waktu ini.</p>
-                  </div>
-                  <div>
-                    <label class="block text-sm font-medium text-neutral-400 mb-2">Tema</label>
-                    <label class="relative inline-flex items-center cursor-pointer">
-                      <input type="checkbox" id="theme-toggle" class="sr-only peer">
-                      <span class="w-11 h-6 bg-neutral-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-neutral-800 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-amber-600"></span>
-                      <span class="ml-3 text-sm font-medium text-neutral-300">Mode Terang</span>
-                    </label>
-                    <p class="text-xs text-neutral-500 mt-2">Ganti antara mode gelap dan mode terang.</p>
                   </div>
                 </div>
               </div>
@@ -933,29 +922,6 @@ body.light-mode .bg-neutral-900 .text-sm.text-neutral-400 {
            }
          });
        }
-        // Tema management
-        const themeToggle = document.getElementById('theme-toggle');
-        function setTema(isLight) {
-          if (isLight) {
-            document.body.classList.add('light-mode');
-          } else {
-            document.body.classList.remove('light-mode');
-          }
-        }
-
-        // Load theme from saved user settings
-        const savedTema = (window.currentSettings && window.currentSettings.theme) || 'dark';
-        setTema(savedTema === 'light');
-        if (themeToggle) {
-          themeToggle.checked = savedTema === 'light';
-        }
-
-        // Listen for theme changes
-        if (themeToggle) {
-          themeToggle.addEventListener('change', function() {
-            setTema(this.checked);
-          });
-        }
 
        function syncFloatingNavFooterState() {
          const floatingNav = document.querySelector('.floating-nav');
@@ -997,10 +963,11 @@ body.light-mode .bg-neutral-900 .text-sm.text-neutral-400 {
        window.addEventListener('scroll', syncFloatingNavFooterState, { passive: true });
        window.addEventListener('resize', syncFloatingNavFooterState);
      </script>
+  <script src="../includes/user-settings.js"></script>
   <script>
       window.currentUser = <?= $user_json ?>;
-      window.currentSettings = <?= $settings_json ?>;
-      window.csrfToken = <?= json_encode(csrf_token()) ?>;
+      // Settings are now loaded from localStorage via UserSettings.get()
+      window.currentSettings = window.UserSettings.get();
 
       window.addEventListener('DOMContentLoaded', function () {
         if (window.currentUser) {
@@ -1019,11 +986,14 @@ body.light-mode .bg-neutral-900 .text-sm.text-neutral-400 {
           setValue('last-name', lastName);
           setValue('email', window.currentUser.email || '');
           setValue('phone', window.currentUser.phone || '');
-          setValue('address-line1', window.currentUser.address_line1 || '');
-          setValue('address-line2', window.currentUser.address_line2 || '');
-          setValue('city', window.currentUser.city || '');
-          setValue('province', window.currentUser.province || '');
-          setValue('zip-code', window.currentUser.zip_code || '');
+          
+          // Handle both legacy fields and billing_info
+          const billing = window.currentUser.billing_info || {};
+          setValue('address-line1', window.currentUser.address_line1 || billing.address_line1 || '');
+          setValue('address-line2', window.currentUser.address_line2 || billing.address_line2 || '');
+          setValue('city', window.currentUser.city || billing.city || '');
+          setValue('province', window.currentUser.province || billing.province || '');
+          setValue('zip-code', window.currentUser.zip_code || billing.zip_code || '');
           const countryMap = {
             Indonesia: 'ID',
             'United States': 'US',
@@ -1040,7 +1010,8 @@ body.light-mode .bg-neutral-900 .text-sm.text-neutral-400 {
             Vietnam: 'VN',
             Philippines: 'PH'
           };
-          setValue('country', countryMap[window.currentUser.country || ''] || window.currentUser.country || 'ID');
+          const userCountry = window.currentUser.country || billing.country || '';
+          setValue('country', countryMap[userCountry] || userCountry || 'ID');
         }
 
         const avatarFileInput = document.getElementById('profile-avatar-file');
@@ -1090,10 +1061,32 @@ body.light-mode .bg-neutral-900 .text-sm.text-neutral-400 {
       });
 
       function postSettingsPayload(payload) {
+        // Settings are now saved to localStorage instead of server
+        if (payload.settings_only === '1') {
+          // Save settings to localStorage
+          const settings = {
+            language: payload.language || 'id',
+            timezone: payload.timezone || 'Asia/Jakarta',
+            theme: payload.theme || 'dark',
+            is_profile_public: payload.is_profile_public === '1',
+            allow_marketing: payload.allow_marketing === '1',
+            allow_data_export: payload.allow_data_export === '1'
+          };
+          
+          if (window.UserSettings.save(settings)) {
+            window.UserSettings.applyTheme(settings.theme);
+            window.currentSettings = settings;
+            alert('Pengaturan berhasil disimpan di browser Anda.');
+          } else {
+            alert('Gagal menyimpan pengaturan.');
+          }
+          return;
+        }
+        
+        // For profile updates (not settings), still post to server
         const form = document.createElement('form');
         form.method = 'POST';
         form.action = '../process/profile-update-process.php';
-        payload.csrf_token = window.csrfToken;
 
         Object.keys(payload).forEach(function (key) {
           const input = document.createElement('input');
@@ -1112,7 +1105,7 @@ body.light-mode .bg-neutral-900 .text-sm.text-neutral-400 {
           settings_only: '1',
           language: document.getElementById('language')?.value || 'id',
           timezone: document.getElementById('timezone')?.value || 'Asia/Jakarta',
-          theme: document.getElementById('theme-toggle')?.checked ? 'light' : 'dark'
+          theme: 'dark'
         });
       }
 

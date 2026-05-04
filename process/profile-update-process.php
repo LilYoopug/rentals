@@ -7,28 +7,22 @@ require_once __DIR__ . '/../data/settings-data.php';
 require_once __DIR__ . '/../data/returns-data.php';
 require_once __DIR__ . '/../includes/upload.php';
 
-if ($_SERVER['REQUEST_METHOD'] !== 'POST' || !verify_csrf_request()) {
+if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     redirect_to('user/profile.php');
 }
 
 $user_id = (int) current_user()['id'];
 
 if (!empty($_POST['settings_only'])) {
-    save_user_settings($user_id, [
-        'language' => $_POST['language'] ?? 'id',
-        'timezone' => $_POST['timezone'] ?? 'Asia/Jakarta',
-        'theme' => $_POST['theme'] ?? 'dark',
-        'is_profile_public' => $_POST['is_profile_public'] ?? 0,
-        'allow_marketing' => $_POST['allow_marketing'] ?? 0,
-        'allow_data_export' => $_POST['allow_data_export'] ?? 1,
-    ]);
-
+    // Settings are now stored in browser localStorage, not database
+    // This endpoint is kept for backward compatibility but does nothing
+    
     if (!empty($_POST['export_data'])) {
         $user = find_user_by_id($user_id);
         $payload = [
             'generated_at' => gmdate('c'),
             'profile' => $user,
-            'settings' => get_user_settings_row($user_id),
+            'settings' => get_user_settings_row($user_id), // Returns default values
             'rentals' => get_customer_rentals($user_id),
             'returns' => get_customer_returns($user_id),
         ];
@@ -38,8 +32,9 @@ if (!empty($_POST['settings_only'])) {
         echo json_encode($payload, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
         exit;
     } else {
-        add_activity_log($user_id, (string) current_user()['fullname'], (string) current_user()['role'], 'settings', 'Memperbarui preferensi aplikasi.');
-        set_flash('success', 'Preferensi berhasil disimpan.');
+        // Settings saved in localStorage on client side
+        add_activity_log($user_id, (string) current_user()['fullname'], (string) current_user()['role'], 'settings', 'Memperbarui preferensi aplikasi (localStorage).');
+        set_flash('success', 'Preferensi berhasil disimpan di browser Anda.');
     }
 
     redirect_to('user/profile.php');

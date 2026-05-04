@@ -7,7 +7,7 @@ $rental_code = (string) ($_POST['rental_code'] ?? '');
 $return_code = (string) ($_POST['return_code'] ?? '');
 $status = (string) ($_POST['status'] ?? 'selesai');
 
-if ($_SERVER['REQUEST_METHOD'] !== 'POST' || !verify_csrf_request()) {
+if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     set_flash('error', 'Request tidak valid.');
     redirect_to('staff/returns.php');
 }

@@ -687,7 +687,6 @@ foreach ($product_rows as $row) {
             </div>
           </div>
           <form id="stock-price-form" action="../process/staff-stock-price-bulk-update.php" method="POST">
-            <?= csrf_input() ?>
             <div class="overflow-x-auto stock-price-table-wrapper">
               <table class="w-full stock-price-table">
                 <thead class="hidden sm:table-header-group">
@@ -723,7 +722,7 @@ foreach ($product_rows as $row) {
                       <td class="block sm:table-cell px-0 pb-4 sm:px-4 sm:py-3 align-top border-b border-neutral-800 sm:border-b-0">
                         <input type="hidden" name="product_ids[]" value="<?= $item['id'] ?>">
                         <div class="flex w-full min-w-0 items-center gap-4">
-                          <img src="<?= e($item['image']) ?>" alt="<?= e($item['name']) ?>" class="w-16 h-16 rounded-2xl object-cover bg-neutral-800 border border-neutral-700 shrink-0">
+                          <img src="<?= e($item['image']) ?>" alt="<?= e($item['name']) ?>" class="w-16 h-16 rounded-2xl object-cover bg-neutral-800 border border-neutral-700 shrink-0" onerror="this.src='../images/gear-placeholder.svg'">
                           <div class="min-w-0">
                             <div class="text-sm font-semibold text-white mobile-name-ellipsis mobile-card-title-ellipsis"><?= e($item['name']) ?></div>
                             <div class="text-sm text-neutral-400 mt-1"><?= e($item['brand']) ?> • <?= e($item['category']) ?></div>

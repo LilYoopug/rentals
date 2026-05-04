@@ -1,6 +1,7 @@
 <?php
 
 require_once __DIR__ . '/rentals-data.php';
+require_once __DIR__ . '/../includes/trigger-functions.php';
 
 function normalize_return_row($row)
 {
@@ -92,7 +93,14 @@ function get_return_tracking_rows()
              COALESCE(rt.fine_amount, 0) AS fine_amount,
              rt.returned_at,
              r.rental_code,
+             r.start_date,
              r.end_date,
+             r.total_days,
+             r.daily_rate,
+             r.discount_percentage,
+             r.total_price,
+             r.delivery_method,
+             r.delivery_fee,
              u.fullname,
              p.name AS product_name,
              p.brand,
@@ -148,17 +156,36 @@ function create_return_for_rental($rental_code, $processed_by = null, $options =
 
     $notes = trim((string) ($options['notes'] ?? 'Pengembalian diajukan melalui website.'));
 
-    return db_execute(
-        'INSERT INTO returns (return_code, rental_id, processed_by, notes, status, returned_at, created_at) VALUES (?, ?, ?, ?, ?, ?, NOW())',
+    // Call trigger function before insert to calculate fine and returned_at
+    $trigger_data = trigger_return_before_insert(
+        (int) $rental['id'],
+        $return_status,
+        $options['returned_at'] ?? null
+    );
+
+    $result = db_execute(
+        'INSERT INTO returns (return_code, rental_id, processed_by, notes, fine_amount, status, returned_at, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, NOW())',
         [
             build_return_code(),
             (int) $rental['id'],
             $processed_by ? (int) $processed_by : null,
             $notes,
+            $trigger_data['fine_amount'],
             $stored_return_status,
-            $return_status === 'selesai' ? date('Y-m-d H:i:s') : null,
+            $trigger_data['returned_at'],
         ]
     );
+
+    // Call trigger function after insert to update rental status
+    if ($result) {
+        trigger_return_after_insert(
+            (int) $rental['id'],
+            $return_status,
+            $trigger_data['returned_at']
+        );
+    }
+
+    return $result;
 }
 
 function update_return_record($return_code, $data)
@@ -192,18 +219,38 @@ function update_return_record($return_code, $data)
     }
 
     $stored_new_status = storage_return_status_value($new_status);
-    $is_completed = $new_status === 'selesai' ? 1 : 0;
 
-    return db_execute(
+    // Call trigger function before update to calculate fine and returned_at
+    $trigger_data = trigger_return_before_update(
+        (int) $rental['id'],
+        $new_status,
+        $return_row['returned_at'],
+        $data['returned_at'] ?? null
+    );
+
+    $result = db_execute(
         'UPDATE returns
-         SET notes = ?, status = ?, processed_by = ?, returned_at = CASE WHEN ? = 1 THEN COALESCE(returned_at, NOW()) ELSE NULL END
+         SET notes = ?, fine_amount = ?, status = ?, processed_by = ?, returned_at = ?
          WHERE return_code = ?',
         [
             trim((string) ($data['notes'] ?? '')),
+            $trigger_data['fine_amount'],
             $stored_new_status,
             !empty($data['processed_by']) ? (int) $data['processed_by'] : null,
-            $is_completed,
+            $trigger_data['returned_at'],
             $return_code,
         ]
     );
+
+    // Call trigger function after update to update rental status
+    if ($result) {
+        trigger_return_after_update(
+            (int) $rental['id'],
+            $old_status,
+            $new_status,
+            $trigger_data['returned_at']
+        );
+    }
+
+    return $result;
 }

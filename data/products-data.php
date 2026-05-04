@@ -178,7 +178,31 @@ function delete_product_record($id)
         return false;
     }
 
-    return db_execute('DELETE FROM products WHERE id = ?', [(int) $id]);
+    $product_id = (int) $id;
+    
+    // Check if product is being used in active rentals
+    $active_rentals = db_one(
+        'SELECT COUNT(*) as count FROM rentals WHERE product_id = ? AND status IN ("menunggu", "disetujui", "mendatang", "aktif")',
+        [$product_id]
+    );
+    
+    if ($active_rentals && (int) $active_rentals['count'] > 0) {
+        return false; // Cannot delete product with active rentals
+    }
+    
+    // Check if product is being used in pending returns
+    $pending_returns = db_one(
+        'SELECT COUNT(*) as count FROM returns r 
+         INNER JOIN rentals rt ON r.rental_id = rt.id 
+         WHERE rt.product_id = ? AND r.status = "menunggu"',
+        [$product_id]
+    );
+    
+    if ($pending_returns && (int) $pending_returns['count'] > 0) {
+        return false; // Cannot delete product with pending returns
+    }
+
+    return db_execute('DELETE FROM products WHERE id = ?', [$product_id]);
 }
 
 function update_product_stock_after_rental($product_id, $delta)

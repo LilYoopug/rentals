@@ -913,32 +913,6 @@ function redirect_logged_in_user_home()
     redirect_to('products.php');
 }
 
-function csrf_token()
-{
-    if (empty($_SESSION['csrf_token'])) {
-        $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
-    }
-
-    return (string) $_SESSION['csrf_token'];
-}
-
-function csrf_input()
-{
-    return '<input type="hidden" name="csrf_token" value="' . e(csrf_token()) . '">';
-}
-
-function verify_csrf_request()
-{
-    if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-        return false;
-    }
-
-    $token = (string) ($_POST['csrf_token'] ?? $_SERVER['HTTP_X_CSRF_TOKEN'] ?? '');
-    $session_token = (string) ($_SESSION['csrf_token'] ?? '');
-
-    return $token !== '' && $session_token !== '' && hash_equals($session_token, $token);
-}
-
 function format_currency($amount)
 {
     return 'Rp' . number_format((float) $amount, 2, ',', '.');

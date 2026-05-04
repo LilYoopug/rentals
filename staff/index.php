@@ -194,8 +194,9 @@ $approved_count = 0;
 foreach ($all_borrowing_rows as $row) {
     $status = (string) ($row['status'] ?? '');
     $created_day = !empty($row['created_at']) ? date('Y-m-d', strtotime((string) $row['created_at'])) : '';
+    $approved_day = !empty($row['approved_at']) ? date('Y-m-d', strtotime((string) $row['approved_at'])) : '';
 
-    if (in_array($status, ['menunggu', 'mendatang'], true)) {
+    if (in_array($status, ['menunggu'], true)) {
         $pending_approval_count++;
         if ($created_day === $yesterday) {
             $pending_yesterday_count++;
@@ -206,10 +207,11 @@ foreach ($all_borrowing_rows as $row) {
         $active_rental_count++;
     }
 
-    if ($created_day === $today) {
+    // Count revenue based on approval date, not creation date
+    if ($approved_day === $today && in_array($status, ['disetujui', 'mendatang', 'aktif', 'selesai'], true)) {
         $revenue_today += (float) ($row['total_price'] ?? 0);
     }
-    if ($created_day === $yesterday) {
+    if ($approved_day === $yesterday && in_array($status, ['disetujui', 'mendatang', 'aktif', 'selesai'], true)) {
         $revenue_yesterday += (float) ($row['total_price'] ?? 0);
     }
 
@@ -271,7 +273,7 @@ $staff_summary = [
 
 $staff_pending_approvals = [];
 foreach ($all_borrowing_rows as $row) {
-    if (!in_array((string) ($row['status'] ?? ''), ['menunggu', 'mendatang'], true)) {
+    if (!in_array((string) ($row['status'] ?? ''), ['menunggu'], true)) {
         continue;
     }
 
@@ -279,6 +281,17 @@ foreach ($all_borrowing_rows as $row) {
         'code' => (string) ($row['rental_code'] ?? '-'),
         'product_name' => (string) ($row['product_name'] ?? 'Peralatan'),
         'customer' => (string) ($row['fullname'] ?? 'Customer'),
+        'image' => public_media_path((string) ($row['image_path'] ?? 'images/gear-placeholder.svg')),
+        'brand' => (string) ($row['brand'] ?? ''),
+        'category' => (string) ($row['category_slug'] ?? ''),
+        'dailyRate' => (float) ($row['daily_rate'] ?? 0),
+        'discount' => (int) ($row['discount_percentage'] ?? 0),
+        'startDate' => (string) ($row['start_date'] ?? ''),
+        'endDate' => (string) ($row['end_date'] ?? ''),
+        'days' => (int) ($row['total_days'] ?? 0),
+        'amount' => (float) ($row['total_price'] ?? 0),
+        'deliveryMethod' => (string) ($row['delivery_method'] ?? 'ambil_sendiri'),
+        'deliveryFee' => (float) ($row['delivery_fee'] ?? 0),
         'time_ago' => staff_relative_time($row['created_at'] ?? ''),
     ];
 }
@@ -594,8 +607,8 @@ $staff_default_report_rows = $staff_report_tables['borrowings'];
       .modal-overlay {
         background:
           radial-gradient(circle at top, rgba(199, 166, 90, 0.14), transparent 28%),
-          rgba(3, 3, 3, 0.86);
-        backdrop-filter: blur(12px);
+          rgba(3, 3, 3, 0.92);
+        backdrop-filter: blur(8px);
       }
       .modal-panel {
         background: linear-gradient(180deg, rgba(20, 20, 20, 0.98), rgba(9, 9, 9, 0.96));
@@ -1042,16 +1055,16 @@ $staff_default_report_rows = $staff_report_tables['borrowings'];
                   <?php else: ?>
                     <?php foreach ($staff_pending_approvals as $approval): ?>
                       <div class="flex items-center justify-between py-3 border-b border-neutral-800">
-                        <div class="flex items-center gap-3">
-                          <div class="w-10 h-10 bg-neutral-800 rounded-lg flex items-center justify-center">
-                            <span class="text-xs font-medium text-neutral-300"><?= e($approval['code']) ?></span>
+                        <div class="flex items-center gap-3 min-w-0 flex-1">
+                          <div class="w-12 h-12 bg-neutral-800 rounded-lg overflow-hidden flex-shrink-0">
+                            <img src="<?= e($approval['image']) ?>" alt="<?= e($approval['product_name']) ?>" class="w-full h-full object-cover" onerror="this.src='../images/gear-placeholder.svg'">
                           </div>
-                          <div>
-                            <p class="text-sm font-medium text-white"><?= e($approval['product_name']) ?></p>
-                            <p class="text-xs text-neutral-500"><?= e($approval['customer']) ?> • <?= e($approval['time_ago']) ?></p>
+                          <div class="min-w-0 flex-1">
+                            <p class="text-sm font-medium text-white truncate"><?= e($approval['product_name']) ?></p>
+                            <p class="text-xs text-neutral-500 truncate"><?= e($approval['customer']) ?> • <?= e($approval['time_ago']) ?></p>
                           </div>
                         </div>
-                        <div class="flex gap-2">
+                        <div class="flex gap-2 flex-shrink-0">
                           <button onclick="approveBorrowing('<?= e($approval['code']) ?>')" class="px-3 py-1 bg-green-900/30 border border-green-800/50 text-green-400 text-xs rounded-lg hover:bg-green-900/50 transition-colors">Setujui</button>
                           <button onclick="rejectBorrowing('<?= e($approval['code']) ?>')" class="px-3 py-1 bg-red-900/30 border border-red-800/50 text-red-400 text-xs rounded-lg hover:bg-red-900/50 transition-colors">Tolak</button>
                         </div>
@@ -1125,34 +1138,120 @@ $staff_default_report_rows = $staff_report_tables['borrowings'];
 
 
 
-    <div id="staff-action-modal" class="fixed inset-0 z-50 hidden flex items-center justify-center p-4 modal-overlay">
-      <div class="modal-panel rounded-3xl w-full max-w-md">
-        <div class="modal-header p-6 border-b border-neutral-800 flex items-center justify-between">
-          <h3 class="text-xl font-semibold text-white" id="staff-action-modal-title">Konfirmasi</h3>
+    <div id="staff-action-modal" class="fixed inset-0 z-50 hidden opacity-0 flex items-center justify-center p-4 transition-opacity duration-200">
+      <div class="absolute inset-0 bg-neutral-950/80 backdrop-blur-sm" onclick="closeStaffActionModal()"></div>
+      <div class="relative bg-neutral-900 border border-neutral-800 rounded-2xl shadow-2xl w-full max-w-3xl max-h-[90vh] overflow-y-auto transform scale-95 opacity-0 transition-all duration-200" id="staff-action-modal-content">
+        <div class="modal-header p-6 border-b border-amber-800/30 flex items-center justify-between sticky top-0 z-10 bg-gradient-to-b from-neutral-900 to-neutral-900/95 backdrop-blur-sm">
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-xl bg-amber-900/30 border border-amber-800/50 flex items-center justify-center">
+              <svg class="w-5 h-5 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </div>
+            <div>
+              <h3 class="text-lg font-semibold text-white" id="staff-action-modal-title">Konfirmasi Peminjaman</h3>
+              <p class="text-xs text-amber-400/70">Tinjau detail sebelum menyetujui</p>
+            </div>
+          </div>
           <button type="button" onclick="closeStaffActionModal()" class="modal-close text-neutral-400 hover:text-white transition-colors">
             <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
             </svg>
           </button>
         </div>
-        <div class="p-6 modal-body-shell mx-6 mt-6">
-          <div class="action-sheet">
-            <div class="action-sheet-icon" id="staff-action-modal-icon">
-              <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
+        <div class="p-6">
+          <!-- Product Detail Section -->
+          <div id="staff-action-modal-product-section" class="hidden mb-6">
+            <div class="detail-sheet">
+              <!-- Product Image -->
+              <div class="detail-media-panel">
+                <div class="detail-media-frame" style="min-height: 16rem;">
+                  <img id="staff-action-modal-product-image" src="../images/gear-placeholder.svg" alt="Product" class="detail-media-image" style="min-height: 16rem;" onerror="this.src='../images/gear-placeholder.svg'">
+                </div>
+              </div>
+              
+              <!-- Product Info -->
+              <div class="detail-content">
+                <div class="detail-kicker text-amber-400" id="staff-action-modal-product-category">KATEGORI</div>
+                <h2 class="detail-title" id="staff-action-modal-product-name">Nama Produk</h2>
+                <p class="detail-subtitle" id="staff-action-modal-product-brand">Brand</p>
+                
+                <!-- Rental Details -->
+                <div class="space-y-0 pt-4 rounded-xl border border-neutral-800 bg-neutral-900/40 p-4">
+                  <div class="flex items-center justify-between py-2.5 border-b border-neutral-800/50">
+                    <span class="text-xs text-neutral-500 uppercase tracking-wider">Kode Rental</span>
+                    <span class="text-sm font-semibold text-white" id="staff-action-modal-rental-code">-</span>
+                  </div>
+                  <div class="flex items-center justify-between py-2.5 border-b border-neutral-800/50">
+                    <span class="text-xs text-neutral-500 uppercase tracking-wider">Pelanggan</span>
+                    <span class="text-sm font-semibold text-white" id="staff-action-modal-customer">-</span>
+                  </div>
+                  <div class="flex items-center justify-between py-2.5 border-b border-neutral-800/50">
+                    <span class="text-xs text-neutral-500 uppercase tracking-wider">Periode</span>
+                    <span class="text-sm font-semibold text-white" id="staff-action-modal-period">-</span>
+                  </div>
+                  <div class="flex items-center justify-between py-2.5 border-b border-neutral-800/50">
+                    <span class="text-xs text-neutral-500 uppercase tracking-wider">Durasi</span>
+                    <span class="text-sm font-semibold text-amber-400" id="staff-action-modal-duration">-</span>
+                  </div>
+                  <div class="flex items-center justify-between py-2.5">
+                    <span class="text-xs text-neutral-500 uppercase tracking-wider">Pengambilan</span>
+                    <span class="text-sm font-semibold text-white" id="staff-action-modal-delivery">-</span>
+                  </div>
+                </div>
+                
+                <!-- Pricing -->
+                <div class="grid grid-cols-2 gap-3 mt-3">
+                  <div class="rounded-xl border border-neutral-800 bg-neutral-900/40 p-3">
+                    <div class="text-xs text-neutral-500 mb-1 uppercase tracking-wider">Harga/Hari</div>
+                    <div class="text-base font-bold text-white" id="staff-action-modal-price">-</div>
+                  </div>
+                  <div class="rounded-xl border border-neutral-800 bg-neutral-900/40 p-3">
+                    <div class="text-xs text-neutral-500 mb-1 uppercase tracking-wider">Diskon</div>
+                    <div class="text-base font-bold text-white" id="staff-action-modal-discount">-</div>
+                  </div>
+                </div>
+                
+                <!-- Total Amount -->
+                <div class="mt-3 rounded-xl border border-neutral-800 bg-neutral-900/40 p-4">
+                  <div class="flex items-center justify-between mb-1">
+                    <span class="text-xs font-semibold text-neutral-500 uppercase tracking-wider">Total Pembayaran</span>
+                  </div>
+                  <div class="text-2xl font-bold text-white" id="staff-action-modal-total">-</div>
+                  <div id="staff-action-modal-delivery-fee-section" class="hidden mt-3 pt-3 border-t border-neutral-800">
+                    <div class="flex items-center justify-between text-xs">
+                      <span class="text-neutral-500 uppercase tracking-wider">Biaya Pengiriman</span>
+                      <span class="font-semibold text-white" id="staff-action-modal-delivery-fee">-</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
-            <div class="space-y-2">
-              <div class="action-sheet-eyebrow">Mohon konfirmasi</div>
-              <p class="action-sheet-copy" id="staff-action-modal-message"></p>
+          </div>
+          
+          <!-- Simple Message Section -->
+          <div id="staff-action-modal-simple-section" class="">
+            <div class="action-sheet">
+              <div class="action-sheet-icon" id="staff-action-modal-icon">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </div>
+              <div class="space-y-2">
+                <div class="action-sheet-eyebrow">Mohon konfirmasi</div>
+                <p class="action-sheet-copy" id="staff-action-modal-message"></p>
+              </div>
             </div>
           </div>
         </div>
-        <div class="px-6 pb-6 action-sheet-actions">
-          <button type="button" onclick="closeStaffActionModal()" class="flex-1 px-4 py-3 bg-neutral-800 border border-neutral-700 rounded-lg text-neutral-300 hover:bg-neutral-700 transition-colors">Batal</button>
-          <button type="button" id="staff-action-confirm-btn" class="flex-1 px-4 py-3 bg-white text-black font-semibold rounded-lg hover:bg-neutral-200 transition-colors">Lanjutkan</button>
+        
+        <div class="px-6 pb-6 flex gap-3 border-t border-amber-800/20 pt-6 bg-gradient-to-t from-neutral-900/50 to-transparent">
+          <button type="button" onclick="closeStaffActionModal()" class="flex-1 px-4 py-3 bg-neutral-800 border border-neutral-700 rounded-xl text-neutral-300 hover:bg-neutral-700 transition-all font-medium">Batal</button>
+          <button type="button" id="staff-action-reject-btn" class="hidden flex-1 px-4 py-3 bg-gradient-to-br from-red-600 to-red-700 text-white font-semibold rounded-xl hover:from-red-500 hover:to-red-600 transition-all shadow-lg shadow-red-900/30">Tolak Peminjaman</button>
+          <button type="button" id="staff-action-confirm-btn" class="flex-1 px-4 py-3 bg-gradient-to-br from-amber-500 to-amber-600 text-black font-semibold rounded-xl hover:from-amber-400 hover:to-amber-500 transition-all shadow-lg shadow-amber-900/40">Setujui Peminjaman</button>
         </div>
       </div>
+    </div>
     </div>
 
     <script>
@@ -1180,51 +1279,140 @@ $staff_default_report_rows = $staff_report_tables['borrowings'];
         return sectionId;
       }
 
-      function openStaffActionModal(title, message, onConfirm) {
+      function formatCurrency(amount) {
+        return 'Rp' + Number(amount).toLocaleString('id-ID');
+      }
+
+      function formatDate(dateStr) {
+        if (!dateStr) return '-';
+        const date = new Date(dateStr);
+        const options = { year: 'numeric', month: 'short', day: 'numeric' };
+        return date.toLocaleDateString('id-ID', options);
+      }
+
+      function openStaffActionModal(title, message, onConfirm, productMeta, onReject) {
         const confirmBtn = document.getElementById('staff-action-confirm-btn');
+        const rejectBtn = document.getElementById('staff-action-reject-btn');
         const iconWrap = document.getElementById('staff-action-modal-icon');
         const eyebrow = document.querySelector('.action-sheet-eyebrow');
+        const productSection = document.getElementById('staff-action-modal-product-section');
+        const simpleSection = document.getElementById('staff-action-modal-simple-section');
+        
         document.getElementById('staff-action-modal-title').textContent = title;
         document.getElementById('staff-action-modal-message').textContent = message;
-        if (/tolak|rusak/i.test(title)) {
-          if (eyebrow) eyebrow.textContent = 'High impact action';
-          confirmBtn.textContent = 'Ya, lanjutkan';
-          confirmBtn.className = 'flex-1 px-4 py-3 bg-red-500 text-white font-semibold rounded-lg hover:bg-red-400 transition-colors';
-          iconWrap.innerHTML = '<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-7.938 4h15.876c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>';
+        
+        // Show/hide sections based on productMeta
+        if (productMeta) {
+          productSection.classList.remove('hidden');
+          simpleSection.classList.add('hidden');
+          
+          // Fill product details
+          document.getElementById('staff-action-modal-product-image').src = productMeta.image || '../images/gear-placeholder.svg';
+          document.getElementById('staff-action-modal-product-name').textContent = productMeta.name || '-';
+          document.getElementById('staff-action-modal-product-brand').textContent = productMeta.brand || '-';
+          document.getElementById('staff-action-modal-product-category').textContent = (productMeta.category || 'equipment').toUpperCase();
+          document.getElementById('staff-action-modal-rental-code').textContent = productMeta.code || '-';
+          document.getElementById('staff-action-modal-customer').textContent = productMeta.customer || '-';
+          document.getElementById('staff-action-modal-period').textContent = formatDate(productMeta.startDate) + ' - ' + formatDate(productMeta.endDate);
+          document.getElementById('staff-action-modal-duration').textContent = (productMeta.days || 0) + ' hari';
+          
+          // Delivery method
+          var deliveryText = productMeta.deliveryMethod === 'diantar' ? 'Diantar' : 'Ambil Sendiri';
+          document.getElementById('staff-action-modal-delivery').textContent = deliveryText;
+          
+          document.getElementById('staff-action-modal-price').textContent = formatCurrency(productMeta.price || 0);
+          document.getElementById('staff-action-modal-discount').textContent = (productMeta.discount || 0) + '%';
+          document.getElementById('staff-action-modal-total').textContent = formatCurrency(productMeta.amount || 0);
+          
+          // Show delivery fee if applicable
+          var deliveryFeeSection = document.getElementById('staff-action-modal-delivery-fee-section');
+          if (productMeta.deliveryMethod === 'diantar' && productMeta.deliveryFee > 0) {
+            deliveryFeeSection.classList.remove('hidden');
+            document.getElementById('staff-action-modal-delivery-fee').textContent = formatCurrency(productMeta.deliveryFee);
+          } else {
+            deliveryFeeSection.classList.add('hidden');
+          }
         } else {
-          if (eyebrow) eyebrow.textContent = 'Action confirmation';
-          confirmBtn.textContent = 'Konfirmasi';
-          confirmBtn.className = 'flex-1 px-4 py-3 bg-white text-black font-semibold rounded-lg hover:bg-neutral-200 transition-colors';
-          iconWrap.innerHTML = '<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>';
+          productSection.classList.add('hidden');
+          simpleSection.classList.remove('hidden');
         }
+        
+        // Show/hide reject button
+        if (onReject) {
+          rejectBtn.classList.remove('hidden');
+          rejectBtn.onclick = function () {
+            closeStaffActionModal();
+            onReject();
+          };
+        } else {
+          rejectBtn.classList.add('hidden');
+        }
+        
+        if (eyebrow) eyebrow.textContent = 'Mohon konfirmasi';
+        confirmBtn.textContent = 'Setujui Peminjaman';
+        confirmBtn.className = 'flex-1 px-4 py-3 bg-gradient-to-br from-amber-500 to-amber-600 text-black font-semibold rounded-xl hover:from-amber-400 hover:to-amber-500 transition-all shadow-lg shadow-amber-900/40';
+        iconWrap.innerHTML = '<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>';
+        
         confirmBtn.onclick = function () {
           closeStaffActionModal();
           onConfirm();
         };
-        document.getElementById('staff-action-modal').classList.remove('hidden');
+        
+        const modal = document.getElementById('staff-action-modal');
+        const modalContent = document.getElementById('staff-action-modal-content');
+        modal.classList.remove('hidden');
+        setTimeout(() => {
+          modal.classList.remove('opacity-0');
+          modalContent.classList.remove('opacity-0', 'scale-95');
+        }, 10);
       }
 
       function closeStaffActionModal() {
-        document.getElementById('staff-action-modal').classList.add('hidden');
+        const modal = document.getElementById('staff-action-modal');
+        const modalContent = document.getElementById('staff-action-modal-content');
+        modal.classList.add('opacity-0');
+        modalContent.classList.add('opacity-0', 'scale-95');
+        setTimeout(() => {
+          modal.classList.add('hidden');
+        }, 200);
+      }
+
+      function capitalizeFirst(str) {
+        return str ? str.charAt(0).toUpperCase() + str.slice(1) : '';
       }
 
       function approveBorrowing(id) {
-        openStaffActionModal('Setujui Peminjaman', 'Setujui peminjaman ' + id + '?', function () {
+        const approval = <?= json_encode($staff_pending_approvals, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) ?>.find(function(entry) { return entry.code === id; });
+        openStaffActionModal('Setujui Peminjaman', 'Anda akan menyetujui peminjaman ini. Pastikan semua detail sudah benar sebelum melanjutkan.', function () {
           postStaffAction('../process/staff-peminjaman-approve.php', { rental_code: id });
+        }, approval ? {
+          code: approval.code,
+          name: approval.product_name,
+          brand: approval.brand || 'LensCraft',
+          category: approval.category || 'equipment',
+          image: approval.image,
+          customer: approval.customer,
+          startDate: approval.startDate,
+          endDate: approval.endDate,
+          days: approval.days,
+          price: approval.dailyRate,
+          discount: approval.discount,
+          amount: approval.amount,
+          deliveryMethod: approval.deliveryMethod,
+          deliveryFee: approval.deliveryFee
+        } : null, function () {
+          postStaffAction('../process/staff-peminjaman-reject.php', { rental_code: id });
         });
       }
 
       function rejectBorrowing(id) {
-        openStaffActionModal('Tolak Peminjaman', 'Tolak peminjaman ' + id + '?', function () {
-          postStaffAction('../process/staff-peminjaman-reject.php', { rental_code: id });
-        });
+        approveBorrowing(id);
       }
 
       function postStaffAction(action, payload) {
         const form = document.createElement('form');
         form.method = 'POST';
         form.action = action;
-        payload.csrf_token = <?= json_encode(csrf_token()) ?>;
 
         Object.keys(payload).forEach(function (key) {
           const input = document.createElement('input');

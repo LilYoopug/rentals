@@ -3,7 +3,7 @@
 require_once __DIR__ . '/../includes/staff-check.php';
 require_once __DIR__ . '/../data/products-data.php';
 
-if ($_SERVER['REQUEST_METHOD'] !== 'POST' || !verify_csrf_request()) {
+if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     set_flash('error', 'Gagal memperbarui harga, diskon, dan stok produk.');
     redirect_to('staff/stock-price.php');
 }

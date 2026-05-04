@@ -13,11 +13,10 @@ $payload = [
     'username' => $username,
     'password' => password_hash((string) ($_POST['password'] ?? 'user123'), PASSWORD_DEFAULT),
     'role' => $_POST['role'] ?? 'pelanggan',
-    'status' => $_POST['status'] ?? 'aktif',
     'avatar_path' => save_uploaded_user_avatar('avatar_file', (string) ($_POST['existing_avatar_path'] ?? '')),
 ];
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && verify_csrf_request() && create_user_record($payload)) {
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && create_user_record($payload)) {
     add_activity_log((int) current_user()['id'], (string) current_user()['fullname'], (string) current_user()['role'], 'pelanggan', 'Menambah pelanggan baru.');
     set_flash('success', 'User berhasil ditambahkan.');
 } else {

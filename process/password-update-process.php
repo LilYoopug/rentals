@@ -4,7 +4,7 @@ require_once __DIR__ . '/../includes/customer-check.php';
 require_once __DIR__ . '/../data/users/customer-data.php';
 require_once __DIR__ . '/../data/activity-data.php';
 
-if ($_SERVER['REQUEST_METHOD'] !== 'POST' || !verify_csrf_request()) {
+if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     redirect_to('user/profile.php');
 }
 
