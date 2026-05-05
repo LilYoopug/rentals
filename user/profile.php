@@ -751,46 +751,7 @@ body.light-mode .bg-neutral-900 .text-sm.text-neutral-400 {
               </div>
             </div>
           </section>
-          <section id="appearance" class="settings-section">
-            <div class="w-full">
-              <h2 class="text-2xl font-bold text-white font-serif mb-2">Tampilan</h2>
-              <p class="text-neutral-400 text-sm mb-8">Atur tampilan LensCraft sesuai preferensi Anda.</p>
 
-              <!-- Preferensi Aplikasi (now first) -->
-              <div class="bg-neutral-900 border border-neutral-800 rounded-2xl p-6 mb-6">
-                <h3 class="text-lg font-semibold text-white mb-4">Preferensi Aplikasi</h3>
-                <div class="space-y-5">
-                  <div>
-                    <label for="language" class="block text-sm font-medium text-neutral-400 mb-2">Bahasa</label>
-                    <select id="language"
-                      class="w-full px-4 py-3 bg-neutral-800 border border-neutral-700 rounded-lg text-neutral-100 focus:outline-none focus:border-neutral-600 transition-colors">
-                      <option value="en" selected>Inggris</option>
-                      <option value="id">Bahasa Indonesia</option>
-                    </select>
-                    <p class="text-xs text-neutral-500 mt-2">Pilih bahasa yang Anda gunakan untuk antarmuka aplikasi.</p>
-                  </div>
-                  <div>
-                    <label for="timezone" class="block text-sm font-medium text-neutral-400 mb-2">Zona Waktu</label>
-                    <select id="timezone"
-                      class="w-full px-4 py-3 bg-neutral-800 border border-neutral-700 rounded-lg text-neutral-100 focus:outline-none focus:border-neutral-600 transition-colons">
-                      <option value="Asia/Jakarta" selected>(GMT+7) Asia/Jakarta</option>
-                      <option value="Asia/Makassar">(GMT+8) Asia/Makassar</option>
-                      <option value="Asia/Jayapura">(GMT+9) Asia/Jayapura</option>
-                    </select>
-                    <p class="text-xs text-neutral-500 mt-2">Semua tanggal dan waktu akan ditampilkan menggunakan zona waktu ini.</p>
-                  </div>
-                </div>
-              </div>
-
-               <!-- Save Button -->
-               <div class="flex justify-end">
-                 <button type="button" class="px-6 py-2 bg-white text-black font-semibold rounded-lg hover:bg-neutral-200 transition-colors"
-                   onclick="submitAppearanceSettings()">
-                   Simpan Preferensi
-                 </button>
-               </div>
-             </div>
-          </section>
 
         </div>
       </div>
