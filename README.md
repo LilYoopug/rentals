@@ -219,10 +219,10 @@ Setelah import database, gunakan akun berikut untuk login:
 - **Password:** `staff123`
 - **Email:** `staff@lenscraft.local`
 
-### Customer (Pelanggan)
-- **Username:** `customer`
-- **Password:** `customer123`
-- **Email:** `customer@lenscraft.local`
+### User (Pengguna)
+- **Username:** `user`
+- **Password:** `user123`
+- **Email:** `user@lenscraft.local`
 
 > ⚠️ **PENTING:** Segera ubah password default setelah login pertama kali!
 
