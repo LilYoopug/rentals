@@ -19,6 +19,8 @@
 
 LensCraft adalah sistem manajemen rental kamera dan peralatan fotografi berbasis web yang dirancang untuk memudahkan proses penyewaan peralatan profesional. Dengan antarmuka modern dan intuitif, LensCraft menyediakan solusi lengkap untuk bisnis rental kamera, dari katalog produk hingga manajemen pengembalian.
 
+🌐 **Live Demo:** [http://letsrent.infinityfree.me/](http://letsrent.infinityfree.me/)
+
 ### 🎯 Mengapa LensCraft?
 
 - **🎨 UI/UX Premium** - Desain modern dengan Tailwind CSS dan animasi halus
